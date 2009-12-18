@@ -1,5 +1,10 @@
 # PaGMO lib source files.
 SET(PAGMO_LIB_SRC_LIST
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/Astro_Functions.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/Lambert.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/mga.cpp
@@ -49,6 +54,7 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/migration/MigrationPolicy.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/migration/Migration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/ClassicProblems.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/docking_problem.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/GOproblem.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/TrajectoryProblems.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/earth_mars_lt_problem.cpp

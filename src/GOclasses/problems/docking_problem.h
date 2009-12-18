@@ -8,7 +8,7 @@
  *                                                                           *
  *   This program is free software; you can redistribute it and/or modify    *
  *   it under the terms of the GNU General Public License as published by    *
- *   the Free Software Foundation; either version 3 of the License, or       *
+ *   the Free Software Foundation; either version 2 of the License, or       *
  *   (at your option) any later version.                                     *
  *                                                                           *
  *   This program is distributed in the hope that it will be useful,         *
@@ -22,26 +22,38 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-#include <iostream>
+// Created by Juxi Leitner on 2009-12-11.
 
-#include "src/GOclasses/algorithms/CS.h"
-#include "src/GOclasses/basic/island.h"
-#include "src/GOclasses/problems/docking_problem.h"
-//#include "src/ann_toolbox/perceptron.h"
-//#include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/elman_network.h"
+#ifndef PAGMO_DOCKING_PROBLEM_H
+#define PAGMO_DOCKING_PROBLEM_H
 
-using namespace std;
+#include <string>
+#include <vector>
 
-int main(){
-	// input = full state (6), output = thrusters (2)
-	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
-        docking_problem prob(ann);
-        CSalgorithm algo(0.001);
-        island isl(prob, algo, 20);
-        cout << "Best: " << isl.best().getFitness() << endl;
-        isl.evolve();
-        isl.join();
-        cout << "Best: " << isl.best().getFitness() << endl;
-        return 0;
-}
+#include "../../../config.h"
+#include "../../ann_toolbox/neural_network.h"
+#include "GOproblem.h"
+
+// Docking problem.
+class __PAGMO_VISIBLE docking_problem : public GOProblem {
+	public:
+		docking_problem(ann_toolbox::neural_network *ann_);
+
+		virtual docking_problem *clone() const {return new docking_problem(*this);};
+		virtual std::string id_object() const { return "Docking problem, using ANN to develop a robust controller"; }
+
+	private:
+		virtual double 		objfun_(const std::vector<double> &) const;
+
+		mutable size_t		m_random_seed;
+
+		std::vector<double>	starting_conditions;
+		
+		// Reference to the neural network representation
+		ann_toolbox::neural_network *ann;
+		
+		// TODO: Add integrator!
+		//integrator		*solver;		
+};
+
+#endif
