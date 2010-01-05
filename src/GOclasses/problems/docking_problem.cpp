@@ -47,7 +47,8 @@ docking_problem::docking_problem(ann_toolbox::neural_network* ann_) :
 	// and final conditions: x, z,	// later maybe theta, v
 	
 	// x, z, theta (orientation), xdot, zdot, thetadot/omega
-	double start_cnd[] = { 0.0, -2.0, M_PI, 0.0, 9.0, 0.0 };	
+//	double start_cnd[] = { 0.0, -2.0, M_PI, 0.0, 0.0, 0.0 };	
+	double start_cnd[] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 	starting_conditions = std::vector<double> (start_cnd, start_cnd + 6);
 }
 
@@ -61,8 +62,19 @@ double docking_problem::objfun_(const std::vector<double> &v) const
 	
 	// interpret chromosome as ANN
 	ann->set_weights(v);
-	
+
+	//////////////////////////////////////////////
+	// for testing purposes print that here :)
+	/*char tmp[512] = "";
+	sprintf(tmp, "%f", v[0]);
+	for(int i = 1; i < v.size(); i++) {
+		sprintf(tmp, "%s,%f", tmp, v[i]);
+	}	
+	sprintf(tmp, "%s\0", tmp);
+	std::cout << "Weights (" << ann->get_number_of_weights() << "): [" << tmp << "]" << std::endl;
+	*/
 	std::vector<double> inputs = starting_conditions, outputs;
+	
 	
 	// run evaluation of the ANN
 	double docking_time = 9.0, integration_steps = 18;

@@ -27,21 +27,33 @@
 #include "src/GOclasses/algorithms/CS.h"
 #include "src/GOclasses/basic/island.h"
 #include "src/GOclasses/problems/docking_problem.h"
-//#include "src/ann_toolbox/perceptron.h"
-//#include "src/ann_toolbox/multilayer_perceptron.h"
+
+#include "src/ann_toolbox/perceptron.h"
+#include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/elman_network.h"
+#include "src/ann_toolbox/ctrnn.h"
 
 using namespace std;
 
 int main(){
-	// input = full state (6), output = thrusters (2)
-	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
-        docking_problem prob(ann);
-        CSalgorithm algo(0.001);
-        island isl(prob, algo, 20);
-        cout << "Best: " << isl.best().getFitness() << endl;
-        isl.evolve();
-        isl.join();
-        cout << "Best: " << isl.best().getFitness() << endl;
-        return 0;
+// input = full state (6), output = thrusters (2)
+
+// Perceptron
+//	ann_toolbox::neural_network *ann = new ann_toolbox::perceptron(6, 2);
+// MultiLayerPerceptron
+//	ann_toolbox::neural_network *ann = new ann_toolbox::multilayer_perceptron(6, 2, 2);
+// ElmanNetwork
+//	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
+// CTRNN
+	ann_toolbox::neural_network *ann = new ann_toolbox::ctrnn(6, 2, 2);
+
+	docking_problem prob = docking_problem(ann);
+	CSalgorithm algo(0.001);
+	island isl = island(prob, algo, 1);
+//	isl.evolve();
+//	isl.join();
+
+    cout << "-------------------- CTRNN: Best: " << isl.best().getFitness() << endl;
+
+	return 0;
 }

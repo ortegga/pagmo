@@ -8,7 +8,7 @@
  *                                                                           *
  *   This program is free software; you can redistribute it and/or modify    *
  *   it under the terms of the GNU General Public License as published by    *
- *   the Free Software Foundation; either version 2 of the License, or       *
+ *   the Free Software Foundation; either version 3 of the License, or       *
  *   (at your option) any later version.                                     *
  *                                                                           *
  *   This program is distributed in the hope that it will be useful,         *
@@ -22,25 +22,28 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// Created by Juxi Leitner on 2009-12-21.
-// based on the TwoDee Artificial Neural Network Code
+#include <iostream>
 
-#include <exception>
-#include "../exceptions.h"
+#include "src/GOclasses/algorithms/CS.h"
+#include "src/GOclasses/basic/island.h"
+#include "src/GOclasses/problems/docking_problem.h"
+//#include "src/ann_toolbox/perceptron.h"
+//#include "src/ann_toolbox/multilayer_perceptron.h"
+//#include "src/ann_toolbox/elman_network.h"
+#include "src/ann_toolbox/ctrnn.h"
 
-#include "neural_network.h"
+using namespace std;
 
-using namespace ann_toolbox;
-
-neural_network::neural_network(unsigned int input_nodes_, unsigned int output_nodes_) :
-	m_inputs(input_nodes_), m_outputs(output_nodes_)
-{}
-
-neural_network::~neural_network() {}
-
-void neural_network::set_weights(const std::vector<double> &chromosome) {
-	if(chromosome.size() != m_weights.size()) {
-		pagmo_throw(value_error, "number of weights is incorrect");
-	}
-	m_weights = chromosome;
+int main(){
+	// input = full state (6), output = thrusters (2)
+//	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
+	ann_toolbox::neural_network *ann = new ann_toolbox::ctrnn(6, 2, 2);
+        docking_problem prob(ann);
+        CSalgorithm algo(0.001);
+        island isl(prob, algo, 20);
+        cout << "Best: " << isl.best().getFitness() << endl;
+        isl.evolve();
+        isl.join();
+        cout << "Best: " << isl.best().getFitness() << endl;
+        return 0;
 }
