@@ -14,18 +14,23 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/PowSwingByInv.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/propagateKEP.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/time2distance.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/taylor_fixedthrust.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/taylor_fixedthrust.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/Functions/objfuns/classicobjfuns.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/Functions/objfuns/trajobjfuns.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/ASA.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/DE.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/MPSO.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/PSO.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/SGA.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/CS.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/go_algorithm.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/ihs_algorithm.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/nm_algorithm.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/asa.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/de.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/mpso.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/pso.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/sga.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/cs.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/base.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/ihs.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/nm.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/archipelago.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/individual.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/island.cpp
@@ -53,27 +58,25 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/migration/BestReplaceWorstIfBetterMigrationReplacementPolicy.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/migration/MigrationPolicy.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/basic/migration/Migration.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/ClassicProblems.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/docking_problem.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/GOproblem.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/TrajectoryProblems.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/earth_mars_lt_problem.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/earth_mars_lt_problem2.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/example_problem.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/twodee_problem.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/sp_testproblems.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/classic.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/base.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/trajectory.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/earth_mars_lt.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/earth_mars_lt2.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/example.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/twodee.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/sp_test.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/docking.cpp
 )
 
 # Boost  thread library.
 IF(UNIX)
 	SET(PAGMO_LIB_SRC_LIST ${PAGMO_LIB_SRC_LIST}
-		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/pthread/exceptions.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/pthread/once.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/pthread/thread.cpp
 	)
 ELSE(UNIX)
 	SET(PAGMO_LIB_SRC_LIST ${PAGMO_LIB_SRC_LIST}
-		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/win32/exceptions.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/win32/thread.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/win32/tss_dll.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/boost_thread/win32/tss_pe.cpp
@@ -82,31 +85,37 @@ ENDIF(UNIX)
 
 # Boost serialization library.
 SET(PAGMO_LIB_SRC_LIST ${PAGMO_LIB_SRC_LIST}
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_archive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_iarchive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_iserializer.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_oarchive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_oserializer.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_pointer_iserializer.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_pointer_oserializer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/archive_exception.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_serializer_map.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_text_iprimitive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_text_oprimitive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_xml_archive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/binary_iarchive.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/binary_oarchive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info_typeid.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info_no_rtti.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/polymorphic_iarchive.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/polymorphic_oarchive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/stl_port.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/text_iarchive.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/text_oarchive.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/void_cast.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_archive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_text_iprimitive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/binary_wiarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/shared_ptr_helper.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/xml_archive_exception.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_iarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_text_oprimitive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/binary_woarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/stl_port.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/xml_grammar.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_iserializer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/text_iarchive.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/xml_iarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_oarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/text_oarchive.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/xml_oarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_oserializer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_xml_archive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info_no_rtti.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_pointer_iserializer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_xml_grammar.ipp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/extended_type_info_typeid.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/basic_pointer_oserializer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/binary_iarchive.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/boost_serialization/polymorphic_iarchive.cpp
 )
 
 # Disable UTF-8 serialization in MinGW, since the latest stable version does not support it.

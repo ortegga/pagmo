@@ -32,12 +32,15 @@
 
 #include "../../atomic_counters/atomic_counters.h"
 #include "../../exceptions.h"
-#include "../algorithms/go_algorithm.h"
-#include "../problems/GOproblem.h"
+#include "../algorithms/base.h"
+#include "../problems/base.h"
 #include "archipelago.h"
 #include "individual.h"
 #include "island.h"
 #include "population.h"
+
+namespace pagmo
+{
 
 atomic_counter_size_t island::id_counter(1);
 
@@ -46,7 +49,7 @@ size_t island::get_new_id()
 	return (id_counter++).get_value();
 }
 
-island::island(const GOProblem &p, const go_algorithm &al)
+island::island(const problem::base &p, const algorithm::base &al)
 		:m_id(get_new_id()),
 		m_pop(p),
 		m_goa(al.clone()),
@@ -55,7 +58,7 @@ island::island(const GOProblem &p, const go_algorithm &al)
 {
 }
 
-island::island(const GOProblem &p, const go_algorithm &al, int n)
+island::island(const problem::base &p, const algorithm::base &al, int n)
 		:m_id(get_new_id()),
 		m_pop(p, n),
 		m_goa(al.clone()),
@@ -64,7 +67,7 @@ island::island(const GOProblem &p, const go_algorithm &al, int n)
 {
 }
 
-island::island(const GOProblem& p, const go_algorithm& al, int n, const MigrationPolicy& mp)
+island::island(const problem::base& p, const algorithm::base& al, int n, const MigrationPolicy& mp)
 		:m_id(get_new_id()),
 		m_pop(p, n),
 		m_goa(al.clone()),
@@ -76,18 +79,18 @@ island::island(const GOProblem& p, const go_algorithm& al, int n, const Migratio
 
 island::island(const island &i)
 		:m_id(get_new_id()),
-		m_pop(i.population()),
+		m_pop(i.get_population()),
 		m_goa(i.m_goa->clone()),
 		m_a(0),
 		m_evo_time(i.m_evo_time),
-		migrationPolicy(i.migrationPolicy ? new MigrationPolicy(*(i.migrationPolicy)) : 0)		
+		migrationPolicy(i.migrationPolicy ? new MigrationPolicy(*(i.migrationPolicy)) : 0)
 {
 }
 
 island &island::operator=(const island &i)
 {
 	if (this != &i) {
-		m_pop = i.population();
+		m_pop = i.get_population();
 		m_goa.reset(i.m_goa->clone());
 		m_evo_time = i.m_evo_time;
 		/** TODO Make it consistent with the copy constructor!!! */
@@ -101,25 +104,25 @@ island::~island()
 }
 
 
-Population island::population() const
+population island::get_population() const
 {
 	join();
 	return m_pop;
 }
 
-const GOProblem &island::problem() const
+const problem::base &island::problem() const
 {
 	join();
 	return m_pop.problem();
 }
 
-const go_algorithm &island::algorithm() const
+const algorithm::base &island::algorithm() const
 {
 	join();
 	return *m_goa;
 }
 
-void island::set_algorithm(const go_algorithm &a)
+void island::set_algorithm(const algorithm::base &a)
 {
 	join();
 	m_goa.reset(a.clone());
@@ -128,7 +131,7 @@ void island::set_algorithm(const go_algorithm &a)
 const MigrationSelectionPolicy& island::getMigrationSelectionPolicy() const
 {
 	join();
-	if(!migrationPolicy) {
+	if (!migrationPolicy) {
 		pagmo_throw(value_error, "The island has no associated migration policy!");
 	}
 	return migrationPolicy->getMigrationSelectionPolicy();
@@ -137,7 +140,7 @@ const MigrationSelectionPolicy& island::getMigrationSelectionPolicy() const
 void island::setMigrationSelectionPolicy(const MigrationSelectionPolicy& msp)
 {
 	join();
-	if(!migrationPolicy) {
+	if (!migrationPolicy) {
 		pagmo_throw(value_error, "The island has no associated migration policy!");
 	}
 	migrationPolicy->setMigrationSelectionPolicy(msp);
@@ -146,7 +149,7 @@ void island::setMigrationSelectionPolicy(const MigrationSelectionPolicy& msp)
 const MigrationReplacementPolicy& island::getMigrationReplacementPolicy() const
 {
 	join();
-	if(!migrationPolicy) {
+	if (!migrationPolicy) {
 		pagmo_throw(value_error, "The island has no associated migration policy!");
 	}
 	return migrationPolicy->getMigrationReplacementPolicy();
@@ -155,7 +158,7 @@ const MigrationReplacementPolicy& island::getMigrationReplacementPolicy() const
 void island::setMigrationReplacementPolicy(const MigrationReplacementPolicy& mrp)
 {
 	join();
-	if(!migrationPolicy) {
+	if (!migrationPolicy) {
 		pagmo_throw(value_error, "The island has no associated migration policy!");
 	}
 	migrationPolicy->setMigrationReplacementPolicy(mrp);
@@ -164,7 +167,7 @@ void island::setMigrationReplacementPolicy(const MigrationReplacementPolicy& mrp
 const MigrationPolicy& island::getMigrationPolicy() const
 {
 	join();
-	if(!migrationPolicy) {
+	if (!migrationPolicy) {
 		pagmo_throw(value_error, "The island has no associated migration policy!");
 	}
 	return *migrationPolicy;
@@ -194,25 +197,25 @@ size_t island::evo_time() const
 }
 
 
-Individual island::operator[](int n) const
+individual island::operator[](int n) const
 {
 	join();
 	return m_pop[n];
 }
 
-void island::set_individual(int n, const Individual &i)
+void island::set_individual(int n, const individual &i)
 {
 	join();
 	m_pop.setIndividual(n,i);
 }
 
-void island::push_back(const Individual &i)
+void island::push_back(const individual &i)
 {
 	join();
 	m_pop.push_back(i);
 }
 
-void island::insert(int n, const Individual &i)
+void island::insert(int n, const individual &i)
 {
 	join();
 	m_pop.insert(n,i);
@@ -236,37 +239,37 @@ double island::std() const
 	return m_pop.evaluateStd();
 }
 
-Individual island::best() const
+individual island::best() const
 {
 	join();
 	return m_pop.extractBestIndividual();
 }
 
-Individual island::worst() const
+individual island::worst() const
 {
 	join();
 	return m_pop.extractWorstIndividual();
 }
 
 
-std::vector<Individual> island::getMigratingIndividuals()
+std::vector<individual> island::getMigratingIndividuals()
 {
-	if(migrationPolicy) {
+	if (migrationPolicy) {
 		return migrationPolicy->getMigrationSelectionPolicy().selectForMigration(m_pop);
 	} else {
 		/// \todo Throw an exception here?
 		//return an empty population
-		return std::vector<Individual>();
+		return std::vector<individual>();
 	}
 }
 
 
-void island::acceptMigratingIndividuals(const std::vector<Individual>& incomingPopulation)
+void island::acceptMigratingIndividuals(const std::vector<individual>& incomingPopulation)
 {
-	if(migrationPolicy) {
+	if (migrationPolicy) {
 		std::list<std::pair<int, int> > replacement = migrationPolicy->getMigrationReplacementPolicy().selectForReplacement(incomingPopulation, m_pop);
-		
-		for(std::list<std::pair<int, int> >::iterator rep = replacement.begin(); rep != replacement.end(); rep++) {
+
+		for (std::list<std::pair<int, int> >::iterator rep = replacement.begin(); rep != replacement.end(); rep++) {
 			/// \todo This method does some strange checking - maybe we could ommit it?
 			m_pop.setIndividual((*rep).first, incomingPopulation[(*rep).second]);
 		}
@@ -282,7 +285,7 @@ void island::evolve(int N)
 	if (m_evo_mutex.try_lock()) {
 		try {
 			boost::thread(int_evolver(this,N));
-		} catch(...) {
+		} catch (...) {
 			std::cout << "Failed to launch the thread: " << m_id << std::endl;
 			/// \todo throw;
 		}
@@ -296,7 +299,7 @@ void island::evolve_t(const size_t &t)
 	if (m_evo_mutex.try_lock()) {
 		try {
 			boost::thread(t_evolver(this,t));
-		} catch(...) {
+		} catch (...) {
 			std::cout << "Failed to launch the thread: " << m_id << std::endl;
 			/// \todo throw;
 		}
@@ -305,11 +308,13 @@ void island::evolve_t(const size_t &t)
 	}
 }
 
-void island::join() const {
+void island::join() const
+{
 	lock_type lock(m_evo_mutex);
 }
 
-bool island::busy() const {
+bool island::busy() const
+{
 	if (!m_evo_mutex.try_lock()) {
 		return true;
 	}
@@ -329,9 +334,9 @@ void island::int_evolver::operator()()
 	try {
 		//Synchronise start with all other threads
 		if (m_i->m_a) {
-			m_i->m_a->syncIslandStart();
+			m_i->m_a->sync_island_start();
 		}
-		
+
 		for (int i = 0; i < m_n; ++i) {
 			if (m_i->m_a) {
 				//lock_type lock(m_i->m_topo_mutex);
@@ -339,7 +344,7 @@ void island::int_evolver::operator()()
 				m_i->m_pop.problem().pre_evolution(m_i->m_pop);
 			}
 			m_i->m_pop = m_i->m_goa->evolve(m_i->m_pop);
-			//std::cout << "Evolution finished, best fitness is: " << m_i->m_pop.extractBestIndividual().getFitness() << '\n';
+			//std::cout << "Evolution finished, best fitness is: " << m_i->m_pop.extractBestindividual().get_fitness() << '\n';
 			if (m_i->m_a) {
 				//lock_type lock(m_i->m_topo_mutex);
 				m_i->m_a->postEvolutionCallback(*m_i);
@@ -368,7 +373,7 @@ void island::t_evolver::operator()()
 	try {
 		// Synchronise start
 		if (m_i->m_a) {
-			m_i->m_a->syncIslandStart();
+			m_i->m_a->sync_island_start();
 		}
 
 		do {
@@ -379,7 +384,7 @@ void island::t_evolver::operator()()
 			}
 			m_i->m_pop = m_i->m_goa->evolve(m_i->m_pop);
 			diff = boost::posix_time::microsec_clock::local_time() - start;
-			//std::cout << "Evolution finished, best fitness is: " << m_i->m_pop.extractBestIndividual().getFitness() << '\n';
+			//std::cout << "Evolution finished, best fitness is: " << m_i->m_pop.extractBestindividual().get_fitness() << '\n';
 			if (m_i->m_a) {
 				//lock_type lock(m_i->m_topo_mutex);
 				//m_i->m_a->m_top->post_evolution(*m_i); //Call migration scheme
@@ -404,12 +409,14 @@ std::ostream &operator<<(std::ostream &s, const island &isl)
 	s << "Evolution time:              " << isl.evo_time() << '\n';
 	s << "Algorithm type:              " << isl.algorithm().id_name() << '\n';
 	s << "Migration policy:            ";
-	if(isl.migrationPolicy) {
+	if (isl.migrationPolicy) {
 		s << std::endl << *(isl.migrationPolicy);
 	} else {
-		s << "none" << std::endl;		
+		s << "none" << std::endl;
 	}
 	boost::lock_guard<boost::mutex> lock(isl.m_evo_mutex);
 	s << isl.m_pop;
 	return s;
+}
+
 }

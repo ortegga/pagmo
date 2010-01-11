@@ -24,7 +24,7 @@
 
 #include <iostream>
 
-#include "src/GOclasses/algorithms/CS.h"
+#include "src/GOclasses/algorithms/cs.h"
 #include "src/GOclasses/basic/island.h"
 #include "src/GOclasses/problems/docking_problem.h"
 
@@ -32,8 +32,10 @@
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/elman_network.h"
 #include "src/ann_toolbox/ctrnn.h"
+//#include "src/ann_toolbox/perceptron.h"
 
 using namespace std;
+using namespace pagmo;
 
 int main(){
 // input = full state (6), output = thrusters (2)

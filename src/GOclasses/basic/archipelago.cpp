@@ -28,23 +28,26 @@
 #include <typeinfo>
 
 #include "../../exceptions.h"
-#include "../problems/GOproblem.h"
-#include "../algorithms/go_algorithm.h"
+#include "../problems/base.h"
+#include "../algorithms/base.h"
 #include "archipelago.h"
 #include "island.h"
 #include "topology/base_topology.h"
 
-archipelago::archipelago(const GOProblem &p)
+namespace pagmo
+{
+
+archipelago::archipelago(const problem::base &p)
 		:m_gop(p.clone())
 {
 }
 
-archipelago::archipelago(const GOProblem &p, const MigrationScheme& _migrationScheme):m_gop(p.clone()),migrationScheme(_migrationScheme.clone())
+archipelago::archipelago(const problem::base &p, const MigrationScheme& _migrationScheme):m_gop(p.clone()),migrationScheme(_migrationScheme.clone())
 {
 	//TODO: reset the topology/migration scheme?
 }
 
-archipelago::archipelago(const GOProblem &p, const go_algorithm &a, int N, int M):m_gop(p.clone())
+archipelago::archipelago(const problem::base &p, const algorithm::base &a, int N, int M):m_gop(p.clone())
 {
 	if (N < 0 || M < 0) {
 		pagmo_throw(value_error,"number of islands and population size must be nonnegative numbers");
@@ -55,7 +58,7 @@ archipelago::archipelago(const GOProblem &p, const go_algorithm &a, int N, int M
 	}
 }
 
-archipelago::archipelago(const GOProblem &p, const go_algorithm &a, int N, int M, const Migration& migration)
+archipelago::archipelago(const problem::base &p, const algorithm::base &a, int N, int M, const Migration& migration)
 		:m_gop(p.clone()),
 		migrationScheme(migration.getMigrationScheme().clone())
 {
@@ -117,13 +120,13 @@ void archipelago::push_back(const island &isl)
 	// A COPY of an island is created here!!!
 	m_container.push_back(isl);
 	m_container.back().set_archipelago(this);
-	
-	if(migrationScheme) {
-		migrationScheme->push_back(m_container.back());	
+
+	if (migrationScheme) {
+		migrationScheme->push_back(m_container.back());
 	}
 }
 
-const GOProblem &archipelago::problem() const
+const problem::base &archipelago::problem() const
 {
 	return *m_gop;
 }
@@ -152,7 +155,7 @@ void archipelago::evolve(int n)
 	if (busy()) {
 		pagmo_throw(std::runtime_error,"cannot start evolution while evolving");
 	}
-	
+
 	// Initialise the synchronisation barrier
 	islandsSyncPoint.reset(new boost::barrier(m_container.size()));
 
@@ -167,132 +170,132 @@ void archipelago::evolve_t(const size_t &t)
 	if (busy()) {
 		pagmo_throw(std::runtime_error,"cannot start evolution while evolving");
 	}
-	
+
 	// Initialise the synchronisation barrier
 	islandsSyncPoint.reset(new boost::barrier(m_container.size()));
-		
+
 	const iterator it_f = m_container.end();
 	for (iterator it = m_container.begin(); it != it_f; ++it) {
 		it->evolve_t(t);
 	}
 }
 
-Individual archipelago::best() const
+individual archipelago::best() const
 {
 	join();
-	
+
 	bool bestFound = false;
-	Individual result(*m_gop);
-	
-	const const_iterator it_f = m_container.end();	
+	individual result(*m_gop);
+
+	const const_iterator it_f = m_container.end();
 	for (const_iterator it = m_container.begin(); it != it_f; ++it) {
-		if((!bestFound) || (it->best().getFitness() < result.getFitness())) {
+		if ((!bestFound) || (it->best().get_fitness() < result.get_fitness())) {
 			bestFound = true;
 			result = it->best();
-		}		
+		}
 	}
-	
-	if(!bestFound) {
+
+	if (!bestFound) {
 		pagmo_throw(value_error, "In an empty archipelago there's no best individual!");
 	}
-	
+
 	return result;
 }
 
-size_t archipelago::getMaxEvoTime() const
+size_t archipelago::get_max_evo_time() const
 {
 	join();
-	
+
 	size_t result = 0;
 
-	const const_iterator it_f = m_container.end();	
+	const const_iterator it_f = m_container.end();
 	for (const_iterator it = m_container.begin(); it != it_f; ++it) {
-		if(it->evo_time() > result) {
+		if (it->evo_time() > result) {
 			result = it->evo_time();
 		}
 	}
-	
+
 	return result;
 }
 
-size_t archipelago::getTotalEvoTime() const
-{
+size_t archipelago::get_total_evo_time() const {
 	join();
-	
+
 	size_t result = 0;
 
-	const const_iterator it_f = m_container.end();	
+	const const_iterator it_f = m_container.end();
 	for (const_iterator it = m_container.begin(); it != it_f; ++it) {
 		result += it->evo_time();
 	}
-	
+
 	return result;
 }
 
 
-const MigrationScheme& archipelago::getMigrationScheme() const
+const MigrationScheme& archipelago::get_migration_scheme() const
 {
 	join();
-	if(!migrationScheme) {
+	if (!migrationScheme) {
 		pagmo_throw(value_error, "The archipelago has no associated migration scheme!");
 	}
 	return *migrationScheme;
 }
 
-void archipelago::setMigrationScheme(const MigrationScheme* newMigrationScheme)
+void archipelago::set_migration_scheme(const MigrationScheme* new_migration_scheme)
 {
 	join();
-	migrationScheme.reset(newMigrationScheme ? newMigrationScheme->clone() : 0);
-	
-	if(migrationScheme) {
+	migrationScheme.reset(new_migration_scheme ? new_migration_scheme->clone() : 0);
+
+	if (migrationScheme) {
 		// Clear all information potentially present in the migration scheme.
 		migrationScheme->reset();
-		
+
 		// Re-register all islands with the new scheme
-		for(const_iterator it = m_container.begin(); it != m_container.end(); ++it) {
+		for (const_iterator it = m_container.begin(); it != m_container.end(); ++it) {
 			migrationScheme->push_back(*it);
 		}
 	}
 }
 
-const base_topology& archipelago::getTopology() const
+const base_topology& archipelago::get_topology() const
 {
 	join();
-	if(!migrationScheme) {
+	if (!migrationScheme) {
 		pagmo_throw(value_error, "The archipelago has no associated migration scheme!");
 	}
 	return migrationScheme->getTopology();
 }
 
-void archipelago::setTopology(const base_topology* newTopology)
+void archipelago::set_topology(const base_topology* newTopology)
 {
 	join();
-	
-	if(!migrationScheme) {
+
+	if (!migrationScheme) {
 		pagmo_throw(value_error, "The archipelago has no associated migration scheme!");
 	}
-	
+
 	migrationScheme->setTopology(newTopology); //deep copy inside
-	
+
 	// Clear all information potentially present in the migration scheme.
 	migrationScheme->reset();
-	
+
 	// Re-register all islands with the changed scheme
-	for(const_iterator it = m_container.begin(); it != m_container.end(); ++it) {
+	for (const_iterator it = m_container.begin(); it != m_container.end(); ++it) {
 		migrationScheme->push_back(*it);
 	}
 }
 
-void archipelago::syncIslandStart() const
+void archipelago::sync_island_start() const
 {
 	pagmo_assert(islandsSyncPoint);
-	
+
 	islandsSyncPoint->wait();
 }
 
-std::ostream &operator<<(std::ostream &s, const archipelago &a) {
+std::ostream &operator<<(std::ostream &s, const archipelago &a)
+{
 	s << "Problem type:        " << a.m_gop->id_name() << '\n';
-	if(a.migrationScheme) {
+	if (a.migrationScheme) {
 		s << std::endl << *(a.migrationScheme) << std::endl;
 	} else {
 		s << "Migration algorithm: none" << std::endl;
@@ -306,7 +309,7 @@ std::ostream &operator<<(std::ostream &s, const archipelago &a) {
 		s << "Evolution time:     " << it->evo_time() << '\n';
 		s << "Algorithm type:     " << it->algorithm().id_name() << "\n";
 		s << "Migration policy:   ";
-		if(it->migrationPolicy) {
+		if (it->migrationPolicy) {
 			s << std::endl << *(it->migrationPolicy) << std::endl;
 		} else {
 			s << "none" << std::endl;
@@ -315,4 +318,6 @@ std::ostream &operator<<(std::ostream &s, const archipelago &a) {
 		++i;
 	}
 	return s;
+}
+
 }

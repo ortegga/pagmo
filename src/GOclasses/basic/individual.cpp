@@ -25,31 +25,35 @@
 // 16/05/08 Created by Dario Izzo.
 
 #include "../../exceptions.h"
+#include "../problems/base.h"
 #include "individual.h"
 
-Individual::Individual(const GOProblem &problem)
-		:x(problem.getLB().size()),
-		v(problem.getLB().size())
+namespace pagmo
+{
+
+individual::individual(const problem::base &problem)
+		:x(problem.get_lb().size()),
+		v(problem.get_lb().size())
 {
 	static_rng_double drng;
-	
+
 	// Store local references.
-	const std::vector<double> &LB = problem.getLB(), &UB = problem.getUB();
+	const std::vector<double> &LB = problem.get_lb(), &UB = problem.get_ub();
 	const size_t size = LB.size();
-	
+
 	// Fill a new random chromosome and velocity vector.
-	for (size_t i = 0; i < size; ++i){
+	for (size_t i = 0; i < size; ++i) {
 		x[i] = LB[i] + drng() * (UB[i] - LB[i]);
 		v[i] = drng() * (UB[i] - LB[i]);
 	}
-	
+
 	// Evaluation of fitness.
 	fitness = problem.objfun(x);
 }
 
-Individual::Individual(const GOProblem &problem, const std::vector<double> &x_, const std::vector<double> &v_)
+individual::individual(const problem::base &problem, const std::vector<double> &x_, const std::vector<double> &v_)
 		:x(x_),
-		v(v_)		
+		v(v_)
 {
 	if (x.size() != v.size()) {
 		pagmo_throw(value_error,"while constructing individual, size mismatch between decision vector and velocity vector");
@@ -58,18 +62,18 @@ Individual::Individual(const GOProblem &problem, const std::vector<double> &x_, 
 	fitness = problem.objfun(x);
 }
 
-Individual::Individual(const GOProblem &problem, const std::vector<double> &x_)
+individual::individual(const problem::base &problem, const std::vector<double> &x_)
 		:x(x_),
-		v(x_.size())		
+		v(x_.size())
 {
 	check(problem);
 	fitness = problem.objfun(x);
 }
 
-Individual &Individual::operator=(const Individual &i)
+individual &individual::operator=(const individual &i)
 {
 	if (this != &i) {
-		if (i.getDecisionVector().size() != x.size()) {
+		if (i.get_decision_vector().size() != x.size()) {
 			pagmo_throw(value_error,"individuals are incompatible");
 		}
 		x = i.x;
@@ -79,25 +83,25 @@ Individual &Individual::operator=(const Individual &i)
 	return *this;
 }
 
-void Individual::check(const GOProblem &p) const
+void individual::check(const problem::base &p) const
 {
 	const size_t size = x.size();
 	if (size != p.getDimension()) {
 		pagmo_throw(value_error,"mismatch between individual size and problem size");
 	}
 	for (size_t i = 0; i < size; ++i) {
-		if (x[i] > p.getUB()[i] || x[i] < p.getLB()[i]) {
+		if (x[i] > p.get_ub()[i] || x[i] < p.get_lb()[i]) {
 			pagmo_throw(value_error,"individual's decision vector is incompatible with the boundaries of the problem");
 		}
 	}
 }
 
-int Individual::compare_by_fitness(const Individual& ind1, const Individual& ind2)
+int individual::compare_by_fitness(const individual& ind1, const individual& ind2)
 {
 	return ind1.fitness < ind2.fitness;
 }
 
-std::ostream &operator<<(std::ostream &s, const Individual &ind)
+std::ostream &operator<<(std::ostream &s, const individual &ind)
 {
 	s << std::scientific;
 	s.precision(15);
@@ -108,4 +112,6 @@ std::ostream &operator<<(std::ostream &s, const Individual &ind)
 		}
 	}
 	return s;
+}
+
 }
