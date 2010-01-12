@@ -32,13 +32,19 @@
 #include "../../exceptions.h"
 #include "../../Functions/rng/rng.h"
 #include "../../ann_toolbox/neural_network.h"
-#include "GOproblem.h"
+#include "base.h"
+#include "docking.h"
 #include "../basic/population.h"
-#include "docking_problem.h"
+#include "../../odeint/odeint.hpp"
+
+typedef std::vector<double> state_type;
+
+namespace pagmo {
+namespace problem {
 
 // Constructors
-docking_problem::docking_problem(ann_toolbox::neural_network* ann_) :
-	GOProblem(ann_->get_number_of_weights()),
+docking::docking(ann_toolbox::neural_network* ann_) :
+	base(ann_->get_number_of_weights()),
 	ann(ann_)	
 {						
 	// the docking problem needs:
@@ -46,13 +52,13 @@ docking_problem::docking_problem(ann_toolbox::neural_network* ann_) :
 	//  2 outputs (control): ul, ur		(the two thrusters, [0,1] needs to be mapped to [-1,1])
 	// and final conditions: x, z,	// later maybe theta, v
 	
-	// x, z, theta (orientation), xdot, zdot, thetadot/omega
 //	double start_cnd[] = { 0.0, -2.0, M_PI, 0.0, 0.0, 0.0 };	
-	double start_cnd[] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+	// Starting Conditions:  x, vx, y, vy, theta, omega
+	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 	starting_conditions = std::vector<double> (start_cnd, start_cnd + 6);
 }
 
-double docking_problem::objfun_(const std::vector<double> &v) const
+double docking::objfun_(const std::vector<double> &v) const
 {
 	// std::cout<< "Chromosome length: "<< v.size() << std::endl;// << "vector: " << v[0] << std::endl;
 	
@@ -75,28 +81,29 @@ double docking_problem::objfun_(const std::vector<double> &v) const
 	*/
 	std::vector<double> inputs = starting_conditions, outputs;
 	
+	// Create Integrator Stepper
+	odeint::ode_step_runge_kutta_4< state_type, double > stepper;
+    
 	
 	// run evaluation of the ANN
-	double docking_time = 9.0, integration_steps = 18;
-	for(double t = 0;t <= docking_time;t += docking_time/integration_steps) {
+	double docking_time = 9.0, integration_steps = 50, dt = docking_time/integration_steps;
+	for(double t = 0;t <= docking_time;t += dt) {
 		// get outputs from the network, with the current inputs
 		outputs = ann->compute_outputs(inputs);
 		std::cout<< "Output: Thruster0:"<< outputs[0] << "Thruster1:"<< outputs[1] << std::endl;		
 		// ul = left thruster  = outputs[0]
 		// ur = right thruster = outputs[1]
 
-		// integrate
-		// d_x/dt = xdot
-//		integrate()
-		// d_z/dt = ydot
-		// d_theta/dt = omega
-		// d_xdot/dt = 2 * eta * vz + 3 * eta * eta * x + (ul + ur) * cos (theta)
-		// d_zdot/dt = -2 * eta * vx + (ul + ur) * sin (theta)
-		// d_omega/dt = (ul - ur) * 1/(m*R)
+		// integration step
+		stepper.next_step( hill, inputs, t, dt );
+
 	}
 	
-	double retval = 0;
-	// distance to the final position is the return value!
+	double retval = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]) ;
+	// distance to the final position is the return value! sqrt(x^2 + z^2)
 	
 	return retval;
+}
+
+}
 }

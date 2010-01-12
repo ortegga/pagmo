@@ -8,7 +8,7 @@
  *                                                                           *
  *   This program is free software; you can redistribute it and/or modify    *
  *   it under the terms of the GNU General Public License as published by    *
- *   the Free Software Foundation; either version 3 of the License, or       *
+ *   the Free Software Foundation; either version 2 of the License, or       *
  *   (at your option) any later version.                                     *
  *                                                                           *
  *   This program is distributed in the hope that it will be useful,         *
@@ -22,39 +22,43 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-#include <iostream>
+// Created by Juxi Leitner on 2009-12-11.
 
-#include "src/GOclasses/algorithms/cs.h"
-#include "src/GOclasses/basic/island.h"
-#include "src/GOclasses/problems/docking.h"
+#ifndef PAGMO_PROBLEM_DOCKING_H
+#define PAGMO_PROBLEM_DOCKING_H
 
-#include "src/ann_toolbox/perceptron.h"
-#include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/elman_network.h"
-#include "src/ann_toolbox/ctrnn.h"
+#include <string>
+#include <vector>
 
-using namespace std;
-using namespace pagmo;
+#include "../../ann_toolbox/neural_network.h"
+#include "../../config.h"
+#include "base.h"
 
-int main(){
-// input = full state (6), output = thrusters (2)
 
-// Perceptron
-//	ann_toolbox::neural_network *ann = new ann_toolbox::perceptron(6, 2);
-// MultiLayerPerceptron
-//	ann_toolbox::neural_network *ann = new ann_toolbox::multilayer_perceptron(6, 2, 2);
-// ElmanNetwork
-//	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
-// CTRNN
-	ann_toolbox::neural_network *ann = new ann_toolbox::ctrnn(6, 2, 2);
+namespace pagmo {
+namespace problem {
+// Docking problem.
 
-	problem::docking prob = problem::docking(ann);
-	algorithm::cs algo(0.001);
-	island isl = island(prob, algo, 1);
-//	isl.evolve();
-//	isl.join();
+class __PAGMO_VISIBLE docking : public base {
+	public:
+		docking(ann_toolbox::neural_network *ann_);
 
-    cout << "-------------------- CTRNN: Best: " << isl.best().get_fitness() << endl;
+		virtual docking *clone() const { return new docking(*this); };
+		virtual std::string id_object() const { return "Docking problem, using ANN to develop a robust controller"; }
 
-	return 0;
+	private:
+		virtual double 		objfun_(const std::vector<double> &) const;
+
+		mutable size_t		m_random_seed;
+
+		std::vector<double>	starting_conditions;
+		
+		// Reference to the neural network representation
+		ann_toolbox::neural_network *ann;
+		
+		// TODO: Add integrator!
+		//integrator		*solver;		
+};
 }
+}
+#endif
