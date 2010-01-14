@@ -67,7 +67,6 @@ class __PAGMO_VISIBLE docking : public base {
 		double nu, max_thrust, mR;
 		
 		
-		
 	//		mutable size_t		m_random_seed;
 		
 };
