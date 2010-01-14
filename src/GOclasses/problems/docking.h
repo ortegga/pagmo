@@ -35,6 +35,8 @@
 #include "base.h"
 
 
+typedef std::vector<double> state_type;
+
 namespace pagmo {
 namespace problem {
 // Docking problem.
@@ -45,11 +47,14 @@ class __PAGMO_VISIBLE docking : public base {
 
 		virtual docking *clone() const { return new docking(*this); };
 		virtual std::string id_object() const { return "Docking problem, using ANN to develop a robust controller"; }
+		
+		// The ODE system we want to integrate needs to be passed to the 
+		// integrator. Here we have the Hill's equations.
+		static void hill_equations( state_type &state , state_type &dxdt , double t );
 
 	private:
 		virtual double 		objfun_(const std::vector<double> &) const;
-
-		mutable size_t		m_random_seed;
+		void scale_outputs(std::vector<double> &) const;
 
 		std::vector<double>	starting_conditions;
 		
@@ -58,6 +63,13 @@ class __PAGMO_VISIBLE docking : public base {
 		
 		// TODO: Add integrator!
 		//integrator		*solver;		
+		// Variables/Constants for the ODE
+		double nu, max_thrust, mR;
+		
+		
+		
+	//		mutable size_t		m_random_seed;
+		
 };
 }
 }

@@ -29,23 +29,25 @@
 #include <vector>
 #include <iostream>
 
-#include "../../exceptions.h"
-#include "../../Functions/rng/rng.h"
-#include "../../ann_toolbox/neural_network.h"
 #include "base.h"
 #include "docking.h"
+
+#include "../../exceptions.h"
 #include "../basic/population.h"
+//#include "../../Functions/rng/rng.h"
+#include "../../ann_toolbox/neural_network.h"
 #include "../../odeint/odeint.hpp"
 
-typedef std::vector<double> state_type;
+//typedef std::vector<double> state_type;
 
 namespace pagmo {
-namespace problem {
+namespace problem {	
 
 // Constructors
 docking::docking(ann_toolbox::neural_network* ann_) :
 	base(ann_->get_number_of_weights()),
-	ann(ann_)	
+	ann(ann_),
+	max_thrust(0.1)
 {						
 	// the docking problem needs:
 	// 	3 inputs (and starting conditions): x, z, theta
@@ -60,50 +62,102 @@ docking::docking(ann_toolbox::neural_network* ann_) :
 
 double docking::objfun_(const std::vector<double> &v) const
 {
-	// std::cout<< "Chromosome length: "<< v.size() << std::endl;// << "vector: " << v[0] << std::endl;
-	
 	if(v.size() != ann->get_number_of_weights()) {
 		pagmo_throw(value_error, "wrong number of weights in the chromosome");
 	}
 	
-	// interpret chromosome as ANN
+	// Create Integration Stepper
+	odeint::ode_step_runge_kutta_4< state_type, double > stepper;    
+	
+	// Initialize ANN and interpret the chromosome
 	ann->set_weights(v);
 
-	//////////////////////////////////////////////
-	// for testing purposes print that here :)
-	/*char tmp[512] = "";
-	sprintf(tmp, "%f", v[0]);
-	for(int i = 1; i < v.size(); i++) {
-		sprintf(tmp, "%s,%f", tmp, v[i]);
-	}	
-	sprintf(tmp, "%s\0", tmp);
-	std::cout << "Weights (" << ann->get_number_of_weights() << "): [" << tmp << "]" << std::endl;
-	*/
+	// initialize the inputs (= starting conditions) to the ANN and allocate the outputs
 	std::vector<double> inputs = starting_conditions, outputs;
 	
-	// Create Integrator Stepper
-	odeint::ode_step_runge_kutta_4< state_type, double > stepper;
-    
-	
+	// vector for the integrator to consist of the inputs and the outputs of the ANN
+	state_type state;
+
+	// testing optimal control...
+	double UL[] = { 0.0000000000000000e+00, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 4.2628501724780124e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -2.1765169987709620e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02	}; 
+	double UR[] = { 0.0000000000000000e+00, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, 5.2147180378961100e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 5.0142709254069967e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, 1.0000000000000001e-01, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02 };
+	size_t idx = 0;
+
 	// run evaluation of the ANN
-	double docking_time = 9.0, integration_steps = 50, dt = docking_time/integration_steps;
-	for(double t = 0;t <= docking_time;t += dt) {
-		// get outputs from the network, with the current inputs
+	double max_docking_time = 9.0, integration_steps = 50, dt = .15, t;
+	for(t = 0;t <= max_docking_time;t += dt) {
+		// get outputs from the network, using the current inputs
 		outputs = ann->compute_outputs(inputs);
-		std::cout<< "Output: Thruster0:"<< outputs[0] << "Thruster1:"<< outputs[1] << std::endl;		
-		// ul = left thruster  = outputs[0]
-		// ur = right thruster = outputs[1]
 
-		// integration step
-		stepper.next_step( hill, inputs, t, dt );
+		// FORT TESTING!!!
+		// outputs.clear();
+		// outputs.push_back(UL[idx]);
+		// outputs.push_back(UR[idx]);
+		// idx++;
+		
+		// Scale the outputs
+		scale_outputs(outputs);
 
+		std::cout<< "Output: Thruster0:"<< outputs[0] << "Thruster1:"<< outputs[1] << std::endl;
+		
+		// Create the state vector for the integrator
+		state = inputs;
+		state.insert(state.end(), outputs.begin(), outputs.end());
+		
+
+		// TESTING printf("%f, %f : %f, %f\n", outputs[0], outputs[1], state[6], state[7]);
+		
+		// Perform the integration step
+		stepper.next_step( hill_equations, state, t, dt );
+		
+		//printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+		
+		inputs = std::vector<double> (state.begin(), state.end()-2);
 	}
 	
 	double retval = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]) ;
 	// distance to the final position is the return value! sqrt(x^2 + z^2)
-	
+
+	printf("\tx\tvx\ty\tvy\ttheta\tomega\n");	
+	printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5]);
+		
 	return retval;
 }
+
+void docking::scale_outputs(std::vector<double> &outputs) const {
+	for(size_t i = 0; i < outputs.size(); i++)  {
+		outputs[i] = (outputs[i] - 0.5) * 2;		// to have the thrust between 1 and -1
+		outputs[i] = outputs[i] * max_thrust;		// scale it
+	}
+}
+
+// state_type = x, vx, y, vy, theta, omega
+void docking::hill_equations( state_type &state , state_type &dxdt , double t ) {	
+	if(state.size() != 8) {
+		pagmo_throw(value_error, "wrong number of parameters for the integrator");
+	}
+	
+	// constants:
+	const double nu = .08, mR = (1.5*.5);	// constant mass * radius of the s/c	
+	
+	double x = state[0];
+	double vx = state[1];
+	double y = state[2];
+	double vy = state[3];
+	double theta = state[4];
+	double omega = state[5];
+	double ul = state[6];
+	double ur = state[7];
+	
+	dxdt[0] = vx;
+	dxdt[1] = 2 * nu * vy + 3 * nu * nu * x + (ul + ur) * cos(theta);
+	dxdt[2] = vy;
+	dxdt[3] = -2 * nu * vx + (ul + ur) * sin(theta);
+	dxdt[4] = omega;
+	dxdt[5] = (ul - ur) * 1/mR;
+	//printf("ul: %f\t ur: %f\n", ul, ur);
+}
+
 
 }
 }
