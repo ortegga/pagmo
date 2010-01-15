@@ -108,7 +108,7 @@ double docking::objfun_(const std::vector<double> &v) const
 
 		// Log the result (for later plotting)
 		// also try to put that somewhere else then!!
-		printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+		printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
 		
 		inputs = std::vector<double> (state.begin(), state.end()-2);
 	}
