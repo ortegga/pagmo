@@ -50,11 +50,11 @@ int main(){
 
 	problem::docking prob = problem::docking(ann);
 	algorithm::cs algo(0.001);
-	island isl = island(prob, algo, 1);
-//	isl.evolve();
-//	isl.join();
-
-    cout << "-------------------- CTRNN: Best: " << isl.best().get_fitness() << endl;
+	island isl = island(prob, algo, 50);
+    cout << "Best: " << isl.best().get_fitness() << endl;
+    isl.evolve();
+    isl.join();
+    cout << "-------------------- Best: " << isl.best().get_fitness() << endl;
 
 	return 0;
 }

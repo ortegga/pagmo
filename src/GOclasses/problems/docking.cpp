@@ -34,11 +34,8 @@
 
 #include "../../exceptions.h"
 #include "../basic/population.h"
-//#include "../../Functions/rng/rng.h"
 #include "../../ann_toolbox/neural_network.h"
 #include "../../odeint/odeint.hpp"
-
-//typedef std::vector<double> state_type;
 
 namespace pagmo {
 namespace problem {	
@@ -54,7 +51,6 @@ docking::docking(ann_toolbox::neural_network* ann_) :
 	//  2 outputs (control): ul, ur		(the two thrusters, [0,1] needs to be mapped to [-1,1])
 	// and final conditions: x, z,	// later maybe theta, v
 	
-//	double start_cnd[] = { 0.0, -2.0, M_PI, 0.0, 0.0, 0.0 };	
 	// Starting Conditions:  x, vx, y, vy, theta, omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 	starting_conditions = std::vector<double> (start_cnd, start_cnd + 6);
@@ -83,13 +79,15 @@ double docking::objfun_(const std::vector<double> &v) const
 	// double UR[] = { 0.0000000000000000e+00, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, 5.2147180378961100e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 5.0142709254069967e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, -9.9999999999999992e-02, 1.0000000000000001e-01, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02, 9.9999999999999992e-02 };
 	// size_t idx = 0;
 
+	printf("\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\n");	
+
 	// run evaluation of the ANN
 	double max_docking_time = 9.0, integration_steps = 50, dt = .15, t;
 	for(t = 0;t <= max_docking_time;t += dt) {
 		// get outputs from the network, using the current inputs
 		outputs = ann->compute_outputs(inputs);
 
-		// FOR TESTING!!!
+ 		// FOR TESTING!!!
 		// outputs.clear();
 		// outputs.push_back(UL[idx]);
 		// outputs.push_back(UR[idx]);
@@ -98,24 +96,22 @@ double docking::objfun_(const std::vector<double> &v) const
 		// Scale the outputs
 		scale_outputs(outputs);
 
-	//	std::cout<< "Output: Thruster0:"<< outputs[0] << "Thruster1:"<< outputs[1] << std::endl;
+//		std::cout<< "Output: Thruster0:"<< outputs[0] << "Thruster1:"<< outputs[1] << std::endl;
 		
 		// Create the state vector for the integrator
 		state = inputs;
 		state.insert(state.end(), outputs.begin(), outputs.end());
 		
 
-		// TESTING printf("%f, %f : %f, %f\n", outputs[0], outputs[1], state[6], state[7]);
-		
 		// Perform the integration step
 		stepper.next_step( hill_equations, state, t, dt );
-		
-		//printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+
+		// Log the result (for later plotting)
+		// also try to put that somewhere else then!!
+		printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
 		
 		inputs = std::vector<double> (state.begin(), state.end()-2);
 	}
-	
-	// make the output for the individual here somewhere....
 	
 	// distance to the final position (0,0) = sqrt(x^2 + z^2)
 	double distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]) ;
@@ -123,12 +119,15 @@ double docking::objfun_(const std::vector<double> &v) const
 	double theta = inputs[4];
 	if(theta > 2*M_PI) theta -= 2 * M_PI;
 	if(theta < -2*M_PI) theta += 2 * M_PI;
-	printf("\tx\tvx\ty\tvy\ttheta\tomega\n");	
-	printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5]);
+
+//	printf("\tx\tvx\ty\tvy\ttheta\tomega\n");	
+//	printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\n", t, state[0], state[1], state[2], state[3], state[4], state[5]);
 	
 	double retval = 1.0/((1 + distance) * (1 + fabs(theta)) * (speed + 1));
-	if(retval < 0.0) printf("retval < 0: %f, %f, %f\n", distance, theta, speed);
-	return 1.0/((1 + distance) * (1 + fabs(theta)) * (speed + 1));
+	printf("ObjFun: return value:  %f\n\n", retval);
+	
+	// PaGMO minimizes the objective function!! therefore the minus here
+	return -1.0/((1 + distance) * (1 + fabs(theta)) * (speed + 1));
 }
 
 void docking::scale_outputs(std::vector<double> &outputs) const {

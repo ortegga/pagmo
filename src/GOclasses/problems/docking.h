@@ -39,36 +39,36 @@ typedef std::vector<double> state_type;
 
 namespace pagmo {
 namespace problem {
+
 // Docking problem.
+// "Docking problem, using ANN to develop a robust controller"; } TODO add description
 
 class __PAGMO_VISIBLE docking : public base {
 	public:
 		docking(ann_toolbox::neural_network *ann_);
 
-		virtual docking *clone() const { return new docking(*this); };
-		virtual std::string id_object() const { return "Docking problem, using ANN to develop a robust controller"; }
+		virtual docking 	*clone() const { return new docking(*this); };
+		virtual std::string	id_object() const {
+			return "Docking problem, using ANN to develop a robust controller"; }
 		
 		// The ODE system we want to integrate needs to be passed to the 
 		// integrator. Here we have the Hill's equations.
-		static void hill_equations( state_type &state , state_type &dxdt , double t );
+		static void 		hill_equations( state_type & , state_type & , double );
 
 	private:
-		virtual double 		objfun_(const std::vector<double> &) const;
-		void scale_outputs(std::vector<double> &) const;
+		virtual double	objfun_(const std::vector<double> &) const;
+		void 			scale_outputs(std::vector<double> &) const;
 
 		std::vector<double>	starting_conditions;
 		
 		// Reference to the neural network representation
 		ann_toolbox::neural_network *ann;
 		
-		// TODO: Add integrator!
-		//integrator		*solver;		
 		// Variables/Constants for the ODE
 		double nu, max_thrust, mR;
 		
-		
-	//		mutable size_t		m_random_seed;
-		
+		// TODO: Add integrator as class ...
+		//integrator		*solver;
 };
 }
 }
