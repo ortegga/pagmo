@@ -38,6 +38,8 @@ typedef std::vector<double> state_type;
 
 namespace pagmo {
 namespace problem {	
+	
+class DynamicSystem;	
 
 // Docking problem.
 // "Docking problem, using ANN to develop a robust controller"; } TODO add description
@@ -45,35 +47,54 @@ namespace problem {
 class __PAGMO_VISIBLE docking : public base {
 	public:
 		// Constructors
-		docking(ann_toolbox::neural_network *ann_);
+		docking(ann_toolbox::neural_network *ann_, double max_time = 10, double max_thr = 0.1);
 		
 		virtual docking 	*clone() const { return new docking(*this); };
 		virtual std::string	id_object() const {
 			return "Docking problem, using ANN to develop a robust controller"; }
-			
+		
 		void set_start_condition(double* , size_t );
 		void set_start_condition(std::vector<double> &);
 		
-		// The ODE system we want to integrate needs to be passed to the 
-		// integrator. Here we have the Hill's equations.
-		static void 		hill_equations( state_type & , state_type & , double );
+		// control variable setter
+		void set_log_genome(bool );
+		void set_take_best(bool );
+		
+		// The ODE system we want to integrate needs to be able to be called 
+		// by the integrator. Here we have the Hill's equations.
+		void operator()( state_type &x , state_type &dxdt , double t ) const;
+//		replacing the function: static void hill_equations( state_type & , state_type & , double );
 		
 	private:
 		virtual double	objfun_(const std::vector<double> &) const;
 		void 			scale_outputs(std::vector<double> &) const;
 
 		std::vector<double>	starting_condition;
+		// Variables/Constants for the ODE
+		double nu, max_thrust, mR, max_docking_time;
 		
 		// Reference to the neural network representation
 		ann_toolbox::neural_network *ann;
 		
-		// Variables/Constants for the ODE
-		double nu, max_thrust, mR;
+		// control variables
+		bool take_best;
+		bool log_genome;
 		
 		// TODO: Add integrator as class ...
 		//integrator		*solver;
-		
+		friend class DynamicSystem;
 };
+
+class DynamicSystem {
+	private: 
+		const docking *prob;
+		std::vector<double> outputs;
+	public:
+		DynamicSystem(const docking *in) : prob(in) {	}
+		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t );
+		std::vector<double> get_last_outputs();
+};
+	
 }
 }
 #endif

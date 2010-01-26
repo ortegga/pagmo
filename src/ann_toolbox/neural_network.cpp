@@ -26,9 +26,11 @@
 // based on the TwoDee Artificial Neural Network Code
 
 #include <exception>
+#include <cstdlib>
 #include "../exceptions.h"
 
 #include "neural_network.h"
+
 
 using namespace ann_toolbox;
 
@@ -44,3 +46,4 @@ void neural_network::set_weights(const std::vector<double> &chromosome) {
 	}
 	m_weights = chromosome;
 }
+

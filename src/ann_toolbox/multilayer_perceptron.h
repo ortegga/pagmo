@@ -58,11 +58,15 @@ public:
 
 	/// Compute Outputs
 	const std::vector<double> compute_outputs(std::vector<double> &inputs);
-
+	
+	/// Stream output operator.
+	friend std::ostream &operator<<(std::ostream &, const multilayer_perceptron &);	
+	
 protected:
 	// number of hidden nodes
 	unsigned int	m_hidden;
 };
+
 
 }
 #endif

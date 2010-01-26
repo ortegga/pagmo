@@ -26,6 +26,7 @@
 // based on the TwoDee Artificial Neural Network Code
 
 #include <cstdlib>
+#include <iterator>
 #include <cmath>
 #include <vector>        
 #include <exception>
@@ -33,7 +34,7 @@
 
 #include "multilayer_perceptron.h"
 
-using namespace ann_toolbox;
+namespace ann_toolbox {
 
 // Constructor
 multilayer_perceptron::multilayer_perceptron(unsigned int input_nodes_, unsigned int hidden_nodes_,
@@ -86,7 +87,7 @@ const std::vector<double> multilayer_perceptron::compute_outputs(std::vector<dou
 	std::vector<double> outputs(m_outputs, 0);
     for( i = 0; i < m_outputs; i++ ) {
         // add the bias (wheigted by the first wheigt to the i^th output node
-        outputs[i] = m_weights[offset + i * (m_hidden + 1)];		 
+		outputs[i] = m_weights[offset + i * (m_hidden + 1)];
         
         for( j = 0; j < m_hidden; j++) 
         {
@@ -101,4 +102,24 @@ const std::vector<double> multilayer_perceptron::compute_outputs(std::vector<dou
     }
 
     return outputs;
+}
+
+
+/////////////////////////////////
+
+/*template<typename T>
+void PrintVector(std::ostream& ostr, const std::vector<T>& t, const std::string& delimiter){
+        std::copy(t.begin(), t.end(), std::ostream_iterator<T>(ostr, delimiter.c_str()));
+}*/
+
+std::ostream &operator<<(std::ostream &s, const multilayer_perceptron &ann)
+{
+
+	/*s << "ANN - MultiLayer Perceptron: " << ann.get_number_of_input_nodes() << ", " << ann.m_hidden <<
+		", " << ann.get_number_of_output_nodes() << " (" << ann.get_number_of_weights() << ")";
+	s << "\n" << "Genome: ";*/
+	std::copy(ann.m_weights.begin(), ann.m_weights.end(), std::ostream_iterator<double>(s, ", "));
+    return s;
+}
+
 }

@@ -50,45 +50,51 @@ int main(){
 // Perceptron
 //	ann_toolbox::neural_network *ann = new ann_toolbox::perceptron(6, 2);
 // MultiLayerPerceptron
-	ann_toolbox::neural_network *ann = new ann_toolbox::multilayer_perceptron(6, 5, 2);
+	//ann_toolbox::multilayer_perceptron ann = new 
+	ann_toolbox::multilayer_perceptron ann(6, 5, 2);
 // ElmanNetwork
 //	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
 // CTRNN
 //	ann_toolbox::neural_network *ann = new ann_toolbox::ctrnn(6, 2, 2);
+	
+	
+/*		testing
+	std::vector<double> chrom;
+	for(int i=0;i < ann.get_number_of_weights();i++)
+		chrom.push_back(1.0);
+	ann.set_weights(chrom);
+	cout << ann << endl;
+	std::vector<double> in; in.push_back(1.0);
+	std::vector<double> out = ann.compute_outputs(in);
+	cout << "Output: " << out[0] << endl;
+	
+	return 0;*/
+	
+	
+	/////////////////////////////////////////////////
 
-	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+	// Starting Conditions:  x,  vx,  y,   vy, theta, omega
+	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, M_PI, 0.0 };		
 
-	problem::docking prob = problem::docking(ann);
+	//                                        max_time, max_thrust
+	problem::docking prob = problem::docking(&ann, 10, 0.1);
 	prob.set_start_condition(start_cnd, 6);
+	
+	prob.set_log_genome(true);
 
-	// algorithm::de algo( 50, 	// Generations
-	// 					0.8,	// F
-	// 					0.8,	// CR
-	// 					3);		// Strategy
 	algorithm::sga algo( 20, 	// Generations
 						0.95,	// CR
 						0.15,	// Mutation						
 						1);		// Elitism
 
-	long i = 0;
 	island isl = island(prob, algo, 25);
-	double last_f = 0.0;
-	while(i++ < 1000) { 
-/*	best_fitness = isl.best().get_fitness();
-	for(int i = 1; i < 299; i++) {
-    	isl.evolve_t();
-    	isl.join();
-    	cout << "-------------------- Best in evolution #" << i << ": " << isl.best().get_fitness() << endl;
-		cout << "==--== " << endl;
-		if(best_fitness > isl.best().get_fitness()) best_fitness = isl.best().get_fitness();		
-		cout << "Log:" << max_log_string << endl;
-			cout << "==---== " << endl;
-	}	*/	
-	
+
+	int i = 0;
+	while(i++ < 700) { 	
 		isl.evolve();
 		isl.join();
 
-//	    	cout << "--- Best in evolution #" << i << ": " << isl.best().get_fitness() << endl;
+//	    cout << "--- Best in evolution #" << i << ": " << isl.best().get_fitness() << endl;
 		if(isl.best().get_fitness() < best_fitness) {
 			best_fitness = isl.best().get_fitness();		
     		cout << "=== Best increased @ #" << i << ": " << isl.best().get_fitness() << endl;
@@ -97,18 +103,6 @@ int main(){
 			myfile << max_log_string << endl;
 			myfile.close();		
 		}
-		if(isl.best().get_fitness() < 70) {
-			isl = island(prob, algo, 25);
-			last_f = 0.0;
-		}
-		if((i % 40) == 39) {
-			if(isl.best().get_fitness() <= last_f) {
-				isl = island(prob, algo, 25);
-				i = 0;
-				last_f = 0.0;
-			}else
-				last_f = isl.best().get_fitness();
-		} 
 	}	
 	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;
 			
