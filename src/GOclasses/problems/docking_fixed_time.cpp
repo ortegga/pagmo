@@ -31,7 +31,7 @@
 #include <sstream>
 
 #include "base.h"
-#include "docking.h"
+#include "docking_fixed_time.h"
 
 #include "../../exceptions.h"
 #include "../basic/population.h"
@@ -47,12 +47,11 @@ namespace pagmo {
 namespace problem {	
 	
 // Constructors
-docking::docking(ann_toolbox::neural_network* ann_, int needed_cnt_at_g, double max_time, double max_thr) :
+docking::docking(ann_toolbox::neural_network* ann_, double max_time, double max_thr) :
 	base(ann_->get_number_of_weights()),
 	ann(ann_),
 	max_docking_time(max_time + .1),	
-	max_thrust(max_thr),
-	needed_count_at_goal(needed_cnt_at_g)
+	max_thrust(max_thr)	
 {						
 	// the docking problem needs:
 	// 	3 inputs (and starting conditions): x, z, theta
@@ -85,79 +84,45 @@ void docking::set_take_best(bool b) {
 	take_best = b;
 }
 
-void docking::pre_evolution(population &pop) const {
-/*	//Re-evaluate the population with respect to the new seed (Internal Sampling Method)
+/*void docking::pre_evolution(population &pop) const {
+	std::cout << " LAALLALA testing" << std::endl;
+	double x = -2.0, y = -2.0;
+	// Starting Conditions:  x, vx, y, vy, theta, omega
+	double cnd[] = { x, 0.0, y, 0.0, M_PI*2, 0.0 };	
+	starting_condition = std::vector<double>(cnd, cnd+6);
+	
+	//Re-evaluate the population with respect to the new seed (Internal Sampling Method)
 	for (size_t i=0; i < pop.size(); ++i) {
 		pop[i] = individual(*this, pop[i].get_decision_vector(), pop[i].get_velocity());
-	}*/
-}
+	}
+}*/
 
-// Objective function to be minimized
+// Objective function
 double docking::objfun_(const std::vector<double> &v) const {
 	if(v.size() != ann->get_number_of_weights()) {
 		pagmo_throw(value_error, "wrong number of weights in the chromosome");
 	}
 	
-	double average = 0.0;
-	std::string log = "", runlog = "";
-	char h[999];
-		
-	if(log_genome) {
-		std::stringstream oss (std::stringstream::out);
-		oss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
-		sprintf(h, "%s\tGenome:%s", h, oss.str().c_str());
-	}		
-	std::stringstream ss (std::stringstream::out);
-	ss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
-	log = ss.str();	
-	int i;	
-	for(i = 0;i < 2;i++) {
-		// Initialize ANN and interpret the chromosome
-		ann->set_weights(v);
-		
-		// change starting position
-		if(i == 0) { starting_condition[0] = -2; starting_condition[2] = .0; }
-		if(i == 1) { starting_condition[0] = 2; starting_condition[2] = 0; }
-	//	if(i == 2) { starting_condition[0] = -1; starting_condition[2] = -1; }
-		
-		average += one_run(runlog);
-		if(log.size() > 0) log = log + "\n\n";
-		log += runlog;
-	}
-	average = average / i;
-	//////////////////////////////////////
-	// Add the best fitness to the logger
- 	if(max_log_fitness > average) {
-		sprintf(h, "ObjFun: return value:  %f\tdist\n", average); //:%f theta: %f speed: %f\n, distance, theta, speed);
-		log = log + h;
-
-		max_log_fitness = average;
-		max_log_string = log;
-	}
-	/////////////////////////////////////
-	
-	return average;
-}
-
-double docking::one_run(std::string &log) const {
-	// Helper variables
-	double retval = 0.0, distance, theta, speed, best_retval = 0.0;
-	int counter_at_goal = 0;
-	
-	// Integrator System
-	DynamicSystem sys(this);
 	// Create Integration Stepper
 	odeint::ode_step_runge_kutta_4< std::vector<double>, double > stepper;
-
+	
+	// Initialize ANN and interpret the chromosome
+	ann->set_weights(v);
+	
+	std::stringstream ss (std::stringstream::out);
+	ss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
+		
 	// initialize the inputs (= starting conditions) to the ANN and allocate the outputs 
 	std::vector<double> inputs = starting_condition, out;
+
+	double retval, distance, theta, speed, best_retval = 0.0;
+
+	// for Integrator
+	DynamicSystem sys(this);
 	
-	///////////////////////////////////////////////////////
-	// LOGGER
 	// Logging for the best individual
-	log = "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\n";
+	std::string log = ss.str() + "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\n";
 	char h[999];
-	////////////////////////////////////////////////////////
 
 	// run evaluation of the ANN
 	double  dt = .2, t;
@@ -173,40 +138,42 @@ double docking::one_run(std::string &log) const {
 		// keep theta between -180° and +180°
 		if(theta > M_PI) theta -= 2 * M_PI;
 		if(theta < -1*M_PI) theta += 2 * M_PI;
-		inputs[4] = theta;
+		inputs[4] = theta;		
 
 		// Calculate return value
 		retval = 1.0/((1 + distance) * (1 + fabs(theta)) * (1 + speed));
-		
-		// m_pi/6 = 30°
-		if(distance < .1 && fabs(theta) < M_PI/6)
-			counter_at_goal++;
-		else counter_at_goal = 0;
-		
-		if(counter_at_goal >= needed_count_at_goal) retval = 1.0 + 2/t;		// we reached the goal!!! 2/t to give it a bit more range
 		if(take_best)
 			if(retval > best_retval) best_retval = retval;
 
-		////////////////////////////////
-		// LOGGING 
 		// get more outputs
 		out = sys.get_last_outputs();
 
 		// Log the result (for later output & plotting)
 		//printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
-		sprintf(h, "%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\tCalc: %f\t%f\t%f\t%f", 
+		sprintf(h, "%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\tCalc: %f\t%f\t%f\t%f",
 		 			t, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], out[0], out[1],
 					retval, distance, theta, speed
 		);	
+		if(log_genome) {
+			std::stringstream oss (std::stringstream::out);
+			oss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
+			sprintf(h, "%s\tGenome:%s", h, oss.str().c_str());
+		}			
 		log = log + h + "\n";
-		////////////////////////////////
-		if(retval > 1.0) break;
 	}
 	
 	// if take_best is FALSE we do not take the best overall but the result
 	// at the end of the iteration (max_docking_time)
 	if(!take_best) best_retval = retval;
 	
+	// Add the best fitness to the logger
+ 	if(max_log_fitness < best_retval) {
+		sprintf(h, "ObjFun: return value:  %f\tdist\n", best_retval); //:%f theta: %f speed: %f\n, distance, theta, speed);
+		log = log + h;
+
+		max_log_fitness = best_retval;
+		max_log_string = log;
+	}
 	
 	// PaGMO minimizes the objective function!! therefore the minus here
 	return -best_retval;
@@ -232,7 +199,7 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 	
 	double x = state[0];
 	double vx = state[1];
-	// not used: double y = state[2];
+	// not used double y = state[2];
 	double vy = state[3];
 	double theta = state[4];
 	double omega = state[5];
@@ -243,9 +210,6 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 	
 	double ul = outputs[0];
 	double ur = outputs[1];	// maybe save them somewhere?
-	
-/*	if(t >= prob->breakdown_time && t <= prob->breadkdown_time + prob->breakdown_duration)
-		ul = 0.0;*/
 	
 	dxdt[0] = vx;
 	dxdt[1] = 2 * nu * vy + 3 * nu * nu * x + (ul + ur) * cos(theta);

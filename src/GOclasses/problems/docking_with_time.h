@@ -70,8 +70,7 @@ class __PAGMO_VISIBLE docking : public base {
 		virtual void	pre_evolution(population &po) const;// { std::cout << "testing <onweroandf PRE!" << std::endl << "test" << std::endl; };
 //		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
 		
-		double 	one_run(std::string &) const;
-		void 	scale_outputs(std::vector<double> &) const;
+		void 			scale_outputs(std::vector<double> &) const;
 
 		mutable std::vector<double>	starting_condition;
 

@@ -47,7 +47,7 @@ class DynamicSystem;
 class __PAGMO_VISIBLE docking : public base {
 	public:
 		// Constructors
-		docking(ann_toolbox::neural_network *ann_, int needed_cnt_at_g = 5, double max_time = 25, double max_thr = 0.1);
+		docking(ann_toolbox::neural_network *ann_, double max_time = 10, double max_thr = 0.1);
 		
 		virtual docking 	*clone() const { return new docking(*this); };
 		virtual std::string	id_object() const {
@@ -67,14 +67,12 @@ class __PAGMO_VISIBLE docking : public base {
 		
 	private:
 		virtual double	objfun_(const std::vector<double> &) const;
-		virtual void	pre_evolution(population &po) const;// { std::cout << "testing <onweroandf PRE!" << std::endl << "test" << std::endl; };
-//		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
+		virtual void	pre_evolution(population &po) const { std::cout << "testing <onweroandf PRE!" << std::endl << "test" << std::endl; };
+		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
 		
-		double 	one_run(std::string &) const;
-		void 	scale_outputs(std::vector<double> &) const;
+		void 			scale_outputs(std::vector<double> &) const;
 
 		mutable std::vector<double>	starting_condition;
-
 		// Variables/Constants for the ODE
 		double nu, max_thrust, mR, max_docking_time;
 		
@@ -84,8 +82,6 @@ class __PAGMO_VISIBLE docking : public base {
 		// control variables
 		bool take_best;
 		bool log_genome;
-		
-		int needed_count_at_goal;
 		
 		// TODO: Add integrator as class ...
 		//integrator		*solver;
