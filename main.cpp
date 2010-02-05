@@ -93,7 +93,7 @@ int main(){
 //	island isl = island(prob, algo, 25);
 
 	int i = 0;
-	while(i++ < 700) { 	
+	while(i++ < 7000) { 	
 		arch.evolve();
 		arch.join();
 

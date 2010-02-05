@@ -111,14 +111,14 @@ double docking::objfun_(const std::vector<double> &v) const {
 	ss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
 	log = ss.str();	
 	int i;	
-	for(i = 0;i < 2;i++) {
+	for(i = 0;i < 3;i++) {
 		// Initialize ANN and interpret the chromosome
 		ann->set_weights(v);
 		
 		// change starting position
 		if(i == 0) { starting_condition[0] = -2; starting_condition[2] = .0; }
 		if(i == 1) { starting_condition[0] = 2; starting_condition[2] = 0; }
-	//	if(i == 2) { starting_condition[0] = -1; starting_condition[2] = -1; }
+		if(i == 2) { starting_condition[0] = -1; starting_condition[2] = -1; }
 		
 		average += one_run(runlog);
 		if(log.size() > 0) log = log + "\n\n";
