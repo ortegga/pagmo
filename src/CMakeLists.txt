@@ -15,8 +15,11 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/propagateKEP.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/time2distance.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/taylor_fixedthrust.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/Functions/objfuns/classicobjfuns.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/Functions/objfuns/trajobjfuns.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/asa.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/de.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/mpso.cpp
@@ -62,6 +65,8 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/twodee.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/sp_test.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/docking.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/classicobjfuns.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/problems/trajobjfuns.cpp
 )
 
 # Boost  thread library.
@@ -173,6 +178,7 @@ IF(BUILD_PYGMO)
 	# A couple of extra definitions. The first is required when building Boost.Python,
 	# the second is to signal the preprocessor that we are building PyGMO (used, e.g., in exceptions.h).
 	SET(ADDITIONAL_FLAGS "-DBOOST_PYTHON_SOURCE -DBOOST_THREAD_BUILD_DLL -DBOOST_SERIALIZATION_DYN_LINK=1 -DBOOST_WSERIALIZATION_DYN_LINK=1 -DPAGMO_BUILD_PYGMO -DPAGMO_DLL_EXPORT_API")
+	# TODO: need to fix this, we are not supposed to fiddle with BOOST internal declarations.
 	# Codeblocks win32 build needs this to be declared...
 	IF(MINGW)
 		SET(ADDITIONAL_FLAGS "${ADDITIONAL_FLAGS} -DBOOST_HAS_DECLSPEC")

@@ -25,6 +25,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "src/GOclasses/basic/archipelago.h"
 #include "src/GOclasses/basic/island.h"
 #include "src/GOclasses/problems/docking.h"
 
@@ -74,35 +75,43 @@ int main(){
 	/////////////////////////////////////////////////
 
 	// Starting Conditions:  x,  vx,  y,   vy, theta, omega
-	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, M_PI, 0.0 };		
+	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, M_PI_2, 0.0 };
 
-	//                                        max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, 10, 0.1);
+	//                                      needed_count, max_time, max_thrust
+	problem::docking prob = problem::docking(&ann, 5, 25, 0.1);
 	prob.set_start_condition(start_cnd, 6);
 	
-	prob.set_log_genome(true);
+	//prob.set_log_genome(true);
 
 	algorithm::sga algo( 20, 	// Generations
 						0.95,	// CR
-						0.15,	// Mutation						
+						0.15,	// Mutation	
 						1);		// Elitism
 
-	island isl = island(prob, algo, 25);
+					// 3 islands, 25 individuals!
+	archipelago arch = archipelago(prob, algo, 1, 25);
+//	island isl = island(prob, algo, 25);
 
 	int i = 0;
 	while(i++ < 700) { 	
-		isl.evolve();
-		isl.join();
+		arch.evolve();
+		arch.join();
 
+		cout << "\rrun: " << i;
+		cout.flush();
 //	    cout << "--- Best in evolution #" << i << ": " << isl.best().get_fitness() << endl;
-		if(isl.best().get_fitness() < best_fitness) {
-			best_fitness = isl.best().get_fitness();		
-    		cout << "=== Best increased @ #" << i << ": " << isl.best().get_fitness() << endl;
+		if(arch.best().get_fitness() < best_fitness) {
+			best_fitness = arch.best().get_fitness();		
+    		cout << "\r=== Best increased @ #" << i << ": " << arch.best().get_fitness() << endl;
 			ofstream myfile;
 			myfile.open ("bestrun.dat");
 			myfile << max_log_string << endl;
 			myfile.close();		
 		}
+		
+		// change the starting condition?
+		prob.set_start_condition(start_cnd, 6);
+		
 	}	
 	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;
 			
