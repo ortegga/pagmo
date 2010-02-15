@@ -72,6 +72,9 @@ public:
 
 	void set_tau_lower_bound(double _in) { lowbound_tau = _in; }
 	void set_tau_upper_bound(double _in) { uppbound_tau = _in; }	
+	
+	/// Stream output operator.
+	friend std::ostream &operator<<(std::ostream &, const ctrnn &);	
 
 protected:
 	// number of hidden nodes

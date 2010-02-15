@@ -47,7 +47,7 @@ class DynamicSystem;
 class __PAGMO_VISIBLE docking : public base {
 	public:
 		// Constructors
-		docking(ann_toolbox::neural_network *ann_, int needed_cnt_at_g = 5, double max_time = 25, double max_thr = 0.1);
+		docking(ann_toolbox::neural_network *ann_, size_t random_positions, double max_time = 20, double max_thr = 0.1);
 		
 		virtual docking 	*clone() const { return new docking(*this); };
 		virtual std::string	id_object() const {
@@ -55,6 +55,9 @@ class __PAGMO_VISIBLE docking : public base {
 		
 		void set_start_condition(double* , size_t );
 		void set_start_condition(std::vector<double> &);
+		
+		// set starting condition to a predefined one
+		void set_start_condition(size_t );
 		
 		// control variable setter
 		void set_log_genome(bool );
@@ -71,12 +74,14 @@ class __PAGMO_VISIBLE docking : public base {
 //		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
 		
 		double 	one_run(std::string &) const;
-		void 	scale_outputs(std::vector<double> &) const;
+		std::vector<double> scale_outputs(std::vector<double> ) const;
 
 		mutable std::vector<double>	starting_condition;
+		mutable std::vector< std::vector<double> > random_start;
 
 		// Variables/Constants for the ODE
 		double nu, max_thrust, mR, max_docking_time;
+		double time_neuron_threshold;
 		
 		// Reference to the neural network representation
 		ann_toolbox::neural_network *ann;
@@ -85,7 +90,7 @@ class __PAGMO_VISIBLE docking : public base {
 		bool take_best;
 		bool log_genome;
 		
-		int needed_count_at_goal;
+		size_t needed_count_at_goal, random_starting_postions;
 		
 		// TODO: Add integrator as class ...
 		//integrator		*solver;

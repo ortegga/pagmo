@@ -22,7 +22,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// Created by Juxi Leitner on 2009-12-11
+// Created by Juxi Leitner on 2010-02-11
 
 #include <exception>
 #include <string>
@@ -36,7 +36,7 @@
 #include "../../exceptions.h"
 #include "../basic/population.h"
 #include "../../ann_toolbox/neural_network.h"
-#include "../../ann_toolbox/multilayer_perceptron.h"
+#include "../../ann_toolbox/ctrnn.h"
 #include "../../odeint/odeint.hpp"
 
 
@@ -47,27 +47,36 @@ namespace pagmo {
 namespace problem {	
 	
 // Constructors
-docking::docking(ann_toolbox::neural_network* ann_, int needed_cnt_at_g, double max_time, double max_thr) :
+docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, double max_time, double max_thr) :
 	base(ann_->get_number_of_weights()),
-	ann(ann_),
-	max_docking_time(max_time + .1),	
 	max_thrust(max_thr),
-	needed_count_at_goal(needed_cnt_at_g)
+	max_docking_time(max_time),	
+	time_neuron_threshold(.99),
+	ann(ann_)
 {						
 	// the docking problem needs:
 	// 	3 inputs (and starting conditions): x, z, theta
 	//  2 outputs (control): ul, ur		(the two thrusters, [0,1] needs to be mapped to [-1,1])
 	// and final conditions: x, z,	// later maybe theta, v
 		
-	// Set the boundaries for the values in the genome, this is important for the ANN
-	set_ub(	std::vector<double> (ann->get_number_of_weights(), 10.0) );
-	set_lb(	std::vector<double> (ann->get_number_of_weights(), -10.0) );
+	// Set the boundaries for the values in the genome, this is important for the multilayer_perceptron!!
+//	set_ub(	std::vector<double> (ann->get_number_of_weights(),  10.0) );
+//	set_lb(	std::vector<double> (ann->get_number_of_weights(), -10.0) );
 	
 	// take the best result during the whole integration steps not the one at the end!!
 	take_best = true;
 	
 	// disable genome logging
 	log_genome = false;
+	
+	random_starting_postions = random_positions;
+}
+
+void docking::set_start_condition(size_t number) {
+	if(number < random_start.size())
+		starting_condition = random_start[number];
+	else
+		pagmo_throw(value_error, "wrong index for random start position");
 }
 
 void docking::set_start_condition(double *start_cnd, size_t size) {
@@ -86,7 +95,31 @@ void docking::set_take_best(bool b) {
 }
 
 void docking::pre_evolution(population &pop) const {
-/*	//Re-evaluate the population with respect to the new seed (Internal Sampling Method)
+	// Change the starting positions to random numbers (given by random_starting_positions number)
+	random_start.clear();
+	rng_double drng = rng_double(static_rng_uint32()());
+
+	double r, a, theta, x, y;	
+	for(int i = 0; i < random_starting_postions; i++) {
+		r = 1.5 + 0.5 * drng();	// radius between 1.5 and 2
+		a = drng() * 2 * M_PI;	// alpha between 0-2Pi
+	
+		x = r * cos(a);
+		y = r * sin(a);
+		theta = drng() * 2 * M_PI - M_PI;	// theta between -Pi and Pi
+
+		// Start Condt:  x,  vx, y,  vy, theta, omega
+		double cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		random_start.push_back(std::vector<double> (cnd, cnd + 6));
+	}
+	
+/*
+	printf("\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", 
+		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);		
+*/
+		
+/* IS THAT NEEDED?
+	//Re-evaluate the population with respect to the new seed (Internal Sampling Method)
 	for (size_t i=0; i < pop.size(); ++i) {
 		pop[i] = individual(*this, pop[i].get_decision_vector(), pop[i].get_velocity());
 	}*/
@@ -98,37 +131,49 @@ double docking::objfun_(const std::vector<double> &v) const {
 		pagmo_throw(value_error, "wrong number of weights in the chromosome");
 	}
 	
-	double average = 0.0;
+	double average = 0.0, fitness;
 	std::string log = "", runlog = "";
 	char h[999];
 		
+	///////////////////////////////////
+	// LOGGING
 	if(log_genome) {
 		std::stringstream oss (std::stringstream::out);
-		oss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
+		oss << *(ann_toolbox::ctrnn*)ann << std::endl;
 		sprintf(h, "%s\tGenome:%s", h, oss.str().c_str());
 	}		
 	std::stringstream ss (std::stringstream::out);
-	ss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
+	ss << *(ann_toolbox::ctrnn*)ann << std::endl;
 	log = ss.str();	
-	int i;	
-	for(i = 0;i < 2;i++) {
+	log += "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\tt-neuron\n";
+	////////////////////////////////
+	
+	int i;
+	for(i = 0;i < random_start.size();i++) {
 		// Initialize ANN and interpret the chromosome
 		ann->set_weights(v);
 		
 		// change starting position
-		if(i == 0) { starting_condition[0] = -2; starting_condition[2] = .0; }
-		if(i == 1) { starting_condition[0] = 2; starting_condition[2] = 0; }
-	//	if(i == 2) { starting_condition[0] = -1; starting_condition[2] = -1; }
+		starting_condition = random_start[i];
+
+// LOG START Conditions to file		
+//		sprintf(h, "#%2di:\t%f,%f,%f\t%f,%f,%f\n", i, starting_condition[0], starting_condition[2], starting_condition[4], starting_condition[1], starting_condition[3], starting_condition[5]);
+//		log += h;
 		
-		average += one_run(runlog);
-		if(log.size() > 0) log = log + "\n\n";
+		fitness = one_run(runlog);
+//		printf("Fitness:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", fitness,
+//			random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);		
+		
+		average += fitness;
+//		if(log.size() > 0) log = log + "\n\n";
 		log += runlog;
 	}
 	average = average / i;
+	
 	//////////////////////////////////////
 	// Add the best fitness to the logger
  	if(max_log_fitness > average) {
-		sprintf(h, "ObjFun: return value:  %f\tdist\n", average); //:%f theta: %f speed: %f\n, distance, theta, speed);
+		sprintf(h, "docking::objfun_: return value:  %f\tdist\n", average); //:%f theta: %f speed: %f\n, distance, theta, speed);
 		log = log + h;
 
 		max_log_fitness = average;
@@ -155,68 +200,87 @@ double docking::one_run(std::string &log) const {
 	///////////////////////////////////////////////////////
 	// LOGGER
 	// Logging for the best individual
-	log = "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\n";
+//	log = "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\tt-neuron\n";
+	log = "";
 	char h[999];
 	////////////////////////////////////////////////////////
 
 	// run evaluation of the ANN
-	double  dt = .2, t;
-	for(t = 0;t <= max_docking_time;t += dt) {
+	double  dt = .1, t, initial_distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]);
+	for(t = 0;t < max_docking_time;t += dt) {
 		// Perform the integration step
 		stepper.next_step( sys, inputs, t, dt );
+		out = sys.get_last_outputs();
 		
-		// distance to the final position (0,0) = sqrt(x^2 + z^2)
-		distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]) ;
-		speed = sqrt(inputs[1]*inputs[1] + inputs[3]*inputs[3]);		// sqrt(vx^2 + vy^2)
-		theta = inputs[4];
+		if( out[2] > time_neuron_threshold 	// if the time neuron tells us the network is finished
+		   || t == max_docking_time ) { 	// or the maximum time is reached
+			// evaluate the output of the network
+			
+			// distance to the final position (0,0) = sqrt(x^2 + z^2)
+			distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]) ;
+			speed = sqrt(inputs[1]*inputs[1] + inputs[3]*inputs[3]);		// sqrt(vx^2 + vy^2)
+			theta = inputs[4];
+			
+			// keep theta between -180° and +180°
+			if(theta > M_PI) theta -= 2 * M_PI;
+			if(theta < -1*M_PI) theta += 2 * M_PI;
+			inputs[4] = theta;
 
-		// keep theta between -180° and +180°
-		if(theta > M_PI) theta -= 2 * M_PI;
-		if(theta < -1*M_PI) theta += 2 * M_PI;
-		inputs[4] = theta;
-
-		// Calculate return value
-		retval = 1.0/((1 + distance) * (1 + fabs(theta)) * (1 + speed));
-		
+			// Calculate return value
+			retval = 1.0/((1 + distance) * (1 + fabs(theta)) * (1 + speed));
+			
+			if(distance < initial_distance) {
+				if(distance < 0.1 && fabs(theta) < M_PI/8 && speed < 0.1)
+					retval += retval * (max_docking_time - t + dt)/max_docking_time;
+			}
+			else retval = 0.0;
+			
+			
+			////////////////////////////////
+			// LOGGING
+			// Log the result (for later output & plotting)
+			//printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
+			sprintf(h, "%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\t%.3f\tCalc: %f\t%f\t%f\t%f", 
+			 			t+dt, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], out[0], out[1], out[2],
+						retval, distance, theta, speed
+			);	
+			log = log + h + "\n";
+			////////////////////////////////
+			
+			break;
+			
+		}
+				
+		/*
 		// m_pi/6 = 30°
 		if(distance < .1 && fabs(theta) < M_PI/6)
 			counter_at_goal++;
 		else counter_at_goal = 0;
 		
-		if(counter_at_goal >= needed_count_at_goal) retval = 1.0 + 2/t;		// we reached the goal!!! 2/t to give it a bit more range
-		if(take_best)
-			if(retval > best_retval) best_retval = retval;
+		if(counter_at_goal >= needed_count_at_goal) retval = 1.0 + 2/t;		// we reached the goal!!! 2/t to give it a bit more range*/
 
-		////////////////////////////////
-		// LOGGING 
-		// get more outputs
-		out = sys.get_last_outputs();
-
-		// Log the result (for later output & plotting)
-		//printf("%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\n", t, state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7]);
-		sprintf(h, "%.2f:\t%.3f\t%.3f\t%.4f\t%.2f\t%.2f\t%.2f\t%.3f\t%.3f\tCalc: %f\t%f\t%f\t%f", 
-		 			t, inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], out[0], out[1],
-					retval, distance, theta, speed
-		);	
-		log = log + h + "\n";
-		////////////////////////////////
-		if(retval > 1.0) break;
+		//if(take_best)
+		//	if(retval > best_retval) best_retval = retval;
+		
+		// if(retval > 1.0) break;
 	}
 	
 	// if take_best is FALSE we do not take the best overall but the result
 	// at the end of the iteration (max_docking_time)
-	if(!take_best) best_retval = retval;
+	// if(!take_best) best_retval = retval;
 	
 	
 	// PaGMO minimizes the objective function!! therefore the minus here
-	return -best_retval;
+	return -retval;
 }
 
-void docking::scale_outputs(std::vector<double> &outputs) const {
+std::vector<double> docking::scale_outputs(const std::vector<double> outputs) const {
+	std::vector<double> out(outputs.size());
 	for(size_t i = 0; i < outputs.size(); i++)  {
-	 	outputs[i] = (outputs[i] - 0.5) * 2;		// to have the thrust from 0 and 1 to -1 to 1
-	 	outputs[i] = outputs[i] * max_thrust;		// scale it
+	 	out[i] = (outputs[i] - 0.5) * 2;		// to have the thrust from 0 and 1 to -1 to 1
+	 	out[i] = outputs[i] * max_thrust;		// scale it
 	}
+	return out;
 }
 
 
@@ -239,7 +303,11 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 	
 	// Send to the ANN to compute the outputs
 	outputs = prob->ann->compute_outputs(state);
-	prob->scale_outputs(outputs);
+	
+	// scale only the first two (meaning the thruster!)
+	std::vector<double> temp = prob->scale_outputs(outputs);
+	outputs[0] = temp[0];
+	outputs[1] = temp[1];
 	
 	double ul = outputs[0];
 	double ur = outputs[1];	// maybe save them somewhere?

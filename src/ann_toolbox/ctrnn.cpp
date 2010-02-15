@@ -26,6 +26,7 @@
 // based on the TwoDee Artificial Neural Network Code
 
 #include <cstdlib>
+#include <iterator>
 #include <cmath>
 #include <vector>        
 #include <exception>
@@ -33,7 +34,7 @@
 
 #include "ctrnn.h"
 
-using namespace ann_toolbox;
+namespace ann_toolbox {
 
 // create these funtions to easier access the weights
 #define input_to_hidden_weights(idx)	m_weights[0 + (idx)]
@@ -160,4 +161,16 @@ const std::vector<double> ctrnn::compute_outputs(std::vector<double> &inputs) {
 	}	
 	
     return m_output_neurons;
+}
+
+std::ostream &operator<<(std::ostream &s, const ctrnn &ann)
+{
+
+	/*s << "ANN - MultiLayer Perceptron: " << ann.get_number_of_input_nodes() << ", " << ann.m_hidden <<
+		", " << ann.get_number_of_output_nodes() << " (" << ann.get_number_of_weights() << ")";
+	s << "\n" << "Genome: ";*/
+	std::copy(ann.m_weights.begin(), ann.m_weights.end(), std::ostream_iterator<double>(s, ", "));
+    return s;
+}
+
 }

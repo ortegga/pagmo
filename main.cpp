@@ -32,9 +32,7 @@
 #include "src/GOclasses/algorithms/de.h"
 #include "src/GOclasses/algorithms/sga.h"
 
-#include "src/ann_toolbox/perceptron.h"
 #include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/elman_network.h"
 #include "src/ann_toolbox/ctrnn.h"
 
 using namespace std;
@@ -45,55 +43,36 @@ extern double max_log_fitness = 0.0;
 
 int main(){
 	double best_fitness = 0.0;
+		
+	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
+	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
-// input = full state (6), output = thrusters (2)
-
-// Perceptron
-//	ann_toolbox::neural_network *ann = new ann_toolbox::perceptron(6, 2);
-// MultiLayerPerceptron
-	//ann_toolbox::multilayer_perceptron ann = new 
-	ann_toolbox::multilayer_perceptron ann(6, 5, 2);
-// ElmanNetwork
-//	ann_toolbox::neural_network *ann = new ann_toolbox::elman_network(6, 2, 2);
-// CTRNN
-//	ann_toolbox::neural_network *ann = new ann_toolbox::ctrnn(6, 2, 2);
+	// input = full state (6), output = thrusters (2) + finished/time (1)
+		// previous run // MultiLayerPerceptron //	ann_toolbox::multilayer_perceptron ann(6, 5, 2);
+	// CTRNN, 6 inputs, 10 hidden, 3 outputs
+	ann_toolbox::ctrnn ann(6, 10, 3);	
+	ann.set_weights_lower_bound(-10.0);
+	ann.set_weights_upper_bound( 10.0);	
+	ann.set_bias_lower_bound(-10.0);
+	ann.set_bias_upper_bound( 10.0);
+	ann.set_tau_lower_bound(-1.0);	// from Christo's calculations
+	ann.set_tau_upper_bound(2.3);
 	
-	
-/*		testing
-	std::vector<double> chrom;
-	for(int i=0;i < ann.get_number_of_weights();i++)
-		chrom.push_back(1.0);
-	ann.set_weights(chrom);
-	cout << ann << endl;
-	std::vector<double> in; in.push_back(1.0);
-	std::vector<double> out = ann.compute_outputs(in);
-	cout << "Output: " << out[0] << endl;
-	
-	return 0;*/
-	
-	
-	/////////////////////////////////////////////////
-
-	// Starting Conditions:  x,  vx,  y,   vy, theta, omega
-	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, M_PI_2, 0.0 };
-
-	//                                      needed_count, max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, 5, 25, 0.1);
+	//                                      	 positions, max_time, max_thrust
+	problem::docking prob = problem::docking(&ann, 20, 20, 0.1);
 	prob.set_start_condition(start_cnd, 6);
-	
-	//prob.set_log_genome(true);
 
 	algorithm::sga algo( 20, 	// Generations
 						0.95,	// CR
 						0.15,	// Mutation	
 						1);		// Elitism
-
-					// 3 islands, 25 individuals!
+						
+					// 1 island, 25 individuals!
 	archipelago arch = archipelago(prob, algo, 1, 25);
 //	island isl = island(prob, algo, 25);
 
 	int i = 0;
-	while(i++ < 700) { 	
+	while(i++ < 900) { 	
 		arch.evolve();
 		arch.join();
 
