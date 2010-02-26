@@ -128,10 +128,10 @@ int main(){
 	
 
 
-	ann_toolbox::multilayer_perceptron ann(6, 4, 2);
+	ann_toolbox::multilayer_perceptron ann(6, 10, 2);
 
 	//											 positions, strategy, max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, 3, problem::docking::FIXED_POS, 20, 0.1);
+	problem::docking prob = problem::docking(&ann, 3, problem::docking::SPOKE_POS, 20, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
 //	prob.set_timeneuron_threshold(.95);
 	prob.set_log_genome(true);
