@@ -44,6 +44,7 @@ namespace ann_toolbox {
 #define hidden_to_output_weights(idx)	m_weights[m_inputs * m_hidden + m_hidden * m_hidden	+ m_hidden + m_hidden + (idx)]
 #define output_bias(idx)				m_weights[m_inputs * m_hidden + m_hidden * m_hidden	+ m_hidden + m_hidden + m_hidden * m_outputs + (idx)]
 
+
 // Constructor
 ctrnn::ctrnn(unsigned int input_nodes_, unsigned int hidden_nodes_, unsigned int output_nodes_,
 	const std::vector<double> &w) : 
@@ -60,14 +61,14 @@ ctrnn::ctrnn(unsigned int input_nodes_, unsigned int hidden_nodes_, unsigned int
 					+ m_hidden * m_outputs	// synaptic weights from hidden to output layer
 					+ m_outputs;			// bias of the output layer
 
-	m_weights = std::vector<double>(wghts, 0);
+	m_weights = std::vector<double>(wghts, 0);	
 	
 	lowbound_weights = -10.0;
     uppbound_weights =  10.0;
     lowbound_bias    = -10.0;
 	uppbound_bias    =  10.0;
     lowbound_tau     = -1.0;
-    uppbound_tau     =  2.0;	
+    uppbound_tau     =  2.4;	
 	
 	if(! w.empty()) set_weights(w);
 }
@@ -80,37 +81,44 @@ void ctrnn::set_weights(const std::vector<double> &w) {
 		pagmo_throw(value_error, "number of weights is incorrect");
 	}
 	m_weights = w;
-	    
+
+	// scale the inputs to 0-1 !!
+    for (int i = 0; i < m_weights.size(); i++) 
+		m_weights[i] = (m_weights[i] + (uppbound_weights-lowbound_weights)*.5) / (uppbound_weights-lowbound_weights);
+	
+
 	// scale them according to the boundary values (maybe need a set funciton for those?)
 	unsigned int idx = 0, i;
 	
 	// Scale the weigth values to be in the right range
     for (i = 0; i < m_inputs * m_hidden; i++) {
-        input_to_hidden_weights(i) = w[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
+        input_to_hidden_weights(i) = m_weights[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
     }
 
     for (i = 0; i < m_hidden * m_hidden; i++) {
-        hidden_to_hidden_weights(i) = w[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
+        hidden_to_hidden_weights(i) = m_weights[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
     }
 
     for (i = 0; i < m_hidden; i++) {
-        hidden_bias(i) = w[idx++] * (uppbound_bias - lowbound_bias) + lowbound_bias;
+        hidden_bias(i) = m_weights[idx++] * (uppbound_bias - lowbound_bias) + lowbound_bias;
     }
 
     for (i = 0; i < m_hidden; i++) {
-        hidden_taus(i) = pow(10, (lowbound_tau + ((uppbound_tau - lowbound_tau) * w[idx++])));
+        hidden_taus(i) = pow(10, (lowbound_tau + (m_weights[idx++] * (uppbound_tau - lowbound_tau))));
     }
 
     for (i = 0; i < m_hidden * m_outputs; i++) {
-        hidden_to_output_weights(i) = w[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
+        hidden_to_output_weights(i) = m_weights[idx++] * (uppbound_weights - lowbound_weights) + lowbound_weights;
     }
 
     for (i = 0; i < m_outputs; i++) {
-        output_bias(i) = w[idx++] * (uppbound_bias - lowbound_bias) + lowbound_bias;
+        output_bias(i) = m_weights[idx++] * (uppbound_bias - lowbound_bias) + lowbound_bias;
     }
 
-	// set hidden and output layers 0
+	// set hidden layer to zero
 	std::fill(m_hidden_neurons.begin(), m_hidden_neurons.end(), 0.0);
+
+	// also set output to zero
 	std::fill(m_output_neurons.begin(), m_output_neurons.end(), 0.0);	
 	
 }
@@ -121,7 +129,7 @@ const std::vector<double> ctrnn::compute_outputs(std::vector<double> &inputs) {
 	if(inputs.size() != m_inputs) {
 		pagmo_throw(value_error, "incorrect size of input vector");
 	}
-	
+		
 	unsigned int i, j;
 	// Update delta state of hidden layer from inputs:
 	std::vector<double> tempH(m_hidden, 0);
@@ -134,6 +142,19 @@ const std::vector<double> ctrnn::compute_outputs(std::vector<double> &inputs) {
 		}	  
 	}
 
+	    // // Update delta state of hidden layer from inputs:
+	    // for(unsigned int i = 0; i < m_unNumberOfHiddenNodes; i++) 
+	    // {
+	    //     m_pfHiddenDeltaStates[i] = -m_pfHiddenStates[i];
+	    // 
+	    //     for (unsigned int j = 0; j < m_unNumberOfSensorInputs; j++)
+	    //     {
+	    //         // weight * sigmoid(state)
+	    //         m_pfHiddenDeltaStates[i] += m_pfInputToHiddenWeights[i * m_unNumberOfSensorInputs + j] * pf_inputs[j] ;       
+	    //     }         
+	    // }
+
+
 	double h;
 	// Update delta state from hidden layer, self-recurrent connections:
 	for(i = 0; i < m_hidden; i++) {
@@ -143,22 +164,64 @@ const std::vector<double> ctrnn::compute_outputs(std::vector<double> &inputs) {
     	}
 	}
 	
+	    // // Update delta state from hidden layer, self-recurrent connections:
+	    // for (unsigned int i = 0; i < m_unNumberOfHiddenNodes; i++)
+	    // {
+	    //     for (unsigned int j = 0; j < m_unNumberOfHiddenNodes; j++)
+	    //     {
+	    //         double z               = (double(1.0)/( exp(-( m_pfHiddenStates[j] + m_pfHiddenBiases[j])) + 1.0 ));
+	    //         m_pfHiddenDeltaStates[i] += m_pfHiddenToHiddenWeights[i * m_unNumberOfHiddenNodes + j] * z;
+	    //     }
+	    // }
+	
 	// Update the hidden layer
 	for( i = 0; i < m_hidden; i++) {
-    	m_hidden_neurons[i] += tempH[i] * m_time_step/hidden_taus(i);
+    	m_hidden_neurons[i] += tempH[i] * m_time_step/(hidden_taus(i));
 	}
+
+
+	    // for(unsigned int  i = 0; i < m_unNumberOfHiddenNodes; i++) 
+	    // 	    {
+	    // 	        m_pfHiddenStates[i] += m_pfHiddenDeltaStates[i] * m_fTimeStep/m_pfHiddenTaus[i];
+	    // 	    }
+
 
 	// Update the output layer
 	for(i = 0; i < m_outputs; i++) {
     	for(j = 0; j < m_hidden; j++) {
         	h = (double(1.0)/( exp(-( m_hidden_neurons[j] + hidden_bias(j))) + 1.0 ));
         	m_output_neurons[i] += hidden_to_output_weights(i * m_hidden + j) * h;
+
+
+/*			if(m_output_neurons[1] != m_output_neurons[1]) {
+				printf("SHIT\n");	// isnan
+				printf("out = %f * %f \n", hidden_to_output_weights(i * m_hidden + j), h);
+				printf("h = 1/ %f \n", exp(-( m_hidden_neurons[j] + hidden_bias(j))) + 1.0 );
+				printf("exp (%f) \n", -( m_hidden_neurons[j] + hidden_bias(j)));
+				printf("h_neu = %f; h_bias = %f \n", m_hidden_neurons[j], hidden_bias(j));
+				exit(1);
+			}*/
     	}
 
     	// Compute the activation function immediately, since this is
     	// what we return and since the output layer is not recurrent:
     	m_output_neurons[i] = double(1.0)/( exp(-( m_output_neurons[i] + output_bias(i))) + 1.0 );
 	}	
+	
+
+		// Update the outputs layer::
+	    // 		    for (unsigned int i = 0; i < m_unNumberOfActuatorOutputs; i++)
+	    // 		    {
+	    // 		        for (unsigned int j = 0; j < m_unNumberOfHiddenNodes; j++)
+	    // 		        {
+	    // 		            double z = (double(1.0)/( exp(-( m_pfHiddenStates[j] + m_pfHiddenBiases[j])) + 1.0 ));
+	    // 		            m_pfOutputs[i] += m_pfHiddenToOutputWeights[i * m_unNumberOfHiddenNodes + j] * z;
+	    // 		        }
+	    // 
+	    // 		        // Compute the activation function immediately, since this is
+	    // 		        // what we return and since the output layer is not recurrent:
+	    // 		        m_pfOutputs[i] = (double(1.0)/( exp(-( m_pfOutputs[i] + m_pfOutputBiases[i])) + 1.0 ));
+	    // 		    }	
 	
     return m_output_neurons;
 }

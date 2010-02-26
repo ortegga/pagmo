@@ -47,8 +47,9 @@ class DynamicSystem;
 class __PAGMO_VISIBLE docking : public base {
 	public:
 		// Constructors
-		docking(ann_toolbox::neural_network *ann_, size_t random_positions, double max_time = 20, double max_thr = 0.1);
-		
+//		docking(ann_toolbox::neural_network *ann_, size_t random_positions, double max_time = 20, double max_thr = 0.1);
+		docking(ann_toolbox::neural_network *ann_, size_t random_positions, size_t in_pre_evo_strat = 1, double max_time = 20, double max_thr = 0.1);
+				
 		virtual docking 	*clone() const { return new docking(*this); };
 		virtual std::string	id_object() const {
 			return "Docking problem, using ANN to develop a robust controller"; }
@@ -58,22 +59,35 @@ class __PAGMO_VISIBLE docking : public base {
 		
 		// set starting condition to a predefined one
 		void set_start_condition(size_t );
-		
 		// control variable setter
 		void set_log_genome(bool );
-		void set_take_best(bool );
+		void set_timeneuron_threshold(double );
+		void set_fitness_function(int );
 		
 		// The ODE system we want to integrate needs to be able to be called 
 		// by the integrator. Here we have the Hill's equations.
 		void operator()( state_type &x , state_type &dxdt , double t ) const;
 //		replacing the function: static void hill_equations( state_type & , state_type & , double );
 		
-	private:
 		virtual double	objfun_(const std::vector<double> &) const;
+		
+		const static size_t FIXED_POS = 1;
+		const static size_t SPOKE_POS = 2;
+		const static size_t RAND_POS  = 3;
+
+	private:
 		virtual void	pre_evolution(population &po) const;// { std::cout << "testing <onweroandf PRE!" << std::endl << "test" << std::endl; };
 //		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
+
+		// generating various types of "randomized" starting positions
+		void generate_spoke_positions(double, double) const;
+		void generate_random_positions(double, double) const;			// bad cuz it is not const ;)
 		
+		// calculate fitnesses (for one start position)
 		double 	one_run(std::string &) const;
+		// evaluate the actual fitness here
+		std::vector<double> evaluate_fitness(std::vector<double> , std::vector<double> , double, double) const;
+		
 		std::vector<double> scale_outputs(std::vector<double> ) const;
 
 		mutable std::vector<double>	starting_condition;
@@ -84,15 +98,15 @@ class __PAGMO_VISIBLE docking : public base {
 		double time_neuron_threshold;
 		
 		// Reference to the neural network representation
-		ann_toolbox::neural_network *ann;
+		mutable ann_toolbox::neural_network *ann;
 		
 		// control variables
-		bool take_best;
 		bool log_genome;
+		size_t needed_count_at_goal;		// how long does the s/c need to stay within the target area before the optimization stops
+		size_t random_starting_postions;	// how many random starting positions exist/need to be generated
+		size_t pre_evolution_strategy;		// which strategy for the generation of the random numbers is used
+		size_t fitness_function;			// how to calculate the fitness
 		
-		size_t needed_count_at_goal, random_starting_postions;
-		
-		// TODO: Add integrator as class ...
 		//integrator		*solver;
 		friend class DynamicSystem;
 };
@@ -104,7 +118,8 @@ class DynamicSystem {
 	public:
 		DynamicSystem(const docking *in) : prob(in) {	}
 		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t );
-		std::vector<double> get_last_outputs();
+//		std::vector<double> get_last_outputs();
+		void set_outputs(std::vector<double> );		
 };
 	
 }

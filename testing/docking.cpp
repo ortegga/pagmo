@@ -110,7 +110,6 @@ double docking::objfun_(const std::vector<double> &v) const
 		// Create the state vector for the integrator
 		state = inputs;
 		state.insert(state.end(), outputs.begin(), outputs.end());
-		
 
 		// Perform the integration step
 		stepper.next_step( hill_equations, state, t, dt );

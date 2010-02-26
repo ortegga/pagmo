@@ -42,8 +42,10 @@ public:
 
 	//virtual void SimulationStep(unsigned n_step_number, double f_time, double f_step_interval);
 
-	unsigned int get_number_of_input_nodes() const	{ return m_inputs; };
-	unsigned int get_number_of_output_nodes() const	{ return m_outputs; };
+	unsigned int get_number_of_input_nodes() const	{ return get_number_of_inputs(); };
+	unsigned int get_number_of_inputs() const	{ return m_inputs; };	
+	unsigned int get_number_of_output_nodes() const	{ return get_number_of_output_nodes(); };
+	unsigned int get_number_of_outputs() const	{ return m_outputs; };
 	unsigned int get_number_of_weights() const		{ return m_weights.size(); };
 	
 protected:

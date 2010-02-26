@@ -70,6 +70,7 @@ class __PAGMO_VISIBLE sga: public base
 		* \param[in] selectionType (0-20% best, 1-roulette)
 		 */
 		sga(int gen, const double &CR, const double &M, int best, double mutationRange, int mutationType, int selectionType);
+		
 		virtual population evolve(const population &) const;
 		virtual sga *clone() const {
 			return new sga(*this);
@@ -77,6 +78,9 @@ class __PAGMO_VISIBLE sga: public base
 		virtual std::string id_object() const {
 			return id_name();
 		}
+		
+		void set_selection_type(int s) { SType = s; };
+		
 	private:
 		virtual void log(std::ostream &) const;
 		const size_t	generations;
