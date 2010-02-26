@@ -107,6 +107,9 @@ class __PAGMO_VISIBLE docking : public base {
 		size_t pre_evolution_strategy;		// which strategy for the generation of the random numbers is used
 		size_t fitness_function;			// how to calculate the fitness
 		
+		double vicinity_distance;
+		double vicinity_orientation;
+		
 		//integrator		*solver;
 		friend class DynamicSystem;
 };

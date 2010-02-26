@@ -70,6 +70,10 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 	log_genome = false;
 	
 	random_start.clear();
+	
+	needed_count_at_goal = 7;
+	vicinity_distance = 0.15;
+	vicinity_orientation = M_PI/10;
 }
 
 void docking::set_start_condition(size_t number) {
@@ -203,7 +207,8 @@ double docking::objfun_(const std::vector<double> &v) const {
 		ss << *(ann_toolbox::multilayer_perceptron*)ann << std::endl;
 		log = ss.str();	
 	}
-	log += "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\tt-neuron\n";
+//	log += "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\tt-neuron\n";
+	log += "\tx\ty\ttheta : ul\tur\n";	
 	////////////////////////////////
 		
 	size_t i;
@@ -324,7 +329,7 @@ double docking::one_run(std::string &log) const {
 		// stop conditions
 				
 		// If we chose to do it this way
-		if(distance < .2 && fabs(theta) < M_PI/4)
+		if(distance < vicinity_distance && fabs(theta) < vicinity_orientation)
 			counter_at_goal++;
 		else counter_at_goal = 0;
 		if(counter_at_goal >= needed_count_at_goal) {
@@ -370,7 +375,7 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			fitness = 0.0;
 			if(distance < init_distance) {
 				fitness = 1.0/((1 + distance) * (1 + fabs(theta)) * (1 + speed));				
-				if(distance < 0.1 && fabs(theta) < M_PI/8 && speed < 0.1)
+				if(distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < 0.1)
 					fitness += fitness * (max_docking_time - tdt)/max_docking_time;
 			}		
 			break;

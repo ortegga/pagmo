@@ -138,7 +138,7 @@ int main(){
 	prob.set_fitness_function(1);
 	
 	algorithm::sga algo( 20, 	// Generations
-						0.9,	// CR
+						0.8,	// CR		the value drng has to be above to stop
 						0.15,	// Mutation	
 						1);		// Elitism
 /*	algo.set_selection_type(0);		// no roulette selection (keep best!)*/
