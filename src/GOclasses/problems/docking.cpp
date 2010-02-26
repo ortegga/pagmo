@@ -117,7 +117,7 @@ void docking::pre_evolution(population &pop) const {
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "1,";
 
-/*		cnd[0] = -1; cnd[2] = -1;
+		cnd[0] = -1; cnd[2] = -1;
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "2,";
 		
@@ -125,7 +125,7 @@ void docking::pre_evolution(population &pop) const {
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "3, done! ";
 		
-		// DEBUG
+/*		// DEBUG
 		std::cout << "XY@: " << random_start[0][0] << "," << random_start[0][2] << ","<< random_start[0][4];
 		std::cout << " XY@: " << random_start[1][0] << "," << random_start[1][2] << ","<< random_start[1][4];
 		std::cout << " XY@: " << random_start[2][0] << "," << random_start[2][2] << ","<< random_start[2][4];
