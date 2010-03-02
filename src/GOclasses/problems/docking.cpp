@@ -71,7 +71,7 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 	
 	random_start.clear();
 	
-	needed_count_at_goal = 7;
+	needed_count_at_goal = 5;
 	vicinity_distance = 0.15;
 	vicinity_orientation = M_PI/10;
 }
@@ -113,7 +113,7 @@ void docking::pre_evolution(population &pop) const {
 		
 		// depending on the ann->get_number_of_inputs() we use 4 or 6
 		// i.e. (we use the attitude or not)
-		double cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+		double cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "1,";
 
@@ -121,7 +121,7 @@ void docking::pre_evolution(population &pop) const {
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "2,";
 		
-		cnd[0] = +2; cnd[2] = 0;	
+		cnd[0] = -2; cnd[2] = 0;	
 		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		std::cout << "3, done! ";
 		
@@ -329,7 +329,8 @@ double docking::one_run(std::string &log) const {
 		// stop conditions
 				
 		// If we chose to do it this way
-		if(distance < vicinity_distance && fabs(theta) < vicinity_orientation)
+	//	if( (distance < vicinity_distance && fabs(theta) < vicinity_orientation)
+		if(distance < vicinity_distance)
 			counter_at_goal++;
 		else counter_at_goal = 0;
 		if(counter_at_goal >= needed_count_at_goal) {
@@ -347,7 +348,7 @@ std::vector<double> docking::scale_outputs(const std::vector<double> outputs) co
 	std::vector<double> out(outputs.size());
 	for(size_t i = 0; i < outputs.size(); i++)  {
 	 	out[i] = (outputs[i] - 0.5) * 2;		// to have the thrust from 0 and 1 to -1 to 1
-	 	out[i] = outputs[i] * max_thrust;		// scale it
+	 	out[i] = out[i] * max_thrust;		// scale it
 	}
 	return out;
 }
@@ -366,6 +367,8 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 		case 0:	fitness = 1/( 1 + distance );
 			break;
 		case 1:	fitness = 1/( (1+distance) * (1+speed) * (1+fabs(theta)) );
+			break;
+		case 10:fitness = 1/( (1+distance) * (1+speed) );	// simpler?
 			break;
 		case 2:
 			// keep theta between -180° and +180°

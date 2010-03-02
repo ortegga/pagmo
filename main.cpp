@@ -128,19 +128,19 @@ int main(){
 	
 
 
-	ann_toolbox::multilayer_perceptron ann(6, 10, 2);
+	ann_toolbox::multilayer_perceptron ann(4, 10, 2);
 
 	//											 positions, strategy, max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, 3, problem::docking::SPOKE_POS, 20, 0.1);
+	problem::docking prob = problem::docking(&ann, 9, problem::docking::SPOKE_POS/*FIXED_POS*/, 20, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
 //	prob.set_timeneuron_threshold(.95);
 	prob.set_log_genome(true);
-	prob.set_fitness_function(1);
+	prob.set_fitness_function(10);	// 10  = no attitude
 	
 	algorithm::sga algo( 20, 	// Generations
-						0.8,	// CR		the value drng has to be above to stop
-						0.15,	// Mutation	
-						1);		// Elitism
+				0.9,	// CR		the value drng has to be above to stop
+				0.2,	// Mutation	
+				1);		// Elitism
 /*	algo.set_selection_type(0);		// no roulette selection (keep best!)*/
 
 /*	algorithm::sga algo( 20, 	// Generations
@@ -162,7 +162,7 @@ int main(){
 	ofstream myfile;
 	cout << "\rStarting evolution ...                        " << endl;	
 	int i = 0;
-	while(best_fitness > -1.0/*i++ < 6/**/) { 
+	while(best_fitness > -1.2/*i++ < 6/**/) { 
 		arch.evolve();
 		arch.join();
 		i++;
