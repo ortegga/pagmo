@@ -128,17 +128,17 @@ int main(){
 	
 
 
-	ann_toolbox::multilayer_perceptron ann(4, 10, 2);
+	ann_toolbox::multilayer_perceptron ann(6, 15, 2);
 
 	//											 positions, strategy, max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, 9, problem::docking::SPOKE_POS/*FIXED_POS*/, 20, 0.1);
+	problem::docking prob = problem::docking(&ann, 5, problem::docking::SPOKE_POS_HALF/*FIXED_POS*/, 17, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
 //	prob.set_timeneuron_threshold(.95);
 	prob.set_log_genome(true);
 	prob.set_fitness_function(10);	// 10  = no attitude
 	
 	algorithm::sga algo( 20, 	// Generations
-				0.9,	// CR		the value drng has to be above to stop
+				0.88,	// CR		the value drng has to be above to stop
 				0.2,	// Mutation	
 				1);		// Elitism
 /*	algo.set_selection_type(0);		// no roulette selection (keep best!)*/
@@ -155,7 +155,7 @@ int main(){
 //	algorithm::de algo(20, 0.7, 0.5, 2);
 
 	cout << "Creating an archipelago...";
-	archipelago arch = archipelago(prob, algo, 1, 20);	// 1 island, with x individuals
+	archipelago arch = archipelago(prob, algo, 1, 25);	// 1 island, with x individuals
 	cout << "Created!";
 
 
@@ -166,7 +166,7 @@ int main(){
 		arch.evolve();
 		arch.join();
 		i++;
-		cout << "\rGeneration #" << i << ": best: " << arch.best().get_fitness() << "                     " << endl;
+		cout << "\rGeneration #" << i << ": best: " << arch.best().get_fitness() << "                     ";// << endl;
 		if(max_log_fitness < best_fitness) {
 			best_fitness = max_log_fitness;	
 			cout << "\r=== Best increased @ #" << i << ": " << max_log_fitness << endl;
@@ -174,6 +174,13 @@ int main(){
 			myfile << max_log_string << endl;
 			myfile.close();		
 		}
+		std::string h = boost::lexical_cast<std::string>(i);
+		while(h.length() < 3) h = "0" + h;
+		std::string s = "best-" + h + ".dat";
+		myfile.open (s.c_str());
+		myfile << max_log_string << endl;
+		myfile.close();		
+
 		cout.flush();		
 	}	
 	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;

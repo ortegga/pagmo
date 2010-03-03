@@ -47,14 +47,14 @@ extern double max_log_fitness;
 namespace pagmo {
 namespace problem {	
 	
-// Constructors
+/// Constructor for the docking problem
 docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, size_t in_pre_evo_strat, double max_time, double max_thr) :
 	base(ann_->get_number_of_weights()),
 	max_thrust(max_thr),
 	max_docking_time(max_time),	
 	time_neuron_threshold(.99),
 	ann(ann_),
-	random_starting_postions(random_positions),
+	random_starting_positions(random_positions),
 	pre_evolution_strategy(in_pre_evo_strat)
 {						
 	// the docking problem needs:
@@ -76,40 +76,14 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 	vicinity_orientation = M_PI/10;
 }
 
-void docking::set_start_condition(size_t number) {
-	if(number < random_start.size())
-		starting_condition = random_start[number];
-	else
-		pagmo_throw(value_error, "wrong index for random start position");
-}
-
-void docking::set_start_condition(double *start_cnd, size_t size) {
-	starting_condition = std::vector<double> (start_cnd, start_cnd + size);
-}
-
-void docking::set_start_condition(std::vector<double> &start_cond) {
-	starting_condition = start_cond;
-}
-
-void docking::set_log_genome(bool b) {
-	log_genome = b;
-}
-
-void docking::set_timeneuron_threshold(double t) {
-	time_neuron_threshold = t;
-}
-
-void docking::set_fitness_function(int f) {
-	fitness_function = f;
-}
-
 void docking::pre_evolution(population &pop) const {	
-	std::cout << "Generating new starting positions ... [" << pre_evolution_strategy << "] ";
+	std::cout << "Generating new starting positions ... [" << random_starting_positions << "] (Strat: ";
+	std::cout << pre_evolution_strategy << ") ";
 	// Change the starting positions to random numbers (given by random_starting_positions number)
 	random_start.clear();
 		
 	if(pre_evolution_strategy == docking::FIXED_POS) {
-		// Fixed postions
+		// Fixed positions
 		
 		// depending on the ann->get_number_of_inputs() we use 4 or 6
 		// i.e. (we use the attitude or not)
@@ -137,12 +111,20 @@ void docking::pre_evolution(population &pop) const {
 	switch(pre_evolution_strategy) {
 	case SPOKE_POS:
 		// generate starting positions one every 360/n° 
-		generate_spoke_positions(1.5, 2.0);
-		break;		
+		generate_spoke_positions(1.8, 2.0);
+		break;
+		
 	case RAND_POS:
 		// generate complete random starting positions (in doughnut)
-		generate_random_positions(1.5, 2.0);
+		generate_random_positions(1.8, 2.0);
 		break;
+		
+	case SPOKE_POS_HALF:
+		// generate starting positions one every 360/n° 
+		// -1 ==> means only in the negative x axis!
+		generate_spoke_positions(1.8, 2.0, -1);
+		break;		
+	
 	}
 
 	std::cout << "done!         \n";	
@@ -157,14 +139,17 @@ void docking::pre_evolution(population &pop) const {
 }
 
 
-void docking::generate_spoke_positions(double r1, double r2) const {
+void docking::generate_spoke_positions(double r1, double r2, int half) const {
 	rng_double drng = rng_double(static_rng_uint32()());
 	double r, theta, x, y;	
 	
-	for(int i = 0; random_start.size() < random_starting_postions; i += 2*M_PI/random_starting_postions) {
+	for(double a = 0; random_start.size() < random_starting_positions; a += (2*M_PI)/random_starting_positions) {
 		r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
-		x = r * cos(i);
-		y = r * sin(i);
+		x = r * cos(a);
+		// if we select a half the points should be in that half!
+		if( (half == -1 && x > 0.0) || 
+			(half == 1  && x < 0.0)  )  x = -x;		 
+		y = r * sin(a);
 		theta = drng() * 2 * M_PI;	// theta between 0-2Pi
 		// Start Condt:  x,  vx, y,  vy, theta, omega
 		double cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
@@ -178,7 +163,7 @@ void docking::generate_random_positions(double r1, double r2) const {
 	rng_double drng = rng_double(static_rng_uint32()());
 	double r, a, theta, x, y;	
 	
-	while(random_start.size() < random_starting_postions) {
+	while(random_start.size() < random_starting_positions) {
 		r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
 		a = drng() * 2 * M_PI;	// alpha between 0-2Pi
 		x = r * cos(a);
@@ -225,7 +210,7 @@ double docking::objfun_(const std::vector<double> &v) const {
 		// change starting position
 		starting_condition = random_start[i];
 			
-		log += "Starting Conditions: ";
+		log += "\nStarting Conditions: ";
 		std::stringstream s;
 		std::copy(starting_condition.begin(), starting_condition.end(), std::ostream_iterator<double>(s, ", "));
 		log += s.str() + "\n";
@@ -272,10 +257,10 @@ double docking::one_run(std::string &log) const {
 
 		// distance to the final position (0,0) = sqrt(x^2 + z^2)
 		if(ann->get_number_of_inputs() == 7) inputs.push_back(distance);
-		if(ann->get_number_of_inputs() == 4 && inputs.size() == 6) {
+/*		if(ann->get_number_of_inputs() == 4 && inputs.size() == 6) {
 			omega = inputs[5]; inputs.pop_back();			
 			theta = inputs[4]; inputs.pop_back();
-		}	
+		}	*/
 		
 		// Send to the ANN to compute the outputs
 		outputs = ann->compute_outputs(inputs);	
@@ -287,10 +272,10 @@ double docking::one_run(std::string &log) const {
 		sys.set_outputs(tmp);
 		
 		// state for here has to be 6 elements (for the integrator!)
-		if(inputs.size() == 4) {
+/*		if(inputs.size() == 4) {
 			inputs.push_back(theta);
 			inputs.push_back(omega);
-		} 
+		} */
 		if(inputs.size() > 6) inputs.pop_back();		// delete distance again
 
 		// Perform the integration step
@@ -334,7 +319,10 @@ double docking::one_run(std::string &log) const {
 			counter_at_goal++;
 		else counter_at_goal = 0;
 		if(counter_at_goal >= needed_count_at_goal) {
-			retval = 1.0 + 2/(t+dt);		// we reached the goal!!! 2/t to give it a bit more range
+			// try that from Christos
+			retval += retval * (max_docking_time - t+dt)/max_docking_time;
+			
+//			retval = 1.0 + 2/(t+dt);		// we reached the goal!!! 2/t to give it a bit more range
 			break;
 		}
 		
@@ -344,10 +332,15 @@ double docking::one_run(std::string &log) const {
 	return -retval;
 }
 
+/// Scale the outputs of the ANN to be more physically useful in the integrator.
+/**
+ * @param[in] outputs the outputs from the neural network, assumed to be between 0 and 1.
+ * @return the inputs scaled to be between -MAX_THRUST and +MAX_THRUST.
+ */
 std::vector<double> docking::scale_outputs(const std::vector<double> outputs) const {
 	std::vector<double> out(outputs.size());
 	for(size_t i = 0; i < outputs.size(); i++)  {
-	 	out[i] = (outputs[i] - 0.5) * 2;		// to have the thrust from 0 and 1 to -1 to 1
+	 	out[i] = (outputs[i] - 0.5) * 2;	// to have the thrust from 0 and 1 to -1 to 1
 	 	out[i] = out[i] * max_thrust;		// scale it
 	}
 	return out;
@@ -368,7 +361,12 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			break;
 		case 1:	fitness = 1/( (1+distance) * (1+speed) * (1+fabs(theta)) );
 			break;
-		case 10:fitness = 1/( (1+distance) * (1+speed) );	// simpler?
+		case 10: // something simpler?
+			fitness = 0.0;
+			if(distance < init_distance) {
+				fitness = 1/( (1+distance) * (1+speed) );	
+			}		
+		
 			break;
 		case 2:
 			// keep theta between -180° and +180°
@@ -438,6 +436,41 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 }
 
 void DynamicSystem::set_outputs(std::vector<double> out) { outputs = out; }
+
+
+/// Setter for the starting condition, selecting from predefined conditions
+void docking::set_start_condition(size_t number) {
+	if(number < random_start.size())
+		starting_condition = random_start[number];
+	else
+		pagmo_throw(value_error, "wrong index for random start position");
+}
+
+/// Setter for the starting condition (now only used for initialization)
+void docking::set_start_condition(double *start_cnd, size_t size) {
+	starting_condition = std::vector<double> (start_cnd, start_cnd + size);
+}
+
+/// Setter for the starting condition
+void docking::set_start_condition(std::vector<double> &start_cond) {
+	starting_condition = start_cond;
+}
+
+/// Setter
+void docking::set_log_genome(bool b) {
+	log_genome = b;
+}
+
+/// Setter
+void docking::set_timeneuron_threshold(double t) {
+	time_neuron_threshold = t;
+}
+
+/// Setter
+void docking::set_fitness_function(int f) {
+	fitness_function = f;
+}
+
 
 }
 }
