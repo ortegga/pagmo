@@ -172,7 +172,8 @@ int main(){
 			cout << "\r=== Best increased @ #" << i << ": " << max_log_fitness << endl;
 			myfile.open ("bestrun.dat");
 			myfile << max_log_string << endl;
-			myfile.close();		
+			myfile.close();	
+			max_log_fitness = 0;
 		}
 		std::string h = boost::lexical_cast<std::string>(i);
 		while(h.length() < 3) h = "0" + h;
