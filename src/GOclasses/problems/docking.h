@@ -109,6 +109,7 @@ class __PAGMO_VISIBLE docking : public base {
 		const static size_t SPOKE_POS = 2;
 		const static size_t SPOKE_POS_HALF = 20;
 		const static size_t RAND_POS  = 3;
+		const static size_t CLOUD_POS = 4;		
 		const static size_t FULL_GRID = 99;		
 		
 	private:
@@ -120,8 +121,9 @@ class __PAGMO_VISIBLE docking : public base {
 		/// Generator functions for various types of "randomized" starting positions
 		void generate_spoke_positions(double, double, int half = 0) const;
 		void generate_random_positions(double, double) const;
-		void generate_full_grid_positions(int, int) const;			
-		
+		void generate_cloud_positions(double, double, double ) const;
+		void generate_full_grid_positions(int, int) const;
+				
 		/// Calculates the fitness for one genome for one specific starting position
 		// TODO maybe put the starting position here as a parameter?
 		double 	one_run(std::string &) const;

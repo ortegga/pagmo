@@ -137,6 +137,11 @@ void docking::generate_starting_positions() const {
 		generate_random_positions(1.8, 2.0);
 		break;
 		
+	case CLOUD_POS:
+		// generate starting positions at 8 spokes but with random orientations!
+		generate_cloud_positions(2.0, M_PI/4, 0.1);
+		break;
+		
 	case SPOKE_POS_HALF:
 		// generate starting positions one every 360/n° 
 		// -1 ==> means only in the negative x axis!
@@ -187,6 +192,27 @@ void docking::generate_random_positions(double r1, double r2) const {
 	//	printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
 	//		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
 	}
+}
+
+void docking::generate_cloud_positions(double d, double angle, double rin) const {
+        rng_double drng = rng_double(static_rng_uint32()());
+        double r, theta, a, x, y;
+
+        double x_start = d * cos(angle);
+        double y_start = d * sin(angle);
+
+        while(random_start.size() < random_starting_positions) {
+                r = rin * drng();       // between 0 and rin
+                a = drng() * 2 * M_PI;  // alpha between 0-2Pi
+                x = x_start + r * cos(a);
+                y = y_start + r * sin(a);
+                theta = drng() * 2 * M_PI;      // theta between 0-2Pi
+                // Start Condt:  x,  vx, y,  vy, theta, omega
+                double cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+                random_start.push_back(std::vector<double> (cnd, cnd + 6));
+        //      printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+        //              random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+        }
 }
 
 void docking::generate_full_grid_positions(int h, int v) const {
@@ -450,7 +476,7 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			break;
 			
 		case 99:
-			// based on Christo's TwoDee function
+			// based on Christos' TwoDee function
 			double timeBonus = (max_docking_time - tdt)/max_docking_time;
 			double alpha = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
 			if (init_distance > distance) {
