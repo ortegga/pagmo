@@ -40,6 +40,11 @@ namespace pagmo { namespace problem {
 	
 class DynamicSystem;	
 
+
+// TODO:
+//	- try to make the loggin better!!
+//	- think about the const in some functions!!
+
 /// Spacecraft docking problem.
 /**
  * "Docking problem, using ANN to develop a robust controller
@@ -64,9 +69,13 @@ class __PAGMO_VISIBLE docking : public base {
 		 * @param[in] max_time the maximum time to test the individual for in each position (needed in the integrator).
 		 * @param[in] max_thr the maximum thrust that each thruster on the spacecraft can achieve (needed in the integrator).
 		 */		
-		docking(ann_toolbox::neural_network *ann_, size_t random_positions, size_t in_pre_evo_strat = 1, double max_time = 20, double max_thr = 0.1);
-//		docking(ann_toolbox::neural_network *ann_, size_t random_positions, double max_time = 20, double max_thr = 0.1);
-				
+		docking(ann_toolbox::neural_network *ann_, 
+				size_t random_positions,
+				size_t in_pre_evo_strat = 1,
+				double max_time = 20,
+				double max_thr = 0.1 );
+		
+		// Object functions needed
 		virtual docking 	*clone() const { return new docking(*this); };
 		virtual std::string	id_object() const {
 			return "Docking problem, using ANN to develop a robust controller"; }
@@ -78,59 +87,76 @@ class __PAGMO_VISIBLE docking : public base {
 		/// Setter for the starting condition, chosing from a predefined one
 		void set_start_condition(size_t );
 		
-		/// Setter methods for some control variables
+		/// Setter methods for control variables
 		void set_fitness_function(int );
 		void set_log_genome(bool );
 		void set_timeneuron_threshold(double );
 		
 		/// The ODE system we want to integrate needs to be able to be called 
-		/// by the integrator. Here we have the Hill's equations.
+		/// by the integrator. Here we use the Hill's equations.
 		void operator()( state_type &x , state_type &dxdt , double t ) const;
-//		replacing the function: static void hill_equations( state_type & , state_type & , double );
 		
+		
+		/// The objective funtion to be optimized. It returns a fitness based on the 
+		/// input (vector).
 		virtual double	objfun_(const std::vector<double> &) const;
+
+		/// Generate starting positions for the run of the individuals.
+		void generate_starting_positions() const;
 		
+		/// CONSTANTS for 
 		const static size_t FIXED_POS = 1;
 		const static size_t SPOKE_POS = 2;
 		const static size_t SPOKE_POS_HALF = 20;
 		const static size_t RAND_POS  = 3;
-
-	private:
-		virtual void	pre_evolution(population &po) const;// { std::cout << "testing <onweroandf PRE!" << std::endl << "test" << std::endl; };
-//		virtual void	post_evolution(population &pop) const { std::cout << "testing <onweroandf PPOST!" << std::endl << "test" << std::endl; };
-
-		// generating various types of "randomized" starting positions
-		void generate_spoke_positions(double, double, int half = 0) const;
-		void generate_random_positions(double, double) const;			// bad cuz it is not const ;)
+		const static size_t FULL_GRID = 99;		
 		
-		// calculate fitnesses (for one start position)
+	private:
+		/// Before every evolution this function is called to reset the (randomly)
+		/// created starting points for the individuals.
+		virtual void	pre_evolution(population &po) const;
+//		virtual void	post_evolution(population &pop) const;
+
+		/// Generator functions for various types of "randomized" starting positions
+		void generate_spoke_positions(double, double, int half = 0) const;
+		void generate_random_positions(double, double) const;
+		void generate_full_grid_positions(int, int) const;			
+		
+		/// Calculates the fitness for one genome for one specific starting position
+		// TODO maybe put the starting position here as a parameter?
 		double 	one_run(std::string &) const;
-		// evaluate the actual fitness here
+
+		/// The function that evaluates the run and returns the fitness of the chromsome. 
+		/// This function is calling various handler functions depending on the fitness_function
+		/// set by the control variable of that name.
 		std::vector<double> evaluate_fitness(std::vector<double> , std::vector<double> , double, double) const;
 		
+		/// Scale the outputs to be between -max_thrust and +max_thrust
 		std::vector<double> scale_outputs(std::vector<double> ) const;
 
+		////////////////////////////////////
+		// Variables of the object
 		mutable std::vector<double>	starting_condition;
 		mutable std::vector< std::vector<double> > random_start;
 
+		// Reference to the neural network representation
+		mutable ann_toolbox::neural_network *ann;
+		
 		// Variables/Constants for the ODE
 		double nu, max_thrust, mR, max_docking_time;
 		double time_neuron_threshold;
 		
-		// Reference to the neural network representation
-		mutable ann_toolbox::neural_network *ann;
-		
 		// control variables
-		bool log_genome;
+		bool log_genome;					// is the genome logged in the log string 
 		size_t needed_count_at_goal;		// how long does the s/c need to stay within the target area before the optimization stops
 		size_t random_starting_positions;	// how many random starting positions exist/need to be generated
 		size_t pre_evolution_strategy;		// which strategy for the generation of the random numbers is used
 		size_t fitness_function;			// how to calculate the fitness
+	
+		double vicinity_distance;			// the size of the vicinity around the origin that we take as close enough
+		double vicinity_orientation;		// the needed orientation around the origin that we take as good enough
 		
-		double vicinity_distance;
-		double vicinity_orientation;
-		
-		//integrator		*solver;
+		// Integrator / solver;
 		friend class DynamicSystem;
 };
 
@@ -141,7 +167,6 @@ class DynamicSystem {
 	public:
 		DynamicSystem(const docking *in) : prob(in) {	}
 		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t );
-//		std::vector<double> get_last_outputs();
 		void set_outputs(std::vector<double> );		
 };
 	
