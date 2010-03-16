@@ -71,13 +71,13 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 	// disable genome logging
 	log_genome = false;
 	
+	// for time neuron
+	time_neuron_threshold = .99;
+
 	// for vicinity stopping
 	needed_count_at_goal = 5;
 	vicinity_distance = 0.1;
-	vicinity_orientation = M_PI/8;
-	
-	// for time neuron
-	time_neuron_threshold = .99;
+	vicinity_orientation = M_PI/8;	
 }
 
 

@@ -5,7 +5,6 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/Astro_Functions.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/Lambert.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/mga.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/mga_dsm.cpp
@@ -15,6 +14,8 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/propagateKEP.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/time2distance.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/taylor_fixedthrust.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/config_toolbox/config_parser.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/AstroToolbox/Astro_Functions.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/asa.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/de.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/GOclasses/algorithms/mpso.cpp

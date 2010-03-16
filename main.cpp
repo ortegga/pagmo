@@ -24,6 +24,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #include "src/GOclasses/basic/archipelago.h"
 #include "src/GOclasses/basic/island.h"
@@ -37,6 +38,8 @@
 
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/ctrnn.h"
+
+#include "src/config_toolbox/config_parser.h"
 
 using namespace std;
 using namespace pagmo;
@@ -102,41 +105,73 @@ void evaluate_twodee() {
 	
 }
 
-int main(){
-	double best_fitness = 1;	// minimizing!!
-	
+int main(int argc, char *argv[]){
 	// for evaluating twodee chromosome
 	// evaluate_twodee();
 
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
+	char *config_filename;
+	if ( argc >= 2 ) config_filename = argv[1];
+	else	config_filename = NULL;	
+	config_parser config(config_filename);
+	
 	/////////////////////////////////
 	// Definitions
-	int ann_input_neurons  = 7;
-	int ann_hidden_neurons = 11;
-	int ann_output_neurons = 2;
+	int ann_input_neurons  = 7;			config.read_parameter("INPUTS", ann_input_neurons);
+	int ann_hidden_neurons = 11;		config.read_parameter("HIDDEN", ann_hidden_neurons);
+	int ann_output_neurons = 2;			config.read_parameter("OUTPUTS", ann_output_neurons);
 	
-	int prob_positions = 1;
-	int prob_pos_strategy = problem::docking::CLOUD_POS; /*FIXED_POS*/
-	int prob_fitness_function = 99;			// 10  = no attitude, 99 = christo's
-	int prob_timeneuron_threshold = 99;
-	
-	int algo_generations = 11;
-	int algo_crossover = 90;
-	int algo_mutation = 30;
-	int algo_elitism = 1;
+	int prob_positions = 1;				config.read_parameter("POSITIONS", prob_positions);
+	int prob_pos_strategy = problem::docking::CLOUD_POS;	config.read_parameter("POS_STRATEGY", prob_pos_strategy);
+	int prob_fitness_function = 99;		config.read_parameter("FITNESS", prob_fitness_function);
+	int prob_timeneuron_threshold = 99;	config.read_parameter("TIMENEURON_THRESHOLD", prob_timeneuron_threshold);
 
-	int islands = 1;
-	int individuals = 33;
+	double integrator_timestep = 0.1;	config.read_parameter("INTEGRATOR_STEP", integrator_timestep);
+	int evolution_stuck_threshold = 11; config.read_parameter("STUCK_THRESHOLD", evolution_stuck_threshold);
 	
-	double integrator_timestep = 0.1;
+	int algo_generations = 11;		config.read_parameter("GENERATIONS", algo_generations);
+	int algo_crossover = 90;    	config.read_parameter("CROSSOVER", algo_crossover);
+	int algo_mutation = 30;     	config.read_parameter("MUTATION_RATE", algo_mutation);
+	int algo_elitism = 1;			config.read_parameter("ELITISM", algo_elitism);
+
+	int islands = 1;				config.read_parameter("ISLANDS", islands);
+	int individuals = 33;			config.read_parameter("INDIVIDUALS", individuals);
+	
 	
 	time_t seconds = time (NULL);
-//	long run_id = seconds;
 	std::string run_id = boost::lexical_cast<std::string>(seconds);
 	//////////////////////////////////////////
+	config.report();
 	
+	/////////////////////////////////////////
+	// Print all values!
+	string configs = "";
+	configs += "Run Information: ID=" + boost::lexical_cast<std::string>(run_id) + "\n";
+	configs += "Input Neurons:\t\t" + boost::lexical_cast<std::string>(ann_input_neurons) + "\n";
+	configs += "Hidden Neurons:\t\t" + boost::lexical_cast<std::string>(ann_hidden_neurons) + "\n";
+	configs += "Output Neurons:\t\t" + boost::lexical_cast<std::string>(ann_output_neurons) + "\n";
+	
+	configs += "Positions: \t\t" + boost::lexical_cast<std::string>(prob_positions) + "\n";
+	configs += "Pos. Strategy:\t\t" + boost::lexical_cast<std::string>(prob_pos_strategy) + "\n";
+	configs += "Fitness Function:\t" + boost::lexical_cast<std::string>(prob_fitness_function) + "\n";
+	configs += "TimeNeuron Threshold:\t" + boost::lexical_cast<std::string>(prob_timeneuron_threshold) + "\n";
+
+	configs += "Integration Step:\t" + boost::lexical_cast<std::string>(integrator_timestep) + "\n";
+	configs += "Evolution Stuck:\t" + boost::lexical_cast<std::string>(evolution_stuck_threshold) + "\n";
+
+	configs += "Generations:\t\t" + boost::lexical_cast<std::string>(algo_generations) + "\n";
+	configs += "Crossover Rate:\t\t" + boost::lexical_cast<std::string>(algo_crossover/100.0) + "\n";
+	configs += "Mutation Rate:\t\t" + boost::lexical_cast<std::string>(algo_mutation/100.0) + "\n";
+	configs += "Elitism:\t\t" + boost::lexical_cast<std::string>(algo_elitism) + "\n";
+
+	configs += "Islands:\t\t" + boost::lexical_cast<std::string>(islands) + "\n";
+    configs += "Individuals:\t\t" + boost::lexical_cast<std::string>(individuals) + "\n";
+	configs += "-------------------------------------\n";
+	cout << configs;
+	///////////////////////////////////////////////////////////
+		
 	////////////////////////////////////////////////
 	// Define the neural network
 	// // CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN
@@ -179,44 +214,45 @@ int main(){
 	// Create the archipelag/islands
 	cout << "Creating an archipelago...";
 	archipelago arch = archipelago(prob, algo, islands, individuals);
-	
-	cout << endl << arch << endl;
 	cout << "Created!";
 
 
 	///////////////////////////////////////////////
 	// Start evolution
 	cout << "\rStarting evolution ...          ID: " << run_id << "            " << endl;	
+	
 	ofstream myfile;
 	int i = 0, lasti = 0;
-	double last_fitness = 0.0;
+	double best_fitness = 99.9;	// minimizing!!
+	double last_fitness = 99.9;
 	
-	vector<individual> good_ones;
-	
-	pre_evolve = true;
-	
+	//vector<individual> good_ones;
+
+	pre_evolve = true;		// generate random positions at first
 	// run until we are quite good
 	while(best_fitness > -1.2/*i++ < 6/**/) { 
-		max_log_fitness	= 0.0;
 		cout << "\r                                                          "
 			 << "                                                            ";
-		cout.flush();
 		cout << "\rGeneration #" << i << " ["; cout.flush();
 		
+		max_log_fitness	= 0.0;		
 		arch.evolve();
 		arch.join();
 		i++;
 
 		cout << "] best: " << arch.best().get_fitness();// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
-
 			
 		//////////////////////////////////////////
 		// logging
 		if(max_log_fitness < best_fitness) {
 			best_fitness = max_log_fitness;	
 			cout << "\r=== Best increased @ #" << i << ": " << max_log_fitness << endl;
+
+			// write to file
 			std::string h = "id_" + run_id + "_bestrun.dat";
 			myfile.open (h.c_str());
+//			myfile << "ID: " << run_id << endl;
+			myfile << configs << endl;//expected
 			// myfile << arch[0] << endl;
 			myfile << max_log_string << endl;
 			myfile.close();	
@@ -224,7 +260,7 @@ int main(){
 			lasti = i;
 			
 			// save good ones
-			good_ones.push_back(arch.best());
+			//good_ones.push_back(arch.best());
 		}
 		if(max_log_fitness < last_fitness) {	
 			lasti = i;
@@ -233,6 +269,7 @@ int main(){
 			while(h.length() < 4) h = "0" + h;
 			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
 			myfile.open (s.c_str());
+			myfile << "ID: " << run_id << endl;
 			myfile << arch << endl;
 			myfile << max_log_string << endl;
 			myfile.close();	
@@ -240,29 +277,12 @@ int main(){
 		}
 		cout.flush();		
 
-
-		if( i - lasti >= 11 ) {
+		// randomize positions if we seem to be stuck
+		if( i - lasti >= evolution_stuck_threshold ) {
 			pre_evolve = true;
 			lasti = i;
 			last_fitness = 0.0;
 		}
-
-		// 	good_ones.push_back(arch.best());
-
-		// ////////////////////////////////////////
-		// // replace some bad ones with good ones?
-		// // maybe sort?
-		// if((i-lasti) >= 50) {
-		// 	population p = arch[0].get_population();
-		// 	p.erase(p.size()-5);
-		// 	p.push_back(good_ones[77 % good_ones.size()]);
-		// 	
-		// 	p.erase(p.size()-5);
-		// 	vector<double> d(ann.get_number_of_weights(), 10);
-		// 	individual i (d, 0.1);
-		// 	p.push_back(i);
-		// }
-		// 
 	}	
 	
 	// finished
