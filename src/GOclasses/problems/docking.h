@@ -91,6 +91,7 @@ class __PAGMO_VISIBLE docking : public base {
 		void set_fitness_function(int );
 		void set_log_genome(bool );
 		void set_timeneuron_threshold(double );
+		void set_time_step(double );		
 		
 		/// The ODE system we want to integrate needs to be able to be called 
 		/// by the integrator. Here we use the Hill's equations.
@@ -103,11 +104,12 @@ class __PAGMO_VISIBLE docking : public base {
 
 		/// Generate starting positions for the run of the individuals.
 		void generate_starting_positions() const;
-		
+				
 		/// CONSTANTS for 
 		const static size_t FIXED_POS = 1;
 		const static size_t SPOKE_POS = 2;
-		const static size_t SPOKE_POS_HALF = 20;
+		const static size_t SPOKE_POS_HALF 	= 20;
+		const static size_t SPOKE_8_POS 	= 200;		
 		const static size_t RAND_POS  = 3;
 		const static size_t CLOUD_POS = 4;		
 		const static size_t FULL_GRID = 99;		
@@ -120,6 +122,7 @@ class __PAGMO_VISIBLE docking : public base {
 
 		/// Generator functions for various types of "randomized" starting positions
 		void generate_spoke_positions(double, double, int half = 0) const;
+		void generate_multi_spoke_positions(double, double, int ) const;
 		void generate_random_positions(double, double) const;
 		void generate_cloud_positions(double, double, double ) const;
 		void generate_full_grid_positions(int, int) const;
@@ -158,6 +161,8 @@ class __PAGMO_VISIBLE docking : public base {
 		double vicinity_distance;			// the size of the vicinity around the origin that we take as close enough
 		double vicinity_orientation;		// the needed orientation around the origin that we take as good enough
 		
+		double time_step; 					// for integrator		
+		
 		// Integrator / solver;
 		friend class DynamicSystem;
 };
@@ -165,7 +170,7 @@ class __PAGMO_VISIBLE docking : public base {
 class DynamicSystem {
 	private: 
 		const docking *prob;
-		std::vector<double> outputs;
+		std::vector<double> outputs;		
 	public:
 		DynamicSystem(const docking *in) : prob(in) {	}
 		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t );

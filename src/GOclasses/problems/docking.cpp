@@ -42,6 +42,7 @@
 
 extern std::string max_log_string;
 extern double max_log_fitness;
+extern bool pre_evolve;
 
 namespace pagmo {
 namespace problem {	
@@ -84,22 +85,31 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 // should generate new starting positions
 // ( for now only once )
 void docking::pre_evolution(population &pop) const {	
-	// Change the starting positions to random numbers (given by random_starting_positions number)
-	
+	if(pre_evolve) {
+		pre_evolve = false;
+		random_start.clear();
+	}
+	// Change the starting positions to random numbers (given by random_starting_positions number)	
 	/// we do not want to change the position every pre_evolve!
-	if( random_start.size() == random_starting_positions ) return;
-	else random_start.clear();
-	 
+	if( random_start.size() == random_starting_positions ) {
+		return;
+	} 
+	
+	std::cout << "Generating starting positions ...";
+
 	generate_starting_positions();
+	
+	std::cout << "done!";
+	
 
 	// this is needed else we have a 'nan' result!
-	pop[0] = individual(*this, pop[0].get_decision_vector(), pop[0].get_velocity());
-/*	std::cout << "\rRe-evaluating population ... "; 	std::cout.flush();
+//	pop[0] = individual(*this, pop[0].get_decision_vector(), pop[0].get_velocity());
+	std::cout << "\tRe-evaluating population ... "; 	std::cout.flush();
 	//Re-evaluate the population with respect to the new seed (Internal Sampling Method)
 	for (size_t i=0; i < pop.size(); ++i) {
 		pop[i] = individual(*this, pop[i].get_decision_vector(), pop[i].get_velocity());
 	}
-	std::cout << " done!           \n";*/	
+	std::cout << " done!  ";
 }
 
 // generating the starting positions
@@ -147,6 +157,11 @@ void docking::generate_starting_positions() const {
 		// -1 ==> means only in the negative x axis!
 		generate_spoke_positions(1.8, 2.0, -1);
 		break;	
+
+	case SPOKE_8_POS:
+		// generate starting positions random_starting_positions/m every (360/m)°
+		generate_multi_spoke_positions(1.8, 2.0, 8);
+		break;	
 		
 	case FULL_GRID:
 		generate_full_grid_positions(5, 5);
@@ -155,6 +170,21 @@ void docking::generate_starting_positions() const {
 	}	
 }
 
+void docking::generate_multi_spoke_positions(double r1, double r2, int spokes) const {
+	rng_double drng = rng_double(static_rng_uint32()());
+	double r, theta, x, y;	
+	
+	for(double a = 0; random_start.size() < random_starting_positions; a += (2*M_PI)/spokes) {
+		r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		x = r * cos(a);
+		y = r * sin(a);
+		theta = drng() * 2 * M_PI;	// theta between 0-2Pi
+		// Start Condt:  x,  vx, y,  vy, theta, omega
+		double cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		random_start.push_back(std::vector<double> (cnd, cnd + 6)); //ann->get_number_of_inputs()
+	}
+
+}
 void docking::generate_spoke_positions(double r1, double r2, int half) const {
 	rng_double drng = rng_double(static_rng_uint32()());
 	double r, theta, x, y;	
@@ -254,7 +284,7 @@ double docking::objfun_(const std::vector<double> &v) const {
 	log += "\tx\ty\ttheta : ul\tur\tt-neur\n";
 	////////////////////////////////
 		
-	if(++cnt == 10) {
+	if(++cnt == 50) {
 		cnt = 0;
 		std::cout << "#";std::cout.flush();
 	}
@@ -295,7 +325,7 @@ double docking::objfun_(const std::vector<double> &v) const {
 double docking::one_run(std::string &log) const {	
 	// Helper variables
 	double retval = 0.0;//, best_retval = 0.0;
-	double dt = .1, t = 0.0;
+	double dt = time_step, t = 0.0;
 
 	// Integrator System
 	DynamicSystem sys(this);
@@ -413,7 +443,7 @@ double docking::one_run(std::string &log) const {
 		
 		    if(counter_at_goal >= needed_count_at_goal) {
 				// add time bonus
-	            retval += retval * (max_docking_time - t+dt)/max_docking_time;
+//	            retval += retval * (max_docking_time - t+dt)/max_docking_time;
 // //			retval = 1.0 + 2/(t+dt);		// we reached the goal!!! 2/t to give it a bit more range	
 	            break;
 		    }
@@ -458,14 +488,11 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 		case 10: // something simpler?
 			fitness = 0.0;
 			if(distance < init_distance) {
-				fitness = 1/( (1+distance) * (1+speed) );	
+				fitness = 1/( (1+distance) /* (1+speed) */);	
 			}		
 		
 			break;
 		case 2:
-			// keep theta between -180° and +180°
-			if(theta > M_PI) theta -= 2 * M_PI;
-			if(theta < -1*M_PI) theta += 2 * M_PI;
 			// Calculate return value			
 			fitness = 0.0;
 			if(distance < init_distance) {
@@ -479,7 +506,7 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			// based on Christos' TwoDee function
 			double timeBonus = (max_docking_time - tdt)/max_docking_time;
 			double alpha = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
-			if (init_distance > distance) {
+			if (init_distance > distance/2) {
     			if (distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < vicinity_distance)
       				fitness = alpha + alpha * timeBonus;	
 				else
@@ -581,6 +608,11 @@ void docking::set_timeneuron_threshold(double t) {
 /// Setter
 void docking::set_fitness_function(int f) {
 	fitness_function = f;
+}
+
+/// Setter
+void docking::set_time_step(double dt) {
+	time_step = dt;
 }
 
 
