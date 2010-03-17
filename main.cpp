@@ -240,47 +240,46 @@ int main(int argc, char *argv[]){
 		arch.join();
 		i++;
 
-		cout << "] best: " << arch.best().get_fitness();// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
+		cout << "] best: " << arch.best().get_fitness() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
 			
 		//////////////////////////////////////////
 		// logging
 		if(max_log_fitness < best_fitness) {
 			best_fitness = max_log_fitness;	
-			cout << "\r=== Best increased @ #" << i << ": " << max_log_fitness << endl;
+			cout << "\r=== Best increased @ #" << i-1 << ": " << max_log_fitness << endl;
 
 			// write to file
 			std::string h = "id_" + run_id + "_bestrun.dat";
 			myfile.open (h.c_str());
 //			myfile << "ID: " << run_id << endl;
 			myfile << configs << endl;//expected
-			// myfile << arch[0] << endl;
 			myfile << max_log_string << endl;
 			myfile.close();	
-			max_log_fitness = 0;
-			lasti = i;
+			lasti = i-1;
 			
 			// save good ones
 			//good_ones.push_back(arch.best());
 		}
 		if(max_log_fitness < last_fitness) {	
-			lasti = i;
 			last_fitness = max_log_fitness;
-			std::string h = boost::lexical_cast<std::string>(i);
-			while(h.length() < 4) h = "0" + h;
+			std::string h = boost::lexical_cast<std::string>(i-1);
+			while(h.length() < 5) h = "0" + h;
 			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
 			myfile.open (s.c_str());
-			myfile << "ID: " << run_id << endl;
-			myfile << arch << endl;
+//			myfile << "ID: " << run_id << endl;
+			myfile << configs << endl;
 			myfile << max_log_string << endl;
 			myfile.close();	
 			//////////////////////////////////////////
+			lasti = i-1;
+			
 		}
 		cout.flush();		
 
 		// randomize positions if we seem to be stuck
-		if( i - lasti >= evolution_stuck_threshold ) {
+		if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
 			pre_evolve = true;
-			lasti = i;
+			lasti = i - 1;
 			last_fitness = 0.0;
 		}
 	}	

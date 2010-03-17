@@ -109,7 +109,7 @@ void docking::pre_evolution(population &pop) const {
 	for (size_t i=0; i < pop.size(); ++i) {
 		pop[i] = individual(*this, pop[i].get_decision_vector(), pop[i].get_velocity());
 	}
-	std::cout << " done!  ";
+	std::cout << " done!  " << std::endl;
 }
 
 // generating the starting positions
@@ -493,11 +493,12 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 		
 			break;
 		case 2:
+			// no attitude in the fitness!!
 			// Calculate return value			
 			fitness = 0.0;
-			if(distance < init_distance) {
-				fitness = 1.0/((1 + distance) * (1 + fabs(theta)) * (1 + speed));				
-				if(distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < 0.1)
+			if(distance < init_distance/2) {
+				fitness = 1.0/((1 + distance) * (1 + speed));				
+				if(distance < vicinity_distance && speed < 0.1)
 					fitness += fitness * (max_docking_time - tdt)/max_docking_time;
 			}		
 			break;
