@@ -485,14 +485,14 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			break;
 		case 1:	fitness = 1/( (1+distance) * (1+speed) * (1+fabs(theta)) );
 			break;
-		case 10: // something simpler?
+		case 10: { // something simpler?
 			fitness = 0.0;
 			if(distance < init_distance) {
 				fitness = 1/( (1+distance) /* (1+speed) */);	
-			}		
+			}
+		}break;
 		
-			break;
-		case 2:
+		case 2: {
 			// no attitude in the fitness!!
 			// Calculate return value			
 			fitness = 0.0;
@@ -501,9 +501,9 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 				if(distance < vicinity_distance && speed < 0.1)
 					fitness += fitness * (max_docking_time - tdt)/max_docking_time;
 			}		
-			break;
+		}break;
 			
-		case 99:
+		case 99: {
 			// based on Christos' TwoDee function
 			double timeBonus = (max_docking_time - tdt)/max_docking_time;
 			double alpha = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
@@ -514,8 +514,8 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 					fitness = alpha;
 			} else
 				fitness = 0;
-			break;
-			
+		}break;
+		
 		default:
 			pagmo_throw(value_error, "no such fitness function");
 			break;
