@@ -273,6 +273,12 @@ int main(int argc, char *argv[]){
 			//////////////////////////////////////////
 			lasti = i-1;
 			
+			// try to put it online!
+			std::string cmd = "curl -v -H \"Expect: \" -F \"file=@";
+			cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
+			cmd += " -o tmp.out";
+			int ret = system (cmd.c_str());	
+			
 		}
 		cout.flush();		
 
