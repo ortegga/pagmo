@@ -240,7 +240,7 @@ int main(int argc, char *argv[]){
 
 	pre_evolve = true;		// generate random positions at first
 	// run until we are quite good
-	while(best_fitness > -1.2/*i++ < 6/**/) { 
+	while(best_fitness > -1.7/*i++ < 6/**/) { 
 		cout << "\r                                                          "
 			 << "                                                            ";
 		cout << "\rGeneration #" << i << " ["; cout.flush();
