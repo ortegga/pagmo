@@ -172,6 +172,16 @@ int main(int argc, char *argv[]){
 	cout << configs;
 	///////////////////////////////////////////////////////////
 		
+		
+		
+		
+/*		TODO
+			add vicinity_distance
+			and vicinity_orientation
+			and vicinity_speed to these variables
+			also add setter methods in the problem to set them!!!
+*/			
+			
 	////////////////////////////////////////////////
 	// Define the neural network
 	// // CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN
@@ -274,7 +284,7 @@ int main(int argc, char *argv[]){
 			lasti = i-1;
 			
 			// try to put it online!
-			std::string cmd = "curl -v -H \"Expect: \" -F \"file=@";
+			std::string cmd = "curl -H \"Expect: \" -F \"file=@";
 			cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
 			cmd += " -o tmp.out";
 			int ret = system (cmd.c_str());	

@@ -120,13 +120,21 @@ void docking::generate_starting_positions() const {
 	if(pre_evolution_strategy == docking::FIXED_POS) {
 		// depending on the ann->get_number_of_inputs() we use 4 or 6
 		// i.e. (we use the attitude or not)
-		double cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
-		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+		if(random_starting_positions >= 1) {
+			double cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+		}
 
-		cnd[0] = -1; cnd[2] = -1;
-		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
-		cnd[0] = -2; cnd[2] = 0;	
-		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+		if(random_starting_positions >= 2) {
+			double cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+		}
+		
+		if(random_starting_positions >= 3) {
+			double cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+		}
+		
 
 /*		// DEBUG
 		std::cout << "XY@: " << random_start[0][0] << "," << random_start[0][2] << ","<< random_start[0][4];
