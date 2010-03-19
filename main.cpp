@@ -127,6 +127,7 @@ int main(int argc, char *argv[]){
 	int prob_pos_strategy = problem::docking::CLOUD_POS;	config.read_parameter("POS_STRATEGY", prob_pos_strategy);
 	int prob_fitness_function = 99;		config.read_parameter("FITNESS", prob_fitness_function);
 	int prob_timeneuron_threshold = 99;	config.read_parameter("TIMENEURON_THRESHOLD", prob_timeneuron_threshold);
+	int prob_maximum_time = 25;			config.read_parameter("MAX_TIME", prob_maximum_time);
 
 	double integrator_timestep = 0.1;	config.read_parameter("INTEGRATOR_STEP", integrator_timestep);
 	int evolution_stuck_threshold = 11; config.read_parameter("STUCK_THRESHOLD", evolution_stuck_threshold);
@@ -157,6 +158,7 @@ int main(int argc, char *argv[]){
 	configs += "Pos. Strategy:\t\t" + boost::lexical_cast<std::string>(prob_pos_strategy) + "\n";
 	configs += "Fitness Function:\t" + boost::lexical_cast<std::string>(prob_fitness_function) + "\n";
 	configs += "TimeNeuron Threshold:\t" + boost::lexical_cast<std::string>(prob_timeneuron_threshold) + "\n";
+	configs += "Maximum Time:\t" + boost::lexical_cast<std::string>(prob_maximum_time) + "\n";
 
 	configs += "Integration Step:\t" + boost::lexical_cast<std::string>(integrator_timestep) + "\n";
 	configs += "Evolution Stuck:\t" + boost::lexical_cast<std::string>(evolution_stuck_threshold) + "\n";
@@ -200,7 +202,7 @@ int main(int argc, char *argv[]){
 
 	////////////////////////////////////////////////
 	// Define the problem						positions, strategy, 				max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, prob_positions, prob_pos_strategy, 25, 0.1);
+	problem::docking prob = problem::docking(&ann, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
 	prob.set_log_genome(true);
 
