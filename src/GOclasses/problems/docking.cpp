@@ -157,7 +157,7 @@ void docking::generate_starting_positions() const {
 		
 	case CLOUD_POS:
 		// generate starting positions at 8 spokes but with random orientations!
-		generate_cloud_positions(2.0, M_PI/4, 0.1);
+		generate_cloud_positions(2.0, 5*M_PI/4, 0.1);
 		break;
 		
 	case SPOKE_POS_HALF:
@@ -510,6 +510,18 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 					fitness += fitness * (max_docking_time - tdt)/max_docking_time;
 			}		
 		}break;
+		
+		case 88: {
+			// based on Christos' TwoDee function
+			// but only if fitness is high we give time bonus
+			double timeBonus = (max_docking_time - tdt)/max_docking_time;
+			fitness = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
+			if (init_distance > distance/2) {
+    			if(fitness > 0.95)
+      				fitness += fitness * timeBonus;	
+			} else
+				fitness = 0;
+		}break;			
 			
 		case 99: {
 			// based on Christos' TwoDee function
