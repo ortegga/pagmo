@@ -76,7 +76,7 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 
 	// for vicinity stopping
 	needed_count_at_goal = 5;
-	vicinity_distance = 0.1;
+	vicinity_distance = vicinity_speed = 0.1;
 	vicinity_orientation = M_PI/8;	
 }
 
@@ -527,7 +527,7 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			double timeBonus = (max_docking_time - tdt)/max_docking_time;
 			double alpha = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
 			if (init_distance > distance/2) {
-    			if (distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < vicinity_distance)
+    			if (distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < vicinity_speed)
       				fitness = alpha + alpha * timeBonus;	
 				else
 					fitness = alpha;
@@ -633,6 +633,21 @@ void docking::set_fitness_function(int f) {
 /// Setter
 void docking::set_time_step(double dt) {
 	time_step = dt;
+}
+
+/// Setter
+void docking::set_vicinity_distance(double d) {
+	vicinity_distance = d;
+}
+
+/// Setter
+void docking::set_vicinity_speed(double d) {
+	vicinity_speed = d;
+}
+
+/// Setter
+void docking::set_vicinity_orientation(double d) {
+	vicinity_orientation = d;
 }
 
 

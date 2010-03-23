@@ -92,7 +92,10 @@ class __PAGMO_VISIBLE docking : public base {
 		void set_log_genome(bool );
 		void set_timeneuron_threshold(double );
 		void set_time_step(double );		
-		
+		void set_vicinity_distance(double );
+		void set_vicinity_speed(double );
+		void set_vicinity_orientation(double );
+						
 		/// The ODE system we want to integrate needs to be able to be called 
 		/// by the integrator. Here we use the Hill's equations.
 		void operator()( state_type &x , state_type &dxdt , double t ) const;
@@ -159,6 +162,7 @@ class __PAGMO_VISIBLE docking : public base {
 		size_t fitness_function;			// how to calculate the fitness
 	
 		double vicinity_distance;			// the size of the vicinity around the origin that we take as close enough
+		double vicinity_speed;				// the maximum speed around the origin that we take as small enough
 		double vicinity_orientation;		// the needed orientation around the origin that we take as good enough
 		
 		double time_step; 					// for integrator		

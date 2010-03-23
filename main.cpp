@@ -139,6 +139,10 @@ int main(int argc, char *argv[]){
 
 	int islands = 1;				config.read_parameter("ISLANDS", islands);
 	int individuals = 33;			config.read_parameter("INDIVIDUALS", individuals);
+
+	double vicinity_distance = 0.1;		config.read_parameter("VICINITY_DISTANCE", vicinity_distance);
+	double vicinity_speed = 0.1;		config.read_parameter("VICINITY_SPEED", vicinity_speed);
+	double vicinity_orientation = 0.1;	config.read_parameter("VICINITY_ORIENTATION", vicinity_orientation);	
 	
 	
 	time_t seconds = time (NULL);
@@ -170,6 +174,10 @@ int main(int argc, char *argv[]){
 
 	configs += "Islands:\t\t" + boost::lexical_cast<std::string>(islands) + "\n";
     configs += "Individuals:\t\t" + boost::lexical_cast<std::string>(individuals) + "\n";
+
+    configs += "Vicinity Distance:\t" + boost::lexical_cast<std::string>(vicinity_distance) + "\n";
+    configs += "Vicinity Speed:\t\t" + boost::lexical_cast<std::string>(vicinity_speed) + "\n";
+    configs += "Vicinity Orientation:\t" + boost::lexical_cast<std::string>(vicinity_orientation) + "\n";
 	configs += "-------------------------------------\n";
 	cout << configs;
 	///////////////////////////////////////////////////////////
@@ -211,6 +219,10 @@ int main(int argc, char *argv[]){
 	
 	prob.set_time_step(integrator_timestep);
 	
+	prob.set_vicinity_distance(vicinity_distance);
+	prob.set_vicinity_speed(vicinity_speed);
+	prob.set_vicinity_orientation(vicinity_orientation);
+			
 	algorithm::sga algo(algo_generations, 	// Generations
 						algo_crossover/100.0,	// CR
 						algo_mutation/100.0,	// Mutation	
