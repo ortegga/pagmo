@@ -516,7 +516,7 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			double timeBonus = (max_docking_time - tdt)/max_docking_time;
 			fitness = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
 			if (init_distance > distance/2) {
-    			if(fitness > 0.9)
+    			if(fitness > 0.87)
       				fitness += fitness * timeBonus;	
 			} else
 				fitness = 0;
