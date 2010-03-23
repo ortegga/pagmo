@@ -156,8 +156,7 @@ void docking::generate_starting_positions() const {
 		break;
 		
 	case CLOUD_POS:
-		// generate starting positions at 8 spokes but with random orientations!
-		generate_cloud_positions(2.0, 5*M_PI/4, 0.1);
+		generate_cloud_positions(2.0, M_PI, 0.1);
 		break;
 		
 	case SPOKE_POS_HALF:
