@@ -132,11 +132,11 @@ int main(int argc, char *argv[]){
 	double integrator_timestep = 0.1;	config.read_parameter("INTEGRATOR_STEP", integrator_timestep);
 	int evolution_stuck_threshold = 11; config.read_parameter("STUCK_THRESHOLD", evolution_stuck_threshold);
 	
-	int algo_generations = 11;		config.read_parameter("GENERATIONS", algo_generations);
-	int algo_crossover = 90;    	config.read_parameter("CROSSOVER", algo_crossover);
-	int algo_mutation = 30;     	config.read_parameter("MUTATION_RATE", algo_mutation);
-	int algo_elitism = 1;			config.read_parameter("ELITISM", algo_elitism);
-
+	int algo_generations = 11;			config.read_parameter("GENERATIONS", algo_generations);
+	int algo_crossover = 90;    		config.read_parameter("CROSSOVER", algo_crossover);
+	int algo_mutation = 30;     		config.read_parameter("MUTATION_RATE", algo_mutation);
+	int algo_elitism = 1;				config.read_parameter("ELITISM", algo_elitism);
+                                		
 	int islands = 1;				config.read_parameter("ISLANDS", islands);
 	int individuals = 33;			config.read_parameter("INDIVIDUALS", individuals);
 
@@ -184,12 +184,9 @@ int main(int argc, char *argv[]){
 		
 		
 		
-		
 /*		TODO
-			add vicinity_distance
-			and vicinity_orientation
-			and vicinity_speed to these variables
-			also add setter methods in the problem to set them!!!
+			make the logging more general
+			same with the upload of the file
 */			
 			
 	////////////////////////////////////////////////

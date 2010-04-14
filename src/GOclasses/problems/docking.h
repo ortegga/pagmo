@@ -114,7 +114,8 @@ class __PAGMO_VISIBLE docking : public base {
 		const static size_t SPOKE_POS_HALF 	= 20;
 		const static size_t SPOKE_8_POS 	= 200;		
 		const static size_t RAND_POS  = 3;
-		const static size_t CLOUD_POS = 4;		
+		const static size_t DONUT_FACING = 33;
+		const static size_t CLOUD_POS = 4;	
 		const static size_t FULL_GRID = 99;		
 		
 	private:
@@ -127,6 +128,7 @@ class __PAGMO_VISIBLE docking : public base {
 		void generate_spoke_positions(double, double, int half = 0) const;
 		void generate_multi_spoke_positions(double, double, int ) const;
 		void generate_random_positions(double, double) const;
+		void generate_random_positions_facing_origin(double, double) const;
 		void generate_cloud_positions(double, double, double ) const;
 		void generate_full_grid_positions(int, int) const;
 				

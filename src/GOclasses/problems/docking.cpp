@@ -154,6 +154,11 @@ void docking::generate_starting_positions() const {
 		// generate complete random starting positions (in doughnut)
 		generate_random_positions(1.8, 2.0);
 		break;
+
+	case DONUT_FACING:
+		// generate complete random starting positions (in doughnut)
+		generate_random_positions_facing_origin(1.8, 2.0);
+		break;
 		
 	case CLOUD_POS:
 		generate_cloud_positions(2.0, M_PI, 0.1);
@@ -230,6 +235,27 @@ void docking::generate_random_positions(double r1, double r2) const {
 	//		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
 	}
 }
+
+void docking::generate_random_positions_facing_origin(double r1, double r2) const {
+	rng_double drng = rng_double(static_rng_uint32()());
+	double r, a, theta, x, y;	
+	
+	while(random_start.size() < random_starting_positions) {
+		r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		a = drng() * 2 * M_PI;	// alpha between 0-2Pi
+		x = r * cos(a);
+		y = r * sin(a);
+		theta = atan2(-y, -x);	// theta is facing 0/0
+		if(theta < 0) theta += 2 * M_PI;
+		
+		// Start Condt:  x,  vx, y,  vy, theta, omega
+		double cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
+	//	printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+	//		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+	}
+}
+
 
 void docking::generate_cloud_positions(double d, double angle, double rin) const {
         rng_double drng = rng_double(static_rng_uint32()());
@@ -534,6 +560,21 @@ std::vector<double> docking::evaluate_fitness(std::vector<double> state, std::ve
 			} else
 				fitness = 0;
 		}break;
+
+		case 101: {
+			// christo's but as soon as we reach the vicinity the
+			// individual gets 1.00 as fitness + then the timeBonus
+			double timeBonus = (max_docking_time - tdt)/max_docking_time;
+			double alpha = 1.0/((1+distance)*(1+fabs(theta))*(speed+1));
+			if (init_distance > distance/2) {
+    			if (distance < vicinity_distance && fabs(theta) < vicinity_orientation && speed < vicinity_speed)
+      				fitness = 1 + timeBonus;	
+				else
+					fitness = alpha;
+			} else
+				fitness = 0;
+		}break;
+				
 		
 		default:
 			pagmo_throw(value_error, "no such fitness function");
