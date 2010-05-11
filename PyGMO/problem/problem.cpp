@@ -218,6 +218,10 @@ BOOST_PYTHON_MODULE(_problem) {
 	problem_wrapper<problem::schwefel>("schwefel","Two-dimensional Schwefel function.")
 		.def(init<int>());
 
+	// Ackley function.
+	problem_wrapper<problem::ackley>("ackley","Ackley function.")
+		.def(init<int>());
+
 	// Knapsack problem.
 	problem_wrapper<problem::knapsack>("knapsack","Classical 01 knapsack problem. Constructor from vector of values, vector of weights and maximum weight.")
 		.def(init<const std::vector<double> &, const std::vector<double> &, const double &>());
