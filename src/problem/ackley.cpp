@@ -35,7 +35,7 @@ namespace pagmo { namespace problem {
 
 /// Constructor from dimension.
 /**
- * Will construct an n dimensional Schwefel problem.
+ * Will construct an n dimensional Ackley problem.
  *
  * @param[in] n integer dimension of the problem.
  *

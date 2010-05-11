@@ -59,4 +59,4 @@ class __PAGMO_VISIBLE ackley : public base
 
 }} //namespaces
 
-#endif // SCHWEFEL_H
+#endif // PAGMO_PROBLEM_ACKLEY_H
