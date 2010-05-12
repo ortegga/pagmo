@@ -13,8 +13,8 @@ class base(_problem._base):
 
 class schubert(base):
     def __init__(self):
-        super(schubert, self).__init__(2, 0, 1, 2, 2)    
-        self.lb = [0, -10]
+        super(schubert, self).__init__(2)    
+        self.lb = [-10, -10]
         self.ub = [10, 10]
     def __copy__(self):
         retval = schubert()
