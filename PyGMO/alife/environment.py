@@ -101,14 +101,26 @@ class ALifeEnvironment(object):
         
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a xode trimesh object, stored in the variable self.asteroid.
-    #  The file must contain an object called 'Asteroid'.
-    #  If more than 1 object called 'Asteroid' exists, only the first one
-    #  is processed, the rest are ignored.
-    #  The file must consist of faces stored as triangles. If the file 
-    #  cannot be read or it does not contain any triangles an exception
-    #  is raised.
+    #  The asteroid is then added to the ALife ODE space.
+    #
+    #  Note: this file must be called after load_xode, so that the member variable
+    #        'space' already exists. An exception is raised if space does not exist.
+    #
+    #  Other X3D file restraints:
+    #  - The file must contain at least 1 object called 'Asteroid'. If not,
+    #    an exception is raised
+    #  - If more than 1 object called 'Asteroid' exists, only the first one
+    #    is processed, the rest are ignored.
+    #  - The file must consist of faces stored as triangles. If the file 
+    #    cannot be read or it does not contain any triangles an exception
+    #    is raised.
+    #     
     #  @param file_name The file path to the .x3d file for the asteroid.
     def load_asteroid(self, file_name):
+        # check for existing ODE space
+        if not self.space:
+            # todo: more detail on this exception
+            raise Exception("NoSpace")
         dom = md.parse(file_name)
         root = dom.createElement('xode')
         root.attributes['version'] = '1.0r23'
@@ -186,6 +198,9 @@ class ALifeEnvironment(object):
             raise Exception("NoAsteroid")
         else:
             print "Asteroid created, %d triangles" % (self.asteroid.getTriangleCount())
+        # add asteroid to current space
+        self.asteroid.getSpace().remove(self.asteroid)
+        self.space.add(self.asteroid)
     
     ## Load the XODE config.
     #  @param filename The file path to the config file (XODE file).
@@ -264,6 +279,9 @@ class ALifeEnvironment(object):
             # if geom doesn't have own name, use the name of its body
             geom.name = node.getName()
             self.body_geom.append((body, geom))
+            # todo: do we need to call geom.setBody(body)?
+            #       http://pyode.sourceforge.net/tutorials/tutorial3.html
+            geom.setBody(body)
         
         # geom on its own without body
         elif isinstance(node, xode.geom.Geom):
@@ -305,12 +323,12 @@ class ALifeEnvironment(object):
         for c in node.getChildren():
             self._parseBodies(c)
             
-    ## Callback function for the collide() method.
+    ## Callback function for the space.collide() method.
     #  This function checks if the given geoms do collide and 
     #  creates contact joints if they do.
-    #  @param args args
-    #  @param geom1 geom1
-    #  @param geom2 geom2  
+    #  @param args Arguments given to the space.collide() method, which calls this function.
+    #  @param geom1 Geometry object that may be colliding with geom2.
+    #  @param geom2 A geometry object that may be colliding with geom1.
     def _near_callback(self, args, geom1, geom2):
         # only check parse list, if objects have name
         if geom1.name != None and geom2.name != None:
@@ -354,7 +372,7 @@ class ALifeEnvironment(object):
         """ Here the ode physics is calculated by one step. """
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
-
+        
         # Simulation step
         self.world.step(dt)
         
