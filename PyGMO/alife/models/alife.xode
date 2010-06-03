@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xode version="1.0r23" name="alife"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://tanksoftware.com/xode/1.0r23/xode.xsd">
+
+<world>
+	<space>
+		<body name="robot_body">
+			<transform>
+				<position y="150" x="0" z="0"/>
+			</transform>
+			<mass>
+				<mass_shape density="0.135760517799">
+					<box sizex="4.12" sizez="2" sizey="3.0"/>
+				</mass_shape>
+			</mass>
+			<geom>
+				<box sizex="4.12" sizez="2" sizey="3.0"/>
+			</geom>
+		</body>
+	</space>
+</world>
+</xode>
+<!--odeenvironment parameters
+<passpairs>
+('robot_body',)
+<centerOn>
+robot_body
+<end>
+-->
