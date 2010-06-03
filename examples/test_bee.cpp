@@ -29,14 +29,6 @@
 #include <boost/lexical_cast.hpp>
 #include"../src/pagmo.h"
 
-/**
-DESCRITPION: This example tests several algorithms, topologies and problems and prints out a latex
-table summarizing all results. The purpose is to show the effect of the generalized migration operator
-and of the topology in the archipelago.
-
-CPU TIME: each optimization open 20 threads. The example completes in minutes.
-*/
-
 using namespace pagmo;
 using namespace kep_toolbox;
 
@@ -74,39 +66,34 @@ int main()
 	myfile << "\\begin{xtabular}{lll}\n";
 
 	//0 - Experiment parameters
-	int number_of_islands = 20;
-	int number_of_individuals = 20;
+	int number_of_islands = 30;
+	int number_of_individuals = 125;
 	//int evolution_time = 1000;
-	int number_of_migrations = 20;
+	int number_of_migrations = 1;
 
 	//1 - We instantiate the problems
-	problem::cassini_1 prob1;
-	problem::griewank prob2(50);
-	problem::ackley prob3(50);
-	problem::rastrigin prob4(50);
+	problem::griewank prob1(10);
+	problem::rastrigin prob2(10);
+	problem::rosenbrock  prob3(10);
+	problem::ackley prob4(10);
+	problem::schwefel prob5(10);
 
 	//2 - We instantiate the algorithms
-	algorithm::de algo1(100);
-	algorithm::sga algo2(100,0.8,0.05,1);
-	algorithm::sa_corana algo3(2000,1,0.001);
-	algorithm::pso algo4(100);
-	algorithm::ihs algo5(2000);
-	algorithm::bee_colony algo6(50);
+	algorithm::sga algo1(500,0.95,0.1);
+	algorithm::pso algo2(500);
+	algorithm::bee_colony algo3(500,25);
 
 	//b - We instantiate the topologies
 	topology::unconnected topo1;
-	topology::ring topo2;
-	topology::fully_connected topo3;
-	topology::watts_strogatz topo4;
+	//topology::ring topo2;
+	//topology::fully_connected topo3;
+	//topology::watts_strogatz topo4;
 
 	//3 - We build a container of algorithms
 	std::vector<algorithm::base_ptr> algo;
 	algo.push_back(algo1.clone());
 	algo.push_back(algo2.clone());
 	algo.push_back(algo3.clone());
-	algo.push_back(algo4.clone());
-	algo.push_back(algo5.clone());
-	algo.push_back(algo6.clone());
 
 	//4 - And a container of problems
 	std::vector<problem::base_ptr> prob;
@@ -114,13 +101,14 @@ int main()
 	prob.push_back(prob2.clone());
 	prob.push_back(prob3.clone());
 	prob.push_back(prob4.clone());
+	prob.push_back(prob5.clone());
 
 	//5 - And a container of topologies
 	std::vector<topology::base_ptr> topo;
 	topo.push_back(topo1.clone());
-	topo.push_back(topo2.clone());
-	topo.push_back(topo3.clone());
-	topo.push_back(topo4.clone());
+	//topo.push_back(topo2.clone());
+	//topo.push_back(topo3.clone());
+	//topo.push_back(topo4.clone());
 
 	for (unsigned int pr=0; pr<prob.size();++pr) {
 		std::cout << std::endl << "Problem: " << prob[pr]->get_name() << std::endl;

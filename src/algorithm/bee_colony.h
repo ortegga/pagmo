@@ -22,50 +22,41 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-#ifndef PAGMO_ALGORITHM_DE_H
-#define PAGMO_ALGORITHM_DE_H
-
-#include <string>
+#ifndef PAGMO_ALGORITHM_BEE_COLONY_H
+#define PAGMO_ALGORITHM_BEE_COLONY_H
 
 #include "../config.h"
-#include "../population.h"
 #include "base.h"
+#include "../population.h"
+#include <string>
+
 
 
 namespace pagmo { namespace algorithm {
 
-/// Differential Evolution Algorithm
+/// The Artificial Bee Colony Solver (ABC)
 /**
+ * \image html bee.jpg "Bee"
+ * \image latex bee.jpg  "Bee" width=3cm
+ * The Artificial Bee Colony (ABC) algorithm is a meta-heuristic algorithm inspired by the
+ * behaviour of bees.
  *
- * \image html de.jpg "Differential Evolution block diagram."
- * \image latex de.jpg "Differential Evolution block diagram." width=5cm
+ * At each call of the evolve method a number of function evaluations equal
+ * to 2 * iter * pop.size() is performed.
  *
- * Differential Evolution is an heuristic optimizer developed by Rainer Storn and Kenneth Price.
- *
- * ''A breakthrough happened, when Ken came up with the idea of using vector differences for perturbing
- * the vector population. Since this seminal idea a lively discussion between Ken and Rainer and endless
- * ruminations and computer simulations on both parts yielded many substantial improvements which
- * make DE the versatile and robust tool it is today'' (from the official web pages....)
- *
- * The implementation provided for PaGMO derives from the code provided in the official
- * DE web site and is suitable for box-constrained single-objective continuous optimization.
- *
- * At each call of the evolve method a number of function evaluations equal to m_gen * pop.size()
- * is performed.
- *
- * NOTE: when called on mixed-integer problems de treats the integer part as fixed and optimizes
+ * NOTE: when called on mixed-integer problems ABC treats the integer part as fixed and optimizes
  * the continuous part.
  *
- * @see http://www.icsi.berkeley.edu/~storn/code.html for the official DE web site
- * @see http://www.springerlink.com/content/x555692233083677/ for the paper that introduces Differential Evolution
+ * @see http://mf.erciyes.edu.tr/abc/pub/ABC.C
+ * @see http://www.scholarpedia.org/article/Artificial_bee_colony_algorithm
  *
- * @author Dario Izzo (dario.izzo@googlemail.com)
+ * @author Andrea Mambrini (andrea.mambrini@gmail.com)
  */
-		
-class __PAGMO_VISIBLE de: public base
+
+class __PAGMO_VISIBLE bee_colony: public base
 {
 public:
-	de(int, const double & = 0.8, const double & = 0.9, int = 2);
+	bee_colony(int iter, int limit = 20);
 	base_ptr clone() const;
 	void evolve(population &) const;
 	std::string get_name() const;
@@ -73,15 +64,10 @@ protected:
 	std::string human_readable_extra() const;
 private:
 	// Number of generations.
-	const int m_gen;
-	// Weighting factor
-	const double m_f;
-	// Crossover probability
-	const double m_cr;
-	// Startegy
-	const int m_strategy;
+	const int m_iter;
+	const int m_limit;
 };
 
 }} //namespaces
 
-#endif // DE_H
+#endif // BEECOLONY_H
