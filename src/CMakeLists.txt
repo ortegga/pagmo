@@ -44,6 +44,7 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/cassini_1.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/cassini_2.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/gtoc_1.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/problem/gtoc_2.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/sagas.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/rosetta.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/messenger.cpp
@@ -83,6 +84,7 @@ SET(PAGMO_LIB_SRC_LIST ${PAGMO_LIB_SRC_LIST}
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/planet.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/planet_ss.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/planet_mpcorb.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/asteroid_gtoc2.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/epoch.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/sims_flanagan/fb_traj.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/keplerian_toolbox/sims_flanagan/leg.cpp

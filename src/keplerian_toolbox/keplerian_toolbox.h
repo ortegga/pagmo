@@ -29,6 +29,7 @@
 #include"planet.h"
 #include"planet_ss.h"
 #include"planet_mpcorb.h"
+#include"asteroid_gtoc2.h"
 #include"core_functions/array3D_operations.h"
 #include"core_functions/convert_anomalies.h"
 #include"core_functions/convert_dates.h"
@@ -40,6 +41,7 @@
 #include"sims_flanagan/fb_traj.h"
 #include"sims_flanagan/leg.h"
 #include"sims_flanagan/sc_state.h"
+#include"sims_flanagan/spacecraft.h"
 #include"sims_flanagan/throttle.h"
 #include"astro_constants.h"
 

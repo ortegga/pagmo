@@ -27,7 +27,9 @@
 #include <vector>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include"src/pagmo.h"
+
+#include "src/pagmo.h"
+#include "src/keplerian_toolbox/keplerian_toolbox.h"
 
 using namespace pagmo;
 using namespace kep_toolbox;
@@ -35,14 +37,25 @@ using namespace kep_toolbox;
 int main()
 {
 
-	algorithm::de algo(1);
-	problem::inventory prob(2,1000000);
-	island isl(prob,algo,20);
-	for (int i = 1; i< 20; ++i) {
-		isl.evolve();
-		isl.join();
-		std::cout << isl.get_population().get_individual(isl.get_population().get_best_idx()).cur_f << isl.get_population().get_individual(isl.get_population().get_best_idx()).cur_x << std::endl;
-	}
+	problem::luksan_vlcek_1 prob(10);
+
+	population pop(prob,1);
+// 	decision_vector tmp = pop.get_individual(0).cur_x;
+// 	tmp[0] = 59870; tmp[1] = 60283 - 59870; tmp[2] = 60373 - 60283;
+// 	tmp[3] = 61979 - 60373; tmp[4] = 62069 - 61979; tmp[5] = 62647 - 62069;
+// 	tmp[6] = 62737 - 62647; tmp [7] = 63196 - 62737;
+// 	tmp[8] = 1300; tmp[9] = 1100; tmp[10]= 900; tmp[11] = 700;
+// 	pop.set_x(0, tmp);
+	algorithm::snopt algo(1000,1E-9,1E-9);
+	algo.screen_output(true);
+	
+	island isl(pop,algo);
+
+	//std::cout << prob << std::endl;
+
+	isl.evolve();
+
+	//std::cout << isl << std::endl;
 
 	return 0;
 }
