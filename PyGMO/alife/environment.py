@@ -51,6 +51,8 @@ class ALifeEnvironment(object):
         self.body_geom = []
         ## @var asteroid The asteroid geometry
         self.asteroid = None
+        ## @var robot_body The robot body object, defined in _parseBodies
+        self.robot_body = None
         ## @var textures the textures dictionary
         self.textures = {}
         ## @var sensors sensor list
@@ -62,8 +64,9 @@ class ALifeEnvironment(object):
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
-        self.FricMu = 8.0
-        self.steps_per_action = 1
+        ## @var friction Coulomb friction coefficient for contact joints 
+        self.friction = 8.0
+        ## @var step_count The current step number
         self.step_count = 0
     
     ## Loads the robot XODE file (xml format) and parses it.
@@ -196,8 +199,8 @@ class ALifeEnvironment(object):
         # todo: give more detail in exception
         if not self.asteroid:
             raise Exception("NoAsteroid")
-        else:
-            print "Asteroid created, %d triangles" % (self.asteroid.getTriangleCount())
+#        else:
+#            print "Asteroid created, %d triangles" % (self.asteroid.getTriangleCount())
         # add asteroid to current space
         self.asteroid.getSpace().remove(self.asteroid)
         self.space.add(self.asteroid)
@@ -269,6 +272,8 @@ class ALifeEnvironment(object):
         if isinstance(node, xode.body.Body):
             body = node.getODEObject()
             body.name = node.getName()
+            if body.name == "robot_body":
+                self.robot_body = body
             try:
                 # filter all xode geom objects and take the first one
                 xgeom = filter(lambda x: isinstance(x, xode.geom.Geom), node.getChildren())[0]
@@ -356,7 +361,7 @@ class ALifeEnvironment(object):
             c.setSoftCFM(0.00005) #Set the contact normal "softness" parameter
             c.setSlip1(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 1
             c.setSlip2(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 2
-            c.setMu(self.FricMu) #Set the Coulomb friction coefficient
+            c.setMu(self.friction) #Set the Coulomb friction coefficient
             j = ode.ContactJoint(world, contactgroup, c)
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())
@@ -365,6 +370,11 @@ class ALifeEnvironment(object):
     #  @return list of (body, geometry) tuples.
     def get_objects(self):
         return self.body_geom
+    
+    ## Get the robot body object
+    # @return robot body object
+    def get_robot_body(self):
+        return self.robot_body
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 

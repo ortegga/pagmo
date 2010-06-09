@@ -37,6 +37,8 @@ import time
 #  
 #  It renders the scene created by its ALifeEnvironment object using OpenGL.
 #  Code is based on the ode.viewer module in PyBrain
+#
+#  @author John Glover
 class ALifeViewer(object):
     def __init__(self):
         ## @var env ALife Environment object
@@ -59,6 +61,10 @@ class ALifeViewer(object):
         self.dt = 1.0 / self.fps
         self.lasttime = time.time()
         self.starttime = self.lasttime
+        
+        ## @var zoom_increment when zooming the viewing distance changes by 
+        #  this amount at every step
+        self.zoom_increment = 10.0
 
         # init OpenGL
         self._init()  
@@ -69,6 +75,7 @@ class ALifeViewer(object):
         glutDisplayFunc(self._draw) 
         glutIdleFunc(self._idle)
         glutKeyboardFunc(self._key_pressed)
+        glutSpecialFunc(self._special_func)
         
     ## Initialise OpenGL. This function has to be called only once before drawing.
     #  @param width The width of the GLUT window.
@@ -262,22 +269,31 @@ class ALifeViewer(object):
         glutPostRedisplay() 
 
     ## The keyboard callback function.
-    #  @param c The key that was pressed
-    def _key_pressed(self, c, x, y):
-        if c == 's':
+    #  @param key The key that was pressed
+    def _key_pressed(self, key, x, y):
+        if key == 's':
             self.setCaptureScreen(not self.getCaptureScreen())
             print "Screen Capture: " + (self.getCaptureScreen() and "on" or "off")
-        if c in ['x', 'q']:
+        if key in ['x', 'q']:
             sys.exit()
-        if c == 'v':
+        if key == 'v':
             self.mouseView = not self.mouseView
+            
+    ## Callback function for 'special' keys
+    #  Up and down arrow keys are used for zooming in and out respectively
+    #  @param key The key that was pressed     
+    def _special_func(self, key, x, y):
+        if key == GLUT_KEY_UP:
+            self.viewDistance -= self.zoom_increment
+        elif key == GLUT_KEY_DOWN:
+            self.viewDistance += self.zoom_increment
     
     ## Control the zoom factor
     def _motion(self, x, z):
         if not self.mouseView: return
         zn = 2.75 * float(z) / self.height + 0.25   # [0.25,3]
         self.viewDistance = 3.0 * zn * zn
-        self._passivemotionfunc(x, z)
+        self._passive_motion(x, z)
     
     ## Store the mouse coordinates (relative to centre and normalised)
     #  the eye does not exactly move on a unit hemisphere; we fudge the projection
@@ -305,6 +321,7 @@ class ALifeViewer(object):
     #  @param env The ALifeEnvironment object
     def set_environment(self, env):
         self.env = env
+        self.centerObj = env.get_robot_body()
         
     ## Start the main GLUT rendering loop
     def start(self):
@@ -316,7 +333,7 @@ if __name__ == "__main__":
     print "Press q to exit"
     # todo: print more control information
     e = ALifeEnvironment()
-    e.load_xode("models/alife.xode")
+    e.load_xode("models/robot.xode")
     e.load_asteroid("models/asteroid.x3d")
     v = ALifeViewer()
     v.set_environment(e)
