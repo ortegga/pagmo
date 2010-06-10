@@ -30,7 +30,7 @@ class Robot(XODEfile):
         # position of legs is defined relative to this
         body_position = [0.0, 150, 0.0]
         # mass of the body
-        body_mass = 100.0
+        body_mass = 1.0
         # the density of the body
         body_density = 3.0
         # the size of the body
@@ -44,68 +44,65 @@ class Robot(XODEfile):
         # mass of the legs
         leg_mass = 1.0
         # offset used to calculate leg y-axis coordinate
-        leg_y_offset = (leg_length/2) + (body_size[1]/2) 
+        # the last term makes the legs recede into the body slightly, looks
+        # a bit better
+        leg_y_offset = (leg_length/2) + (body_size[1]/2) - min(leg_radius*2, 1.0)
         
         # add body objects
         self.insertBody('robot_body', 'box', body_size, body_density, 
-                        pos=body_position, mass=body_mass)
+                        pos=body_position, mass=body_mass, 
+                        passSet=["robot_body_leg1",
+                                 "robot_body_leg2",
+                                 "robot_body_leg3",
+                                 "robot_body_leg4"])
         self.insertBody('robot_leg1', 'cappedCylinder', [leg_radius, leg_length], 
-                        leg_density, euler=[90, 0, 0], mass=leg_mass,
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg1"],
                         pos=[body_position[0]+1.2, 
                              body_position[1]-leg_y_offset, 
                              body_position[2]-1.2])
         self.insertBody('robot_leg2', 'cappedCylinder', [leg_radius, leg_length],
-                        leg_density, euler=[90, 0, 0], mass=leg_mass,
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg2"],
                         pos=[body_position[0]-1.2, 
                              body_position[1]-leg_y_offset, 
                              body_position[2]-1.2])
         self.insertBody('robot_leg3', 'cappedCylinder', [leg_radius, leg_length], 
-                        leg_density, euler=[90, 0, 0], mass=leg_mass,
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg3"],
                         pos=[body_position[0]+1.2, 
                              body_position[1]-leg_y_offset, 
                              body_position[2]+1.2])
         self.insertBody('robot_leg4', 'cappedCylinder', [leg_radius, leg_length],
-                        leg_density, euler=[90, 0, 0], mass=leg_mass,
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg4"],
                         pos=[body_position[0]-1.2, 
                              body_position[1]-leg_y_offset, 
                              body_position[2]+1.2])
         
         # add joints
-#        self.insertJoint('robot_body', 'robot_leg1', 'ball', 
-#                         anchor=(body_position[0]+1.2, 
-#                                 body_position[1]-(body_size[1]/2), 
-#                                 body_position[2]-1.2))
-#        self.insertJoint('robot_body', 'robot_leg2', 'ball', 
-#                         anchor=(body_position[0]-1.2, 
-#                                 body_position[1]-(body_size[1]/2), 
-#                                 body_position[2]-1.2))
-#        self.insertJoint('robot_body', 'robot_leg3', 'ball', 
-#                         anchor=(body_position[0]+1.2, 
-#                                 body_position[1]-(body_size[1]/2), 
-#                                 body_position[2]+1.2))
-#        self.insertJoint('robot_body', 'robot_leg4', 'ball', 
-#                         anchor=(body_position[0]-1.2, 
-#                                 body_position[1]-(body_size[1]/2), 
-#                                 body_position[2]+1.2))
-        self.insertJoint('robot_body', 'robot_leg1', 'fixed', 
+        self.insertJoint('robot_body', 'robot_leg1', 'hinge', 
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
-                                 body_position[2]-1.2))
-        self.insertJoint('robot_body', 'robot_leg2', 'fixed', 
+                                 body_position[2]-1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg2', 'hinge', 
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
-                                 body_position[2]-1.2))
-        self.insertJoint('robot_body', 'robot_leg3', 'fixed', 
+                                 body_position[2]-1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg3', 'hinge', 
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
-                                 body_position[2]+1.2))
-        self.insertJoint('robot_body', 'robot_leg4', 'fixed', 
+                                 body_position[2]+1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg4', 'hinge', 
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
-                                 body_position[2]+1.2))
+                                 body_position[2]+1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
         
         self.centerOn('robot_body')
-#        self.insertFloor(y= -12.7)
         self._nSensorElements = 0
         self.sensorElements = []
         self.sensorGroupName = None

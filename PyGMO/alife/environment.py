@@ -345,8 +345,8 @@ class ALifeEnvironment(object):
                     g1 = g1 or (geom1.name.find(x) != -1)
                     g2 = g2 or (geom2.name.find(x) != -1)
                 if g1 and g2:
-                    return()
-
+                    return
+        
         # Check if the objects do collide
         contacts = ode.collide(geom1, geom2)
         
