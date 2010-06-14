@@ -31,6 +31,7 @@ from pybrain.rl.environments.ode.tools.configgrab import ConfigGrabber
 import ode
 import xode.parser
 import xml.dom.minidom as md
+import numpy as np
 
 ## ALifeEnvironment class
 #
@@ -64,6 +65,15 @@ class ALifeEnvironment(object):
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
+        ## @var asteroid_mass The mass of the asteroid.
+        #  Used when calculating the force of gravity that the asteroid exerts
+        #  on the bodies in the ODE space.
+        self.asteroid_mass = 100000.0
+        ## @var grav_constant The Gravitational constant (G) used to calculate
+        #  the force of gravity between bodies and the asteroid. Uses a simplified
+        #  model of gravity based on Newton's law, but the forces are only applied
+        #  to the bodies in the world, they do not exert any force on the asteroid.
+        self.grav_constant = 1.0
         ## @var friction Coulomb friction coefficient for contact joints 
         self.friction = 8.0
         ## @var step_count The current step number
@@ -85,7 +95,6 @@ class ALifeEnvironment(object):
             print "no <world> tag found in " + file_name + ". quitting."
             sys.exit()
         self.world = world.getODEObject()
-        self.world.setGravity((0, -9.81, 0))
         try:
             # filter all xode "space" objects from world, take only the first one
             space = filter(lambda x: isinstance(x, xode.parser.Space), world.getChildren())[0]
@@ -366,6 +375,38 @@ class ALifeEnvironment(object):
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())
             
+    ## Get the distance between the given body and the centre of the asteroid
+    #  @param body the body
+    #  @return distance between the given body and the centre of the asteroid (float)
+    def _distance_to_asteroid(self, body):
+        b = body.getPosition()
+        if not self.asteroid.getPosition() == (0, 0, 0):
+            # if the asteroid is not at the origin, change the body position, keeping
+            # it the same relative to the asteroid, but with the asteroid centred at
+            # the origin
+            a = self.asteroid.getPosition()
+            b = (b[0]+a[0], b[1]+a[1], b[2]+a[2])
+        # get the length of the body vector
+        return np.sqrt(b[0]**2 + b[1]**2 + b[2]**2)
+    
+    ## Get the direction from the given body to the centre of the asteroid,
+    #  represented as a unit vector
+    #  @param body the body
+    #  @return direction from the given body to the centre of the asteroid,
+    #          represented as a unit vector (float x, float y, float z)
+    def _direction_of_asteroid(self, body):
+        a = self.asteroid.getPosition()
+        b = body.getPosition()
+        # update the asteroid position, keeping its position the same relative to
+        # the body, but with the body centred at the origin
+        a = (a[0]-b[0], a[1]-b[1], a[2]-b[2])
+        # return a unit vector in the direction of the asteroid
+        length = np.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+        if length:
+            return (a[0]/length, a[1]/length, a[2]/length)
+        else:
+            return (0, 0, 0)
+            
     ## Get the list of body and geometry objects.
     #  @return list of (body, geometry) tuples.
     def get_objects(self):
@@ -382,6 +423,22 @@ class ALifeEnvironment(object):
         """ Here the ode physics is calculated by one step. """
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
+        
+        # update gravity
+        for (body, geom) in self.body_geom:
+            if body:
+                # calculate the distance to the centre of the asteroid
+                distance = self._distance_to_asteroid(body)
+                # get the direction of the force
+                direction = self._direction_of_asteroid(body)
+                # calculate the force of gravity, based on the 
+                # this distance and the masses of the asteroid and body
+                m1 = self.asteroid_mass
+                m2 = body.getMass().mass
+                f = self.grav_constant * m1 * m2 / distance**2
+                force = (f*direction[0], f*direction[1], f*direction[2])
+                # apply this force to the body
+                body.addForce(force)
         
         # Simulation step
         self.world.step(dt)
