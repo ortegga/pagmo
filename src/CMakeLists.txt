@@ -130,6 +130,19 @@ IF(ENABLE_IPOPT)
 	)
 ENDIF(ENABLE_IPOPT)
 
+# ANN Toolbox
+
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/")
+SET(ANN_FILES "" ) # Set to nothing
+IF(ENABLE_CUDA)
+	SET(ANN_FILES	ann_toolbox/cuda/test_lib.cu)
+	INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/cuda")
+	CUDA_ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+ELSE(ENABLE_CUDA)
+	ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+ENDIF(ENABLE_CUDA)
+
+
 # Boost  thread library.
 IF(UNIX)
 	SET(PAGMO_LIB_SRC_LIST ${PAGMO_LIB_SRC_LIST}

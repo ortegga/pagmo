@@ -74,6 +74,9 @@ OPTION(ENABLE_TESTS "Build test set." ON)
 # Build Option: build executable for the examples
 OPTION(BUILD_EXAMPLES "Creates executables for all scripts in folder examples" OFF)
 
+# Build Option: build executable for the examples
+OPTION(ENABLE_CUDA "Enable support for cuda" OFF)
+
 # If GSL support is requested, look for the library.
 IF(ENABLE_GSL)
 	FIND_LIBRARY(GSL_GSL_LIBRARY NAMES gsl)
@@ -176,6 +179,31 @@ IF(ENABLE_IPOPT)
 	INCLUDE_DIRECTORIES("${IPOPT_INCLUDE_DIR}")
 ENDIF(ENABLE_IPOPT)
 
+IF(ENABLE_CUDA)
+	# not sure if this is actually required
+	CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+	SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/cuda" ${CMAKE_MODULE_PATH})
+	FIND_PACKAGE(CUDA)
+	MESSAGE(STATUS "CUDA: ${CUDA}")
+	ADD_DEFINITIONS(-DPAGMO_ENABLE_CUDA)
+	INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
+	IF(CUDA_BUILD_EMULATION)
+		FIND_LIBRARY_LOCAL_FIRST(CUDA_CUDARTEMU_LIBRARY cudartemu "\"cudartemu\" library")
+		SET(CUDA_LIBRARIES ${CUDA_CUDARTEMU_LIBRARY})
+	IF(APPLE)
+		GET_FILENAME_COMPONENT(_cuda_path_to_cudart "${CUDA_CUDARTEMU_LIBRARY}" PATH)
+		IF(_cuda_path_to_cudart)
+			LIST(APPEND CUDA_LIBRARIES -Wl,-rpath "-Wl,${_cuda_path_to_cudart}")
+		ENDIF(cuda_path_to_cudart)
+	ENDIF(APPLE)
+	IF (CUDA_CUDA_LIBRARY)
+		SET(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_CUDA_LIBRARY})
+	ENDIF(CUDA_CUDA_LIBRARY)
+
+	MARK_AS_ADVANCED(CUDA_CUDARTEMU_LIBRARY)
+	ENDIF(CUDA_BUILD_EMULATION)
+ENDIF(ENABLE_CUDA)
+
 # Let's include Boost's headers.
 INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/external_headers")
 
@@ -255,7 +283,7 @@ ENDIF(BUILD_PYGMO)
 # Link main to pagmo_static library.
 IF(BUILD_MAIN)
 	ADD_EXECUTABLE(main main.cpp)
-	TARGET_LINK_LIBRARIES(main pagmo_static ${MANDATORY_LIBRARIES})
+	TARGET_LINK_LIBRARIES(main pagmo_static ann_toolbox ${MANDATORY_LIBRARIES})
 ENDIF(BUILD_MAIN)
 
 IF(ENABLE_TESTS)
