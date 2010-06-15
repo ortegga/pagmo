@@ -328,12 +328,18 @@ class ALifeViewer(object):
         glutMainLoop()
 
 if __name__ == "__main__":  
-    from environment import ALifeEnvironment 
+    from environment import ALifeEnvironment, Robot
+    import random
+    random.seed()
     print "Starting ALife"
     print "Press q to exit"
-    # todo: print more control information
+    print "Press the up arrow to zoom in"
+    print "Press the down arrow to zoom out"
+    print "Move the mouse to move the camera around the robot"
     e = ALifeEnvironment()
-    e.load_xode("models/robot.xode")
+    robot_position = [random.randint(-100, 100), 150, 0]
+    r = Robot("Robot", robot_position)
+    e.load_robot(r.get_xode())
     e.load_asteroid("models/asteroid.x3d")
     v = ALifeViewer()
     v.set_environment(e)

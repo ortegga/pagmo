@@ -22,16 +22,203 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   
 ## @package environment
-#  This module contains the ALifeEnvironment class. It loads the robot and
-#  asteroid models and puts them into an ODE world. The ODE world handles all 
-#  physics simulation.
+#  This module contains the ALifeEnvironment class and the Robot class. 
+#  The environment loads the robot and asteroid models and puts them into an ODE world.
+#  The ODE world handles all physics simulation.
 #  Code is based on the ode.environment module from PyBrain
 from pybrain.rl.environments.ode import sensors, actuators
-from pybrain.rl.environments.ode.tools.configgrab import ConfigGrabber
+from pybrain.rl.environments.ode.tools.xodetools import XODEfile
 import ode
 import xode.parser
 import xml.dom.minidom as md
 import numpy as np
+
+
+## StringWriter class
+# 
+#  Utility class that is basically just a string with a write method.
+#  This means it can be passed to a function expecting a file object,
+#  and instead of writing to a file the function will write to the string.
+#
+#  @author John Glover
+class StringWriter(object):
+    def __init__(self):
+        ## @var string The string being written to
+        self.string = ""
+        
+    ## Append text to this object's string
+    #  @param s The string to append to this object's string 
+    def write(self, s):
+        self.string += s
+        
+        
+## ConfigGrabber class
+#
+# A replacement for the pybrain.rl.environments.ode.tools.configgrab ConfigGrabber
+# class, that uses a string instead of a file.
+#
+# @author John Glover
+class ConfigGrabber:
+    # @param data The XODE data
+    # @param sectionId start looking for parameters only after this string has
+    #                  been encountered in the file.
+    # @param delim tuple of delimiters to identify tags
+    def __init__(self, data, sectionId="", delim=("[", "]")):
+        ## @var data The XODE data
+        self._data = data
+        ## @var sectionId start looking for parameters only after this string
+        self._sectionId = sectionId.strip()
+        ## @var delim tuple of delimiters to identify tags
+        self._delim = delim
+    
+    ## Get the value for the named parameter
+    #  @param name The parameter name
+    #  @return: The value of the parameter 
+    def getValue(self, name):
+        output = []
+        start = 0
+        # find section if one is given
+        if self._sectionId:
+            start = self._data.find(self._sectionId)
+            if start < 0:
+                return output
+            start += len(self._sectionId)
+        
+        # find tag with given name
+        parameter_tag = self._data.find(self._delim[0]+name+self._delim[1]+"\n", start)
+        if parameter_tag == -1:
+            return output
+        start = parameter_tag + len(self._delim[0]+name+self._delim[1]+"\n")
+        # find the next delimiter
+        end = self._data.find(self._delim[0], start)
+        if end == -1:
+            end = len(self._data)
+        # get every line between start and end of delimiters
+        for line in self._data[start:end].split("\n"):
+            if line:
+                output.append(line.strip())
+        return output
+
+
+## Robot class
+#
+#  Defines a robot that will be used in the ALife simulation.
+#  For now this is just a body (box) with 4 cylindrical legs. 
+#  Each leg is attached to the body with a hinge joint.
+#
+#  The constructor takes a optional 3D position vector, which 
+#  the body will be centred on.
+#
+#  Adds the ability to just return an XML-formatted string containing
+#  the XODE file, rather than having to write it to disc then read it.
+#   
+#  Code is based on the ode.tools.xodetools module from PyBrain
+#
+#  @author John Glover
+class Robot(XODEfile):
+    def __init__(self, name, position=[0.0, 150.0, 0.0]):
+        XODEfile.__init__(self, name)
+        # position of the body
+        # position of legs is defined relative to this
+        body_position = position
+        # mass of the body
+        body_mass = 1.0
+        # the density of the body
+        body_density = 3.0
+        # the size of the body
+        body_size = [4.0, 3.0, 4.0]
+        # radius of the legs
+        leg_radius = 0.25
+        # length of the legs
+        leg_length = 3.8
+        # density of the legs
+        leg_density = 3.0
+        # mass of the legs
+        leg_mass = 1.0
+        # offset used to calculate leg y-axis coordinate
+        # the last term makes the legs recede into the body slightly, looks
+        # a bit better
+        leg_y_offset = (leg_length/2) + (body_size[1]/2) - min(leg_radius*2, 1.0)
+        
+        # add body objects
+        self.insertBody('robot_body', 'box', body_size, body_density, 
+                        pos=body_position, mass=body_mass, 
+                        passSet=["robot_body_leg1",
+                                 "robot_body_leg2",
+                                 "robot_body_leg3",
+                                 "robot_body_leg4"])
+        self.insertBody('robot_leg1', 'cappedCylinder', [leg_radius, leg_length], 
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg1"],
+                        pos=[body_position[0]+1.2, 
+                             body_position[1]-leg_y_offset, 
+                             body_position[2]-1.2])
+        self.insertBody('robot_leg2', 'cappedCylinder', [leg_radius, leg_length],
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg2"],
+                        pos=[body_position[0]-1.2, 
+                             body_position[1]-leg_y_offset, 
+                             body_position[2]-1.2])
+        self.insertBody('robot_leg3', 'cappedCylinder', [leg_radius, leg_length], 
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg3"],
+                        pos=[body_position[0]+1.2, 
+                             body_position[1]-leg_y_offset, 
+                             body_position[2]+1.2])
+        self.insertBody('robot_leg4', 'cappedCylinder', [leg_radius, leg_length],
+                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
+                        passSet=["robot_body_leg4"],
+                        pos=[body_position[0]-1.2, 
+                             body_position[1]-leg_y_offset, 
+                             body_position[2]+1.2])
+        
+        # add joints
+        self.insertJoint('robot_body', 'robot_leg1', 'hinge', 
+                         anchor=(body_position[0]+1.2, 
+                                 body_position[1]-(body_size[1]/2), 
+                                 body_position[2]-1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg2', 'hinge', 
+                         anchor=(body_position[0]-1.2, 
+                                 body_position[1]-(body_size[1]/2), 
+                                 body_position[2]-1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg3', 'hinge', 
+                         anchor=(body_position[0]+1.2, 
+                                 body_position[1]-(body_size[1]/2), 
+                                 body_position[2]+1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        self.insertJoint('robot_body', 'robot_leg4', 'hinge', 
+                         anchor=(body_position[0]-1.2, 
+                                 body_position[1]-(body_size[1]/2), 
+                                 body_position[2]+1.2),
+                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+        
+        self.centerOn('robot_body')
+        self._nSensorElements = 0
+        self.sensorElements = []
+        self.sensorGroupName = None
+        
+    ## Get the XODE (xml-formatted) data for this robot as a string
+    #  @return XODE (xml-formatted) data for this robot as a string
+    def get_xode(self):
+        # get main XML string containing body/geometry and joint information
+        xml = StringWriter()
+        self.write(xml)
+        # get custom parameters (passpairs, etc)
+        custom = StringWriter()
+        self.writeCustomParameters(custom)
+        # format xml
+        xode = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xode += '<xode version="1.0r23" name="' + self._xodename + '"\n'
+        xode += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' 
+        xode += 'xsi:noNamespaceSchemaLocation='
+        xode += '"http://tanksoftware.com/xode/1.0r23/xode.xsd">\n\n'
+        xode += xml.string
+        xode += '</xode>\n'
+        xode += custom.string
+        return xode
+
 
 ## ALifeEnvironment class
 #
@@ -79,29 +266,25 @@ class ALifeEnvironment(object):
         ## @var step_count The current step number
         self.step_count = 0
     
-    ## Loads the robot XODE file (xml format) and parses it.
-    #  @param file_name The file path to the .xode file for the robot.
+    ## Loads the robot XODE data (xml format) and parses it.
+    #  @param data The XODE data for the robot.
     #  @param reload Whether or not to reload sensor data .
-    def load_xode(self, file_name, reload=False):
-        f = file(file_name)
+    def load_robot(self, data, reload=False):
         p = xode.parser.Parser()
-        self.root = p.parseFile(f)
-        f.close()
+        self.root = p.parseString(data)
         try:
             # filter all xode "world" objects from root, take only the first one
             world = filter(lambda x: isinstance(x, xode.parser.World), self.root.getChildren())[0]
         except IndexError:
             # malicious format, no world tag found
-            print "no <world> tag found in " + file_name + ". quitting."
-            sys.exit()
+            raise Exception("No <world> tag found in XODE data")
         self.world = world.getODEObject()
         try:
             # filter all xode "space" objects from world, take only the first one
             space = filter(lambda x: isinstance(x, xode.parser.Space), world.getChildren())[0]
         except IndexError:
             # malicious format, no space tag found
-            print "no <space> tag found in " + file_name + ". quitting."
-            sys.exit()
+            raise Exception("no <space> tag found in XODE data")
         self.space = space.getODEObject()
                 
         # load bodies and geoms for painting
@@ -109,7 +292,7 @@ class ALifeEnvironment(object):
         self._parseBodies(self.root)
 
         # now parse the additional parameters at the end of the xode file
-        self._loadConfig(file_name, reload)
+        self._loadConfig(data, reload)
         
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a xode trimesh object, stored in the variable self.asteroid.
@@ -204,22 +387,20 @@ class ALifeEnvironment(object):
         self._parseBodies(parser.parseString(root.toxml()))
         
         # check that asteroid geometry was created successfully
-        # todo: check triangle count
+        # todo: check triangle count: self.asteroid.getTriangleCount()
         # todo: give more detail in exception
         if not self.asteroid:
             raise Exception("NoAsteroid")
-#        else:
-#            print "Asteroid created, %d triangles" % (self.asteroid.getTriangleCount())
         # add asteroid to current space
         self.asteroid.getSpace().remove(self.asteroid)
         self.space.add(self.asteroid)
     
     ## Load the XODE config.
-    #  @param filename The file path to the config file (XODE file).
+    #  @param data The XODE data string
     #  @param reload Whether or not to reload sensor data.  
-    def _loadConfig(self, filename, reload=False):
+    def _loadConfig(self, data, reload=False):
         # parameters are given in (our own brand of) config-file syntax
-        self.config = ConfigGrabber(filename, sectionId="<!--odeenvironment parameters", delim=("<", ">"))
+        self.config = ConfigGrabber(data, sectionId="<!--odeenvironment parameters", delim=("<", ">"))
 
         # <passpairs>
         self.passpairs = []
