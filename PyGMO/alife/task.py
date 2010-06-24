@@ -56,7 +56,7 @@ class ALifeAgent(object):
 class ALifeTask(EpisodicTask):
     def __init__(self, env):
         EpisodicTask.__init__(self, env)
-        self._steps_per_action = 50 # 4 seconds @ 25 fps
+        self._steps_per_action = 50 # 2 seconds @ 25 fps
         self._step = 0
         self._robot = env.get_robot_body()
         self._prev_robot_position = self._robot.getPosition()
