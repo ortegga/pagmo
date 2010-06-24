@@ -100,6 +100,31 @@ class ConfigGrabber:
         return output
 
 
+class XODEObject(XODEfile):
+    def __init__(self, name):
+        XODEfile.__init__(self, name)
+        
+    ## Get the XODE (xml-formatted) data for this object as a string
+    #  @return XODE (xml-formatted) data for this object as a string
+    def get_xode(self):
+        # get main XML string containing body/geometry and joint information
+        xml = StringWriter()
+        self.write(xml)
+        # get custom parameters (passpairs, etc)
+        custom = StringWriter()
+        self.writeCustomParameters(custom)
+        # format xml
+        xode = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xode += '<xode version="1.0r23" name="' + self._xodename + '"\n'
+        xode += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' 
+        xode += 'xsi:noNamespaceSchemaLocation='
+        xode += '"http://tanksoftware.com/xode/1.0r23/xode.xsd">\n\n'
+        xode += xml.string
+        xode += '</xode>\n'
+        xode += custom.string
+        return xode
+        
+        
 ## Robot class
 #
 #  Defines a robot that will be used in the ALife simulation.
@@ -115,9 +140,9 @@ class ConfigGrabber:
 #  Code is based on the ode.tools.xodetools module from PyBrain
 #
 #  @author John Glover
-class Robot(XODEfile):
+class Robot(XODEObject):
     def __init__(self, name, position=[0.0, 150.0, 0.0]):
-        XODEfile.__init__(self, name)
+        XODEObject.__init__(self, name)
         # position of the body
         # position of legs is defined relative to this
         body_position = position
@@ -174,51 +199,35 @@ class Robot(XODEfile):
         
         # add joints
         self.insertJoint('robot_body', 'robot_leg1', 'hinge', 
+                         name="robot_body_leg1",
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]-1.2),
                          axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
         self.insertJoint('robot_body', 'robot_leg2', 'hinge', 
+                         name="robot_body_leg2",
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]-1.2),
                          axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
-        self.insertJoint('robot_body', 'robot_leg3', 'hinge', 
+        self.insertJoint('robot_body', 'robot_leg3', 'hinge',
+                         name="robot_body_leg3", 
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]+1.2),
                          axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
-        self.insertJoint('robot_body', 'robot_leg4', 'hinge', 
+        self.insertJoint('robot_body', 'robot_leg4', 'hinge',
+                         name="robot_body_leg4", 
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]+1.2),
                          axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
         
         self.centerOn('robot_body')
-        self._nSensorElements = 0
-        self.sensorElements = []
-        self.sensorGroupName = None
+#        self._nSensorElements = 0
+#        self.sensorElements = []
+#        self.sensorGroupName = None
         
-    ## Get the XODE (xml-formatted) data for this robot as a string
-    #  @return XODE (xml-formatted) data for this robot as a string
-    def get_xode(self):
-        # get main XML string containing body/geometry and joint information
-        xml = StringWriter()
-        self.write(xml)
-        # get custom parameters (passpairs, etc)
-        custom = StringWriter()
-        self.writeCustomParameters(custom)
-        # format xml
-        xode = '<?xml version="1.0" encoding="UTF-8"?>\n'
-        xode += '<xode version="1.0r23" name="' + self._xodename + '"\n'
-        xode += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' 
-        xode += 'xsi:noNamespaceSchemaLocation='
-        xode += '"http://tanksoftware.com/xode/1.0r23/xode.xsd">\n\n'
-        xode += xml.string
-        xode += '</xode>\n'
-        xode += custom.string
-        return xode
-
 
 ## ALifeEnvironment class
 #
@@ -241,8 +250,12 @@ class ALifeEnvironment(object):
         self.asteroid = None
         ## @var robot_body The robot body object, defined in _parseBodies
         self.robot_body = None
-        ## @var textures the textures dictionary
+        ## @var textures The textures dictionary
         self.textures = {}
+        ## @var experiments List of experiments performed in this environment
+        self._experiments = [] 
+        ## @var joints The robot's joints
+        self.joints = []
         ## @var sensors sensor list
         self.sensors = []
         ## @var excludesensors list of sensors to exclude
@@ -261,6 +274,10 @@ class ALifeEnvironment(object):
         #  model of gravity based on Newton's law, but the forces are only applied
         #  to the bodies in the world, they do not exert any force on the asteroid.
         self.grav_constant = 1.0
+        ## @var max_force The maximum force of gravity that can be applied to a body.
+        #  There seems to be a problem with ODE collision detection if the gravitational
+        #  force is too large. This value is just based on trial and error.
+        self.max_force = 290 
         ## @var friction Coulomb friction coefficient for contact joints 
         self.friction = 8.0
         ## @var step_count The current step number
@@ -290,7 +307,7 @@ class ALifeEnvironment(object):
         # load bodies and geoms for painting
         self.body_geom = [] 
         self._parseBodies(self.root)
-
+        
         # now parse the additional parameters at the end of the xode file
         self._loadConfig(data, reload)
         
@@ -435,7 +452,6 @@ class ALifeEnvironment(object):
                         break
                 
         if not reload:
-            # add the JointSensor as default
             self.sensors = [] 
             ## self.addSensor(self._jointSensor)
             
@@ -493,6 +509,7 @@ class ALifeEnvironment(object):
         # special cases for joints: universal, fixed, amotor
         elif isinstance(node, xode.joint.Joint):
             joint = node.getODEObject()
+            self.joints.append(joint)
             
             if type(joint) == ode.UniversalJoint:
                 # insert an additional AMotor joint to read the angles from and to add torques
@@ -597,9 +614,25 @@ class ALifeEnvironment(object):
     # @return robot body object
     def get_robot_body(self):
         return self.robot_body
+    
+    ## Get the position of the robot body
+    # @return position of the robot body
+    def get_robot_position(self):
+        return self.robot_body.getPosition()
+    
+    ## Get the robot's joints
+    #  @return list of robot's joints
+    def get_robot_joints(self):
+        return self.joints
+    
+    ## Add a new experiment to this environment
+    #  @param experiment The experiment to add
+    def add_experiment(self, experiment):
+        self._experiments.append(experiment) 
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
+    #  @return The current step count
     def step(self, dt=0.04):
         """ Here the ode physics is calculated by one step. """
         # Detect collisions and create contact joints
@@ -617,8 +650,17 @@ class ALifeEnvironment(object):
                 m1 = self.asteroid_mass
                 m2 = body.getMass().mass
                 f = self.grav_constant * m1 * m2 / distance**2
-                force = (f*direction[0], f*direction[1], f*direction[2])
+                # check that the forces generated by body and asteroid masses are
+                # not too large (seems to be a problem with ODE collision detection)
+                # The maximum force value is currently just based on trial and error.
+                # todo: can collision detected be fixed for large forces?
+                #       smaller ODE step size?
+                if f > self.max_force:
+                    print "Warning: Gravitational force", f, "is larger than the",
+                    print "current maximum force", "(" + str(self.max_force) + ")"
+                    f = self.max_force
                 # apply this force to the body
+                force = (f*direction[0], f*direction[1], f*direction[2])
                 body.addForce(force)
         
         # Simulation step
@@ -630,6 +672,10 @@ class ALifeEnvironment(object):
         # update all sensors
         for s in self.sensors:
             s._update()
+            
+        # update all experiments
+        for e in self._experiments:
+            e.update()
         
         # increase step counter
         self.step_count += 1

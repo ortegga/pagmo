@@ -326,16 +326,18 @@ class ALifeViewer(object):
     ## Start the main GLUT rendering loop
     def start(self):
         glutMainLoop()
-
+        
+    ## Prints the key/mouse controls for this viewer object
+    def print_controls(self):
+        print "Press q to exit"
+        print "Press the up arrow to zoom in"
+        print "Press the down arrow to zoom out"
+        print "Move the mouse to move the camera around the robot"
+        
 if __name__ == "__main__":  
     from environment import ALifeEnvironment, Robot
     import random
     random.seed()
-    print "Starting ALife"
-    print "Press q to exit"
-    print "Press the up arrow to zoom in"
-    print "Press the down arrow to zoom out"
-    print "Move the mouse to move the camera around the robot"
     e = ALifeEnvironment()
     robot_position = [random.randint(-100, 100), 150, 0]
     r = Robot("Robot", robot_position)
@@ -343,4 +345,5 @@ if __name__ == "__main__":
     e.load_asteroid("models/asteroid.x3d")
     v = ALifeViewer()
     v.set_environment(e)
+    v.print_controls()
     v.start()
