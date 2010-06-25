@@ -10,6 +10,7 @@ PDFLATEX := pdflatex
 
 all: $(FEATURES).tex
 	$(PDFLATEX) $(FEATURES).tex
+	$(PDFLATEX) $(FEATURES).tex
 
 
 clean:
