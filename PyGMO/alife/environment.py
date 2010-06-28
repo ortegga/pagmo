@@ -42,6 +42,7 @@ import numpy as np
 #
 #  @author John Glover
 class StringWriter(object):
+    ## Constructor
     def __init__(self):
         ## @var string The string being written to
         self.string = ""
@@ -59,9 +60,10 @@ class StringWriter(object):
 #
 # @author John Glover
 class ConfigGrabber:
+    ## Constructor
     # @param data The XODE data
     # @param sectionId start looking for parameters only after this string has
-    #                  been encountered in the file.
+    # been encountered in the file.
     # @param delim tuple of delimiters to identify tags
     def __init__(self, data, sectionId="", delim=("[", "]")):
         ## @var data The XODE data
@@ -99,8 +101,14 @@ class ConfigGrabber:
                 output.append(line.strip())
         return output
 
-
+## XODEObject class
+#
+#  Extends XODEfile objects, adding the ability to return the XODE
+#  data as a string so that it does not need to be written to disc.
+#
+#  @author John Glover
 class XODEObject(XODEfile):
+    ## Constructor
     def __init__(self, name):
         XODEfile.__init__(self, name)
         
@@ -141,6 +149,10 @@ class XODEObject(XODEfile):
 #
 #  @author John Glover
 class Robot(XODEObject):
+    ## Constructor
+    #  @param name The string containing the name of the robot
+    #  @param position A 3-tuple giving the initial position of the
+    #                  robot body
     def __init__(self, name, position=[0.0, 150.0, 0.0]):
         XODEObject.__init__(self, name)
         # position of the body
@@ -224,9 +236,6 @@ class Robot(XODEObject):
                          axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
         
         self.centerOn('robot_body')
-#        self._nSensorElements = 0
-#        self.sensorElements = []
-#        self.sensorGroupName = None
         
 
 ## ALifeEnvironment class
@@ -237,6 +246,7 @@ class Robot(XODEObject):
 #
 #  @author John Glover
 class ALifeEnvironment(object):
+    ## Constructor
     def __init__(self):
         ## @var root XODE root node, defined in load_xode
         self.root = None
@@ -256,12 +266,6 @@ class ALifeEnvironment(object):
         self._experiments = [] 
         ## @var joints The robot's joints
         self.joints = []
-        ## @var sensors sensor list
-        self.sensors = []
-        ## @var excludesensors list of sensors to exclude
-        self.excludesensors = []
-        ## @var actuators actuators list
-        self.actuators = []
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
@@ -634,10 +638,7 @@ class ALifeEnvironment(object):
     #  @param dt The step size. 
     #  @return The current step count
     def step(self, dt=0.04):
-        """ Here the ode physics is calculated by one step. """
-        # Detect collisions and create contact joints
-        self.space.collide((self.world, self.contactgroup), self._near_callback)
-        
+        """ Here the ode physics is calculated by one step. """       
         # update gravity
         for (body, geom) in self.body_geom:
             if body:
@@ -662,6 +663,9 @@ class ALifeEnvironment(object):
                 # apply this force to the body
                 force = (f*direction[0], f*direction[1], f*direction[2])
                 body.addForce(force)
+                
+        # Detect collisions and create contact joints
+        self.space.collide((self.world, self.contactgroup), self._near_callback)
         
         # Simulation step
         self.world.step(dt)
