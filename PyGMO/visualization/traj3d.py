@@ -315,6 +315,9 @@ class traj3d:
       glMatrixMode( GL_MODELVIEW )
       glLoadIdentity()
 
+      # Redraw
+      self.__display()
+
    def reshape( self, width, height ):
       """
       Provokes a window resize.
