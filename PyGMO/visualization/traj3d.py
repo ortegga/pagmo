@@ -275,9 +275,11 @@ class traj3d:
 
       # See if must update
       t  = time.time()
-      dt = - self.__time
+      dt = t - self.__time
       if self.__mindt > 0. and dt < self.__mindt:
          return;
+      self.__time = t
+      print(dt)
 
       # Update objects
       for obj in self.objects:
