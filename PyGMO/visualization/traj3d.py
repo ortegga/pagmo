@@ -279,7 +279,6 @@ class traj3d:
       if self.__mindt > 0. and dt < self.__mindt:
          return;
       self.__time = t
-      print(dt)
 
       # Update objects
       for obj in self.objects:
