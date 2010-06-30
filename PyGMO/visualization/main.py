@@ -43,6 +43,7 @@ class TrajectoryVisualizer:
 
       # Create opengl context
       self.engine = traj3d.traj3d()
+      self.engine.add( traj3d.Trajectory() )
 
    def start( self ):
       self.engine.start()

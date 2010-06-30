@@ -26,6 +26,7 @@
 # General imports
 import sys
 import time
+import math
 
 # General OpenGL imports
 from OpenGL.GL   import *
@@ -94,6 +95,24 @@ class Trajectory(Object):
    def __init( self ):
       Object.__init__( self )
 
+   # Conics
+   #  A x^2 + B x y + C y^2 + D x + E y + F = 0
+   def display( self ):
+      glColor3d( 1., 1., 1. )
+      glBegin( GL_LINE_STRIP )
+
+      e        = 0.5
+      p        = (1 + e) / e
+      ep       = e * p
+      theta    = 0.
+      finish   = math.pi * 2.
+      step     = math.pi * 2. / 100.
+      while theta < finish:
+         r = ep / ( 1. + e * math.cos(theta) )
+         glVertex( r*math.cos(theta), r*math.sin(theta), 0. )
+         theta += step
+
+      glEnd()
 
 
 ###############################################################################
@@ -289,12 +308,12 @@ class traj3d:
       """
       Handles window resizes.
       """
-      #glViewport( 0, 0, width, height )
-      #glMatrixMode( GL_PROJECTION )
-      #glLoadIdentity()
+      glViewport( 0, 0, width, height )
+      glMatrixMode( GL_PROJECTION )
+      glLoadIdentity()
       #gluPerspective( 60.0, float(width)/height, .1, 1000. )
-      #glMatrixMode( GL_MODELVIEW )
-      #glLoadIdentity()
+      glMatrixMode( GL_MODELVIEW )
+      glLoadIdentity()
 
    def reshape( self, width, height ):
       """
