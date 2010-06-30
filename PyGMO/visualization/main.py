@@ -26,7 +26,7 @@
 __version__ = "0.1"
 
 
-from traj3d import *
+import traj3d
 
 
 """
@@ -37,13 +37,46 @@ class TrajectoryVisualizer:
    def __init__( self, data={} ):
       """
       """
-      self.data = data
+      self.__axes = None
+      self.__origin = None
+      self.__data = data
 
       # Create opengl context
-      self.engine = traj3d()
+      self.engine = traj3d.traj3d()
+
+   def start( self ):
       self.engine.start()
 
+   def axes( self, enable ):
+      if enable and self.__axes is None:
+         #self.__axes = traj3d.Axes()
+         self.engine.add( self.__axes )
+      elif not enable and self.__axes is not None:
+         self.engine.remove( self.__axes )
+         self.__axes = None
 
+   def origin( self, enable ):
+      if enable and self.__origin is None:
+         self.__origin = traj3d.Origin()
+         self.engine.add( self.__origin )
+      elif not enable and self.__origin is not None:
+         self.engine.remove( self.__origin )
+         self.__origin = None
+
+# Run some tests
 if __name__ == "__main__":
-   #print("Please load as a module.")
+   # Create the engine
    traj = TrajectoryVisualizer()
+
+   # Create some stuff
+   traj.origin( True )
+   #traj.axes( True )
+
+   # Start the engine
+   traj.start()
+
+
+
+
+
+

@@ -23,27 +23,161 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
+# General imports
+import sys
+import time
+
+# General OpenGL imports
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
 
+# OpenGL VBO imports
+#from OpenGL.arrays.arraydatatype import ArrayDatatype
+#from OpenGL.arrays.formathandler import FormatHandler 
+#from OpenGL.GL.ARB import vertex_buffer_object 
 
-"""
-"""
+
+###############################################################################
+#
+#     ENGINE OBJECTS
+#
+###############################################################################
+class Object:
+   """
+   Core object
+   """
+
+   def __init__( self ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
+   def display( self ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
+   def update( self, dt ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
+
+###############################################################################
+class ObjectGroup:
+   """
+   Group of objects.
+   """
+
+   def __init__( self ):
+      self.__objs = []
+
+   def display( self ):
+      for obj in self.__objs:
+         obj.display()
+
+   def update( self, dt ):
+      for obj in self.__objs:
+         obj.update( dt )
+
+   def add( self, obj ):
+      self.__objs.append( obj )
+
+   def remove( self, obj ):
+      self.__objs.remove( obj )
+
+
+###############################################################################
+class Trajectory(Object):
+   """
+   Represents a 3D trajectory.
+   """
+
+   def __init( self ):
+      Object.__init__( self )
+
+
+
+###############################################################################
+class Origin(Object):
+   """
+   Represents 3 axes on the origin.
+   """
+
+   xColor = 1.0, 0.0, 0.0
+   yColor = 0.0, 1.0, 0.0
+   zColor = 0.0, 0.0, 1.0
+   stipple = 0x0f0f
+
+   def __init__( self, expanse=20 ):
+      Object.__init__( self )
+      self.expanse = expanse
+
+   def display( self ):
+      glLineStipple(1, self.stipple)
+      glDisable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glColor3d(*self.xColor)
+      glVertex3d(0, 0, 0)
+      glVertex3d(self.expanse, 0, 0)
+      glEnd()
+      glEnable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glVertex3d(0, 0, 0)
+      glVertex3d(-self.expanse, 0, 0)
+      glEnd()
+      glDisable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glColor3d(*self.yColor)
+      glVertex3d(0, 0, 0)
+      glVertex3d(0, self.expanse, 0)
+      glEnd()
+      glEnable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glVertex3d(0, 0, 0)
+      glVertex3d(0, -self.expanse, 0)
+      glEnd()
+      glDisable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glColor3d(*self.zColor)
+      glVertex3d(0, 0, 0)
+      glVertex3d(0, 0, self.expanse)
+      glEnd()
+      glEnable(GL_LINE_STIPPLE)
+      glBegin(GL_LINES)
+      glVertex3d(0, 0, 0)
+      glVertex3d(0, 0, -self.expanse)
+      glEnd()
+      glDisable(GL_LINE_STIPPLE)
+
+
+
+###############################################################################
+#
+#        ENGINE ITSELF
+#
+###############################################################################
 class traj3d:
+   """
+   Core class representing the entire 3d trajectory engine.
+   """
 
    def __init__( self, title="3D Trajectory Visualizer", width=640, height=480 ):
       """
-      Initalizes.
+      Initalizes the engine.
       """
 
       # Initialize GLUT
       glutInit()
 
       # Set variables
+      self.objects = []  # No objects yet
       self.width  = width
       self.height = height
       self.title  = title
+
+      # Misc variables
+      self.__time = 0
+      self.__quit = False  # Do not exit yet
+      self.__mindt = 0.
 
       # Set up some stuff
       glShadeModel( GL_FLAT )
@@ -63,9 +197,9 @@ class traj3d:
       self.reshape( width, height )
 
       # Set the callbacks
-      glutDisplayFunc(     self.display )
-      #glutIdleFunc(        self.__idle )
-      glutReshapeFunc(     self.reshape )
+      glutDisplayFunc(     self.__display )
+      glutIdleFunc(        self.__idle )
+      glutReshapeFunc(     self.__reshape )
       #glutKeyboardFunc(    self.__keyboard )
       #glutSpecialFunc(     self.__special )
       #glutMouseFunc(       self.__mouse )
@@ -82,34 +216,90 @@ class traj3d:
       """
       Starts the main loop.
       """
+      self.__time = time.time()
       glutMainLoop()
 
 
+   def terminate( self ):
+      """
+      Terminates the engine.
+      """
+      sys.exit()
+
+
+   def add( self, obj ):
+      """
+      Adds an object to the engine.
+      """
+      self.objects.append( obj )
+
+
+   def remove( self, obj ):
+      """
+      Removes an object from the engine.
+      """
+      self.objects.remove( obj )
+
+
    def clear( self ):
+      """
+      Clears the screen.
+      """
       glClear( GL_COLOR_BUFFER_BIT )
 
 
    def flush( self ):
+      """
+      Flushes data and swaps buffers.
+      """
       glFlush()
       glutSwapBuffers()
 
 
-   def display( self ):
+   def __display( self ):
+      """
+      Updates the display.
+      """
       self.clear()
+      for obj in self.objects:
+         obj.display()
       self.flush()
 
 
-   def reshape( self, width=640, height=480 ):
+   def __idle( self ):
       """
-      Resizes the window.
+      Handles object updating.
       """
-      glViewport( 0, 0, width, height )
-      glMatrixMode( GL_PROJECTION )
-      glLoadIdentity()
-      gluPerspective( 60.0, float(width)/height, .1, 1000. )
-      glMatrixMode( GL_MODELVIEW )
-      glLoadIdentity()
+      if self.__quit:
+         self.terminate()
 
+      # See if must update
+      t  = time.time()
+      dt = - self.__time
+      if self.__mindt > 0. and dt < self.__mindt:
+         return;
+
+      # Update objects
+      for obj in self.objects:
+         obj.update( dt )
+
+
+   def __reshape( self, width=640, height=480 ):
+      """
+      Handles window resizes.
+      """
+      #glViewport( 0, 0, width, height )
+      #glMatrixMode( GL_PROJECTION )
+      #glLoadIdentity()
+      #gluPerspective( 60.0, float(width)/height, .1, 1000. )
+      #glMatrixMode( GL_MODELVIEW )
+      #glLoadIdentity()
+
+   def reshape( self, width, height ):
+      """
+      Provokes a window resize.
+      """
+      self.__reshape( width, height )
 
 
 
