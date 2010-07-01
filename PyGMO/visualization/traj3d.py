@@ -386,6 +386,11 @@ class traj3d:
       """
       Handles window resizes.
       """
+      glutSetWindow( self.window )
+      glutReshapeWindow( width, height )
+      self.width  = width
+      self.height = height
+      glViewport( 0, 0, width, height )
       # Update camera
       self.__camera.refresh()
       # Redraw
