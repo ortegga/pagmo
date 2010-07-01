@@ -172,7 +172,7 @@ class Origin(Object):
 
 ###############################################################################
 #
-#        ENGINE ITSELF
+#        CAMERA
 #
 ###############################################################################
 class Camera:
@@ -280,7 +280,7 @@ class traj3d:
       glutDisplayFunc(     self.__display )
       glutIdleFunc(        self.__idle )
       glutReshapeFunc(     self.__reshape )
-      #glutKeyboardFunc(    self.__keyboard )
+      glutKeyboardFunc(    self.__keyboard )
       #glutSpecialFunc(     self.__special )
       glutMouseFunc(       self.__mouse )
       #glutMouseWHeelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
@@ -289,8 +289,26 @@ class traj3d:
       #glutVisibilityFunc(  self.__visibility )
       #glutEntryFunc(       self.__entry )
 
+      # Set keymap
+      self.keymap = {}
+      self.keymap[ 'q' ]      = self.__key_exit
+      self.keymap[ '\033' ]   = self.__key_exit
+      self.keymap[ 'z' ]      = self.__key_zoomIn
+      self.keymap[ 'Z' ]      = self.__key_zoomOut
+
       # Clear the window
       self.clear()
+
+
+   # Keybindings
+   def __key_exit( self, x, y ):
+      self.terminate()
+   def __key_zoomIn( self, x, y ):
+      self.__camera.zoomIn()
+      self.redisplay()
+   def __key_zoomOut( self, x, y ):
+      self.__camera.zoomOut()
+      self.redisplay()
 
 
    def start( self ):
@@ -395,6 +413,14 @@ class traj3d:
       self.__camera.refresh()
       # Redraw
       self.redisplay()
+
+
+   def __keyboard( self, key, x, y ):
+      """
+      Handles key presses.
+      """
+      if self.keymap.has_key( key ):
+         self.keymap[key]( x, y )
 
 
    def __mouse( self, button, state, x, y ):
