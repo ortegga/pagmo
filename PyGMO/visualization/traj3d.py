@@ -32,6 +32,7 @@ import math
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
+from OpenGL.GLUT.freeglut import *
 
 # OpenGL VBO imports
 #from OpenGL.arrays.arraydatatype import ArrayDatatype
@@ -174,6 +175,64 @@ class Origin(Object):
 #        ENGINE ITSELF
 #
 ###############################################################################
+class Camera:
+   
+   def __init__( self, rho=1., center=(0., 0., 0.), up=(0., 0., 1.), zoom=1. ):
+      self.center = center
+      self.up     = up
+      self.zoom   = zoom
+
+      # Internal eye stuff
+      self.rho    = rho
+      self.theta  = 0.
+      self.phi    = 0.
+
+      # Calculate
+      self.__calc()
+
+   def __calc( self ):
+      r = self.rho * math.cos( self.phi )
+      z = self.rho * math.sin( self.phi )
+      self.eye = ( r * math.cos( self.theta ),
+                   r * math.sin( self.theta ),
+                   z )
+
+   def zoomIn( self, factor=math.sqrt(2.) ):
+      self.zoom *= factor
+
+   def zoomOut( self, factor=math.sqrt(2.) ):
+      self.zoom /= factor
+
+   def rotate( self, theta, phi ):
+      self.theta += theta
+      self.phi   += phi
+      self.__calc()
+
+   def absolute( self, theta, phi ):
+      self.theta  = theta
+      self.phi    = phi
+      self.__calc()
+
+   def refresh( self ):
+      self.__calc()
+
+   def view( self ):
+      glMatrixMode( GL_PROJECTION )
+      glLoadIdentity()
+      gluLookAt( self.center[0], self.center[1], self.center[2],
+            self.eye[0], self.eye[1], self.eye[2],
+            self.up[0], self.up[1], self.up[2] )
+      glScalef( self.zoom, self.zoom, self.zoom )
+
+   def update( self, dt ):
+      return
+
+
+###############################################################################
+#
+#        ENGINE ITSELF
+#
+###############################################################################
 class traj3d:
    """
    Core class representing the entire 3d trajectory engine.
@@ -197,6 +256,8 @@ class traj3d:
       self.__time = 0
       self.__quit = False  # Do not exit yet
       self.__mindt = 0.
+      self.__buttons = []
+      self.__camera = Camera()
 
       # Set up some stuff
       glShadeModel( GL_FLAT )
@@ -213,7 +274,7 @@ class traj3d:
       glutSetWindow( self.window )
 
       # Resize window
-      self.reshape( width, height )
+      #self.reshape( width, height )
 
       # Set the callbacks
       glutDisplayFunc(     self.__display )
@@ -221,8 +282,9 @@ class traj3d:
       glutReshapeFunc(     self.__reshape )
       #glutKeyboardFunc(    self.__keyboard )
       #glutSpecialFunc(     self.__special )
-      #glutMouseFunc(       self.__mouse )
-      #glutMotionFunc(      self.__motion )
+      glutMouseFunc(       self.__mouse )
+      #glutMouseWHeelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
+      glutMotionFunc(      self.__motion )
       #glutPassiveMotionFunc( self.__passive )
       #glutVisibilityFunc(  self.__visibility )
       #glutEntryFunc(       self.__entry )
@@ -235,6 +297,8 @@ class traj3d:
       """
       Starts the main loop.
       """
+      if self.__camera == None:
+         raise "No camera"
       self.__time = time.time()
       glutMainLoop()
 
@@ -244,6 +308,13 @@ class traj3d:
       Terminates the engine.
       """
       sys.exit()
+
+
+   def camera( self, cam ):
+      """
+      Sets the camera
+      """
+      self.camera = cam
 
 
    def add( self, obj ):
@@ -279,6 +350,9 @@ class traj3d:
       """
       Updates the display.
       """
+      # Camera
+      self.__camera.view()
+      # Objects
       self.clear()
       for obj in self.objects:
          obj.display()
@@ -299,6 +373,10 @@ class traj3d:
          return;
       self.__time = t
 
+      # Update camera
+      if self.__camera != None:
+         self.__camera.update( dt )
+
       # Update objects
       for obj in self.objects:
          obj.update( dt )
@@ -308,15 +386,46 @@ class traj3d:
       """
       Handles window resizes.
       """
-      glViewport( 0, 0, width, height )
-      glMatrixMode( GL_PROJECTION )
-      glLoadIdentity()
-      #gluPerspective( 60.0, float(width)/height, .1, 1000. )
-      glMatrixMode( GL_MODELVIEW )
-      glLoadIdentity()
-
+      # Update camera
+      self.__camera.refresh()
       # Redraw
-      self.__display()
+      self.redisplay()
+
+
+   def __mouse( self, button, state, x, y ):
+      """
+      Handles mouse events.
+      """
+      if state == GLUT_DOWN:
+         self.__buttons.append( button )
+         self.__posx = x
+         self.__posy = y
+      elif state == GLUT_UP:
+         self.__buttons.remove( button )
+
+   def __wheel( self, wheel, direction, x, y ):
+      print( "direction: %d" % direction )
+      if direction > 0:
+         self.__camera.zoomOut()
+      elif direction < 0:
+         self.__camera.ZoomIn()
+
+   def __motion( self, x, y ):
+      """
+      Handles mouse motion events.
+      """
+      if GLUT_MIDDLE_BUTTON in self.__buttons:
+         sensitivity = 0.005
+         delta    =  x - self.__posx, y - self.__posy
+         self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
+         self.__posx = x
+         self.__posy = y
+         self.redisplay()
+
+
+   def redisplay( self ):
+      glutPostRedisplay()
+
 
    def reshape( self, width, height ):
       """
