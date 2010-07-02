@@ -34,7 +34,7 @@ Class:
 """
 class TrajectoryVisualizer:
 
-   def __init__( self, data={} ):
+   def __init__( self, data ):
       """
       """
       self.__axes = None
@@ -43,7 +43,7 @@ class TrajectoryVisualizer:
 
       # Create opengl context
       self.engine = traj3d.traj3d( "3D Trajectory Test", 800, 600 )
-      self.engine.add( traj3d.Trajectory() )
+      self.engine.add( traj3d.Trajectory( data ) )
 
    def start( self ):
       self.engine.start()
@@ -66,12 +66,34 @@ class TrajectoryVisualizer:
 
 # Run some tests
 if __name__ == "__main__":
+   data = ( 0.,
+               135299631.153314,
+                  -67433330.1118738,
+                  0.,
+               13.3117666043686,
+                  30.2608967735421,
+                  -1.21905509181638,
+               0.,
+                  0.,
+                  0.,
+            350.0,
+               -242539545.423682,
+                  -36777066.1865885,
+                  5209166.99174208,
+               5.46701901228146,
+                  -19.7530014959265,
+                  0.562626144359047,
+               0.,
+                  0.,
+                  0. )
+
    # Create the engine
-   traj = TrajectoryVisualizer()
+   traj = TrajectoryVisualizer( data )
 
    # Create some stuff
    traj.origin( True )
    #traj.axes( True )
+
 
    # Start the engine
    traj.start()

@@ -93,8 +93,18 @@ class Trajectory(Object):
    Represents a 3D trajectory.
    """
 
-   def __init( self ):
+   def __init__( self, data ):
       Object.__init__( self )
+      self.data = data # Store data
+
+      # Make sure data matches
+      if type( data ).__name__ != 'tuple':
+         raise TypeError
+      for v in data:
+         if type( v ).__name__ != 'float':
+            raise TypeError
+      if len( data ) % 10 != 0:
+         raise AssertionError
 
    # Conics
    #  A x^2 + B x y + C y^2 + D x + E y + F = 0
@@ -202,6 +212,11 @@ class Camera:
 
    def zoomOut( self, factor=math.sqrt(2.) ):
       self.zoom /= factor
+
+   def move( self, x, y ):
+      cam = self.eye - self.center
+      self.center = ( self.center[0] + x, self.center[1] + y, 0 )
+      self.__calc()
 
    def rotate( self, theta, phi ):
       self.theta += theta
@@ -451,10 +466,14 @@ class traj3d:
       """
       Handles mouse motion events.
       """
+      mod = glutGetModifiers()
       if GLUT_MIDDLE_BUTTON in self.__buttons:
          sensitivity = 0.005
          delta    =  x - self.__posx, y - self.__posy
-         self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
+         if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
+            self.__camera.move( delta[0] * sensitivity, delta[1] * sensitivity )
+         else:
+            self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
          self.__posx = x
          self.__posy = y
          self.redisplay()
