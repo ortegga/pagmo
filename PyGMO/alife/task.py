@@ -38,6 +38,8 @@
 from pybrain.rl.experiments import Experiment
 from pybrain.rl.environments import EpisodicTask
 from pybrain.rl.environments.ode import sensors, actuators
+from pybrain.rl.agents.agent import Agent
+from pybrain.structure import RecurrentNetwork, LinearLayer, FullConnection
 import ode
 import numpy as np
 import random
@@ -71,9 +73,17 @@ class ALifeExperiment(Experiment):
         # evaluate task at regular intervals
         if self._step == self._steps_per_evaluation:
             self._step = 0
-            self.task.evaluate()
+            self.agent.giveReward(self.task.getReward())
         else:
             self._step += 1
+            
+    ## Change the default behaviour of _oneInteraction so that the reward
+    #  is only given to the agent after each task evaluation. This is done
+    #  in the update function.
+    def _oneInteraction(self):
+        self.stepid += 1
+        self.agent.integrateObservation(self.task.getObservation())
+        self.task.performAction(self.agent.getAction())
 
 
 ## ALifeAgent class
@@ -83,32 +93,62 @@ class ALifeExperiment(Experiment):
 #  ALifeAgents supply action values that control Robots.
 #
 #  @author John Glover
-class ALifeAgent(object):
+class ALifeAgent(Agent):
     ## Constructor
-    def __init__(self):
-        self._force_inc = 1
-        self._force_max = 50
-        self._force = 0
-        self._direction = 1
+    #  @param num_observations The number of observations that will be returned
+    #  from the Task sensors, and the number of action parameters that the Agent
+    #  will produce. Determines the number of inputs and outputs to the Agent's
+    #  neural network. 
+    def __init__(self, num_observations=4):
+        ## @var _last_action The last action that the Agent produced 
+        self._last_action = None
+        ## @var _last_observation The last observation that the Agent received
+        self._last_observation = None
+        ## @var _last_reward The last reward that the Agent received
+        self._last_reward = None
+        ## @var _num_observations The number of observations that will be returned
+        #  from the Task sensors, and the number of action parameters that the Agent
+        #  will produce. Determines the number of inputs and outputs to the Agent's
+        #  neural network.
+        self._num_observations = num_observations
+        ## @var _network The Agent's neural network
+        self._network = None
+        self._create_network()
+        
+    ## Create the Agent's neural network.
+    def _create_network(self):
+        self._network = RecurrentNetwork()
+        # create and add the input layer
+        input_layer = LinearLayer(self._num_observations)
+        self._network.addInputModule(input_layer)
+        # create and add the output layer
+        output_layer = LinearLayer(self._num_observations)
+        self._network.addOutputModule(output_layer)
+        # hidden layer has a random number of neurons
+        hidden_layer = LinearLayer(random.randint(3, 5))
+        self._network.addModule(hidden_layer)
+        # add connections
+        input_connection = FullConnection(input_layer, hidden_layer)
+        self._network.addConnection(input_connection)
+        output_connection = FullConnection(hidden_layer, output_layer)
+        self._network.addConnection(output_connection)
+        # initialise modules
+        self._network.sortModules()
     
+    ## Update the last observation received by the Agent
+    #  @param observation The latest observation 
     def integrateObservation(self, observation):
-        pass
+        self._last_observation = observation
     
+    ## @return The latest action that the Agent has produced
     def getAction(self):
-        if self._direction:
-            if self._force < self._force_max - self._force_inc:
-                self._force += self._force_inc
-            else:
-                self._direction = 0
-        else:
-            if self._force > (self._force_max - self._force_inc) * -1:
-                self._force -= self._force_inc
-            else:
-                self._direction = 1
-        return [self._force, self._force, self._force, self._force]
+        self._last_action = self._network.activate(self._last_observation)
+        return self._last_action
     
+    ## Update the reward received by the Agent
+    #  @var reward The last reward received by the Agent
     def giveReward(self, reward):
-        pass
+        self._last_reward = reward
 
 
 ## ALifeTask class
@@ -134,8 +174,11 @@ class ALifeTask(EpisodicTask):
         ## @var _distance_moved The distance moved by the robot between consecutive evaluations
         self._distance_moved = 0.0
         ## @var _sensors The Robot's joint sensors
-        self._sensors = None
-        # todo: add sensors
+        self._sensors = sensors.JointSensor()
+        for j in env.get_robot_joints():
+            self._sensors._joints.append(j)
+        self._sensors._update()
+        self._sensors._numValues = len(self._sensors.getValues())
         ## @var _actuator The Robot's actuator, moves the legs 
         self._actuator = actuators.JointActuator()
         for j in env.get_robot_joints():
@@ -153,13 +196,11 @@ class ALifeTask(EpisodicTask):
             return
         # update actuator with values from action
         self._actuator._update(action)
-        # also from EpisodicTask's performAction method
-        self.addReward()
         
     ## Evaluate the recent actions of the robot. Calculates how far it has
     #  moved since the last evaluation.
-    #  @return The distance moved since the last evaluation
-    def evaluate(self):         
+    #  @return The distance moved since the last call to getReward()
+    def getReward(self):         
         # calculate distance travelled since last check
         p = self._robot.getPosition()
         # subtract previous position
@@ -172,19 +213,22 @@ class ALifeTask(EpisodicTask):
         if not self._robot_stable and self._distance_moved < 1.0:
             self._robot_stable = True
         return self._distance_moved
-        
-    def getReward(self):
-        return 1.0
     
+    ## Get the observation for the task, which is the current value of 
+    #  the Robot's sensors
+    #  @return Robot sensor values (numpy array)
     def getObservation(self):
-        pass
+        self._sensors._update()
+        return np.asarray(self._sensors.getValues())
     
+    ## @return True if the task has finished, False otherwise
     def isFinished(self):
         # for now, just run until the user quits the task
         # this task could be limited to a maximum number of steps (self.samples), 
         # and/or set to stop once a given self._distance_moved value is obtained
         return False
     
+    ## Reset the task
     def reset(self):
         pass
   
@@ -192,7 +236,6 @@ class ALifeTask(EpisodicTask):
 if __name__ == "__main__":  
     from environment import ALifeEnvironment, Robot
     from viewer import ALifeViewer
-    import random
     random.seed()
     # environment
     e = ALifeEnvironment()
@@ -200,9 +243,9 @@ if __name__ == "__main__":
     r = Robot("Robot", robot_position)
     e.load_robot(r.get_xode())
     e.load_asteroid("models/asteroid.x3d")
-    # task
-    a = ALifeAgent()
+    # task, agent, experiment
     t = ALifeTask(e)
+    a = ALifeAgent(len(t.getObservation()))
     exp = ALifeExperiment(t, a)
     e.add_experiment(exp)
     # viewer

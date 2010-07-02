@@ -673,10 +673,6 @@ class ALifeEnvironment(object):
         # Remove all contact joints
         self.contactgroup.empty()
             
-        # update all sensors
-        for s in self.sensors:
-            s._update()
-            
         # update all experiments
         for e in self._experiments:
             e.update()
