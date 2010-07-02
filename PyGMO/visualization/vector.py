@@ -26,7 +26,7 @@
 import math
 
 
-class Vector:
+class Vec3:
   
    def __init__(self, data):
       self.data = data
@@ -42,7 +42,7 @@ class Vector:
       return repr(self.data)  
 
    def __add__(self, other):
-      return Vector( ( self[0]+other[0], self[1]+other[1], self[2]+other[2]) )
+      return Vec3( ( self[0]+other[0], self[1]+other[1], self[2]+other[2]) )
 
    def __getitem__(self, index):
       return self.data[index]
@@ -51,7 +51,7 @@ class Vector:
       return len(self.data)
 
    def __mul__(self, other):
-      return Vector( (self[0]*other[0], self[1]*other[1], self[2]*other[2]) )
+      return Vec3( (self[0]*other[0], self[1]*other[1], self[2]*other[2]) )
 
    def mod(self):
       return math.sqrt( self.mod2() )
@@ -62,5 +62,5 @@ class Vector:
    def dot(self, other):
       a = self
       b = other
-      return Vector( (a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]) )
+      return Vec3( (a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]) )
 
