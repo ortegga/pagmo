@@ -283,7 +283,7 @@ class traj3d:
       glutKeyboardFunc(    self.__keyboard )
       #glutSpecialFunc(     self.__special )
       glutMouseFunc(       self.__mouse )
-      #glutMouseWHeelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
+      glutMouseWheelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
       glutMotionFunc(      self.__motion )
       #glutPassiveMotionFunc( self.__passive )
       #glutVisibilityFunc(  self.__visibility )
@@ -433,13 +433,19 @@ class traj3d:
          self.__posy = y
       elif state == GLUT_UP:
          self.__buttons.remove( button )
+         # Hack because otherwise __wheel doesn't seem to run...
+         if button == 3:
+            self.__wheel( 0, -1, x, y )
+         elif button == 4:
+            self.__wheel( 0, +1, x, y )
 
    def __wheel( self, wheel, direction, x, y ):
-      print( "direction: %d" % direction )
       if direction > 0:
          self.__camera.zoomOut()
+         self.redisplay()
       elif direction < 0:
-         self.__camera.ZoomIn()
+         self.__camera.zoomIn()
+         self.redisplay()
 
    def __motion( self, x, y ):
       """
