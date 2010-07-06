@@ -39,6 +39,13 @@ from OpenGL.GLUT.freeglut import *
 #from OpenGL.arrays.formathandler import FormatHandler 
 #from OpenGL.GL.ARB import vertex_buffer_object 
 
+# Local imports
+from vector import *
+from frange import *
+
+# Misc PaGMO imports
+from PyGMO import kep_toolbox
+
 
 ###############################################################################
 #
@@ -106,22 +113,50 @@ class Trajectory(Object):
       if len( data ) % 10 != 0:
          raise AssertionError
 
-   # Conics
-   #  A x^2 + B x y + C y^2 + D x + E y + F = 0
+      # Initial data processing
+      self.__t    = []
+      self.__r    = []
+      self.__v    = []
+      self.__dv   = []
+      for i in range( 0, len(data), 10 ):
+         # Unit conversion
+         t  = data[ i+0 ] * 24. * 3600. # days -> seconds
+         r  = Vec3( (data[i+1], data[i+2], data[i+3]) ) * 1000. # km -> m
+         v  = Vec3( (data[i+4], data[i+5], data[i+6]) ) * 1000. # km/s -> m/s
+         dv = Vec3( (data[i+7], data[i+8], data[i+9]) ) # ??
+         # Add value
+         self.__t.append(  t  )
+         self.__r.append(  r  )
+         self.__v.append(  v  )
+         self.__dv.append( dv )
+      self.__t    = tuple( self.__t )
+      self.__r    = tuple( self.__r )
+      self.__v    = tuple( self.__v )
+      self.__dv   = tuple( self.__dv )
+
    def display( self ):
       glColor3d( 1., 1., 1. )
       glBegin( GL_LINE_STRIP )
 
-      e        = 0.5
-      p        = (1 + e) / e
-      ep       = e * p
-      theta    = 0.
-      finish   = math.pi * 2.
-      step     = math.pi * 2. / 100.
-      while theta < finish:
-         r = ep / ( 1. + e * math.cos(theta) )
-         glVertex( r*math.cos(theta), r*math.sin(theta), 0. )
-         theta += step
+      mu    = 1.32712428e20 # ASTRO_MU_SUN from astro_constants.h
+      s     = 1e10
+
+      print( "---START----------------------------" )
+      for i in range( len( self.__t )-1 ):
+
+         delta = self.__t[ i+1 ] - self.__t[ i+0 ]
+         step  = delta/50
+
+         r = self.__r[ i+0 ]
+         glVertex( r[0]/s, r[1]/s, r[2]/s )
+
+         for j in frange( 0., delta, step ):
+            r, v = kep_toolbox.propagate_kep( self.__r[ i+0 ].data, self.__v[ i+0 ].data, j, mu )
+            glVertex( r[0]/s, r[1]/s, r[2]/s )
+            print( "[%f] --> %f x %f x %f" % (j, r[0]/s, r[1]/s, r[2]/s) )
+
+      r = self.__r[ -1 ]
+      glVertex( r[0]/s, r[1]/s, r[2]/s )
 
       glEnd()
 
