@@ -141,7 +141,6 @@ class Trajectory(Object):
       mu    = 1.32712428e20 # ASTRO_MU_SUN from astro_constants.h
       s     = 1e10
 
-      print( "---START----------------------------" )
       for i in range( len( self.__t )-1 ):
 
          delta = self.__t[ i+1 ] - self.__t[ i+0 ]
@@ -153,7 +152,6 @@ class Trajectory(Object):
          for j in frange( 0., delta, step ):
             r, v = kep_toolbox.propagate_kep( self.__r[ i+0 ].data, self.__v[ i+0 ].data, j, mu )
             glVertex( r[0]/s, r[1]/s, r[2]/s )
-            print( "[%f] --> %f x %f x %f" % (j, r[0]/s, r[1]/s, r[2]/s) )
 
       r = self.__r[ -1 ]
       glVertex( r[0]/s, r[1]/s, r[2]/s )
