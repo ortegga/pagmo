@@ -44,7 +44,7 @@ from vector import *
 from frange import *
 
 # Misc PaGMO imports
-from PyGMO import kep_toolbox
+from PyGMO import keplerian_toolbox
 
 
 ###############################################################################
@@ -150,7 +150,7 @@ class Trajectory(Object):
          glVertex( r[0]/s, r[1]/s, r[2]/s )
 
          for j in frange( 0., delta, step ):
-            r, v = kep_toolbox.propagate_kep( self.__r[ i+0 ].data, self.__v[ i+0 ].data, j, mu )
+            r, v = keplerian_toolbox.propagate_kep( self.__r[ i+0 ].data, self.__v[ i+0 ].data, j, mu )
             glVertex( r[0]/s, r[1]/s, r[2]/s )
 
       r = self.__r[ -1 ]
@@ -254,6 +254,7 @@ class Camera:
    def rotate( self, theta, phi ):
       self.theta += theta
       self.phi   += phi
+      print( "theta: %f || phi: %f" % ( self.theta, self.phi ) )
       self.__calc()
 
    def absolute( self, theta, phi ):

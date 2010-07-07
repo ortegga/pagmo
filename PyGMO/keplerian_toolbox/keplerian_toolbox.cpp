@@ -62,7 +62,7 @@ static inline tuple Py_propagate_kep( tuple r0, tuple v0, const double &t, const
                       make_tuple( v0_d[0], v0_d[1], v0_d[2] ) );
 }
 
-BOOST_PYTHON_MODULE(_kep_toolbox) {
+BOOST_PYTHON_MODULE(_keplerian_toolbox) {
 	//to_tuple_mapping<array_d3>();
 	from_python_sequence<std::vector<double>,variable_capacity_policy>();
 
