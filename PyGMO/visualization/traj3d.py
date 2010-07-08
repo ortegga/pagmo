@@ -39,6 +39,9 @@ from OpenGL.GLUT.freeglut import *
 #from OpenGL.arrays.formathandler import FormatHandler 
 #from OpenGL.GL.ARB import vertex_buffer_object 
 
+# NumPy
+from numpy import *
+
 # Local imports
 from vector import *
 from frange import *
@@ -121,18 +124,14 @@ class Trajectory(Object):
       for i in range( 0, len(data), 10 ):
          # Unit conversion
          t  = data[ i+0 ] * 24. * 3600. # days -> seconds
-         r  = Vec3( (data[i+1], data[i+2], data[i+3]) ) * 1000. # km -> m
-         v  = Vec3( (data[i+4], data[i+5], data[i+6]) ) * 1000. # km/s -> m/s
-         dv = Vec3( (data[i+7], data[i+8], data[i+9]) ) # ??
+         r  = array( [ data[i+1], data[i+2], data[i+3] ] ) * 1000. # km -> m
+         v  = array( [ data[i+4], data[i+5], data[i+6] ] ) * 1000. # km/s -> m/s
+         dv = array( [ data[i+7], data[i+8], data[i+9] ] ) # ??
          # Add value
          self.__t.append(  t  )
          self.__r.append(  r  )
          self.__v.append(  v  )
          self.__dv.append( dv )
-      self.__t    = tuple( self.__t )
-      self.__r    = tuple( self.__r )
-      self.__v    = tuple( self.__v )
-      self.__dv   = tuple( self.__dv )
 
    def display( self ):
       glColor3d( 1., 1., 1. )
@@ -150,7 +149,7 @@ class Trajectory(Object):
          glVertex( r[0]/s, r[1]/s, r[2]/s )
 
          for j in frange( 0., delta, step ):
-            r, v = keplerian_toolbox.propagate_kep( self.__r[ i+0 ].data, self.__v[ i+0 ].data, j, mu )
+            r, v = keplerian_toolbox.propagate_kep( tuple(self.__r[ i+0 ]), tuple(self.__v[ i+0 ]), j, mu )
             glVertex( r[0]/s, r[1]/s, r[2]/s )
 
       r = self.__r[ -1 ]
@@ -254,7 +253,6 @@ class Camera:
    def rotate( self, theta, phi ):
       self.theta += theta
       self.phi   += phi
-      print( "theta: %f || phi: %f" % ( self.theta, self.phi ) )
       self.__calc()
 
    def absolute( self, theta, phi ):
