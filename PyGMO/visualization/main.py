@@ -43,7 +43,8 @@ class TrajectoryVisualizer:
 
       # Create opengl context
       self.engine = traj3d.traj3d( "3D Trajectory Test", 800, 600 )
-      self.engine.add( traj3d.Trajectory( data ) )
+      self.traj   = traj3d.Trajectory( data )
+      self.engine.add( self.traj )
 
    def start( self ):
       self.engine.start()
@@ -58,7 +59,7 @@ class TrajectoryVisualizer:
 
    def origin( self, enable ):
       if enable and self.__origin is None:
-         self.__origin = traj3d.Origin()
+         self.__origin = traj3d.Origin( self.traj.size() )
          self.engine.add( self.__origin )
       elif not enable and self.__origin is not None:
          self.engine.remove( self.__origin )

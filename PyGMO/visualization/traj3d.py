@@ -64,6 +64,14 @@ class Object:
       if self.__class__ is Object:
          raise NotImplementedError
 
+   def size( self ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
+   def center( self ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
    def display( self ):
       if self.__class__ is Object:
          raise NotImplementedError
@@ -121,6 +129,7 @@ class Trajectory(Object):
       self.__r    = []
       self.__v    = []
       self.__dv   = []
+      center      = array( [ 0., 0., 0. ] )
       for i in range( 0, len(data), 10 ):
          # Unit conversion
          t  = data[ i+0 ] * 24. * 3600. # days -> seconds
@@ -132,13 +141,31 @@ class Trajectory(Object):
          self.__r.append(  r  )
          self.__v.append(  v  )
          self.__dv.append( dv )
+         # Calculate center
+         center += r
+      # Center
+      self.__center = center / (len(data) / 10)
+
+      # Calculate size
+      dmax = 0.
+      for r in self.__r:
+         dist = linalg.norm( r - self.__center )
+         if dist > dmax:
+            dmax = dist
+      self.__size = dmax
+
+   def center( self ):
+      return self.__center
+
+   def size( self ):
+      return self.__size
 
    def display( self ):
       glColor3d( 1., 1., 1. )
       glBegin( GL_LINE_STRIP )
 
       mu    = 1.32712428e20 # ASTRO_MU_SUN from astro_constants.h
-      s     = 1e10
+      s     = 1.
 
       for i in range( len( self.__t )-1 ):
 
@@ -244,6 +271,9 @@ class Camera:
 
    def zoomOut( self, factor=math.sqrt(2.) ):
       self.zoom /= factor
+
+   def zoomSet( self, value ):
+      self.zoom  = value
 
    def move( self, x, y ):
       cam = self.eye - self.center
@@ -364,9 +394,26 @@ class traj3d:
       """
       if self.__camera == None:
          raise "No camera"
+      self.autozoom()
       self.__time = time.time()
       glutMainLoop()
 
+
+   def autozoom( self ):
+      dmax = 0.
+      for objs in self.objects:
+         center = objs.center()
+         size   = objs.size()
+         dist   = 0.
+         if center != None:
+            dist += linalg.norm( center )
+         if size != None:
+            dist += size
+         if dist > dmax:
+            dmax = dist
+      if dmax == 0.:
+         dmax = 1
+      self.__camera.zoomSet( 1. / dmax )
 
    def terminate( self ):
       """
