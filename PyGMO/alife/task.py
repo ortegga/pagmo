@@ -125,7 +125,7 @@ class ALifeAgent(Agent):
         output_layer = LinearLayer(self._num_observations)
         self._network.addOutputModule(output_layer)
         # hidden layer has a random number of neurons
-        hidden_layer = LinearLayer(random.randint(3, 5))
+        hidden_layer = LinearLayer(10)
         self._network.addModule(hidden_layer)
         # add connections
         input_connection = FullConnection(input_layer, hidden_layer)
@@ -149,7 +149,19 @@ class ALifeAgent(Agent):
     #  @var reward The last reward received by the Agent
     def giveReward(self, reward):
         self._last_reward = reward
-
+        
+    ## Set the Agent's neural network weights
+    #  @var weights New weights for the Agent's neural network
+    def set_weights(self, weights):
+        if not len(weights) == len(self._network.params):
+            # todo: more detail on this exception
+            raise Exception("InvalidWeights")
+        for i in range(len(weights)):
+            self._network.params[i] = weights[i]
+             
+    ##  @return The number of weights in the Agent's neural network
+    def num_weights(self):
+        return len(self._network.params)
 
 ## ALifeTask class
 #
