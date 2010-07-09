@@ -622,12 +622,12 @@ class traj3d:
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
             # Need to calculate projection base
             base_x = cross( self.__camera.up, self.__camera.at )
-            base_y = cross( self.__camera.at, base_x )
+            base_y = cross( base_x, self.__camera.at )
             # Need to normalize vectors
             base_x /= linalg.norm( base_x )
             base_y /= linalg.norm( base_y )
             # Move along the projection base
-            move    = base_x * delta[0] / self.width + -base_y * delta[1] / self.height
+            move    = base_x * delta[0] / self.width + base_y * delta[1] / self.height
             self.__camera.move( move )
          else:
             self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
