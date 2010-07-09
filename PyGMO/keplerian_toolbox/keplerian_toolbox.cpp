@@ -35,31 +35,14 @@
 using namespace boost::python;
 using namespace kep_toolbox;
 
-
-/*static inline void Py_propagate_kep( std::vector<double> &r0, std::vector<double> &v0, const double &t, const double &mu )*/
-static inline tuple Py_propagate_kep( tuple r0, tuple v0, const double &t, const double &mu )
+static inline tuple Py_propagate_kep(const std::vector<double> &r0, const std::vector<double> &v0, const double &t, const double &mu )
 {
-   double r0_d[3], v0_d[3];
-
-   if (len(r0) != 3 || len(v0) != 3) {
-		P_EX_THROW(value_error,"the size of all input/output position/velocity vectors must be 3");
+	if (r0.size() != 3 || v0.size() != 3) {
+		P_EX_THROW(value_error,"size of input position/velocity vectors must be 3");
 	}
-
-   /* Extract values from r0. */
-   r0_d[0] = extract<double>(r0[0]);
-   r0_d[1] = extract<double>(r0[1]);
-   r0_d[2] = extract<double>(r0[2]);
-   /* Extract values from v0. */
-   v0_d[0] = extract<double>(v0[0]);
-   v0_d[1] = extract<double>(v0[1]);
-   v0_d[2] = extract<double>(v0[2]);
-
-   /* Propagate Lagrangian. */
-   propagate_lagrangian( r0_d, v0_d, t, mu );
-
-   /* Return values as tuple. */
-   return make_tuple( make_tuple( r0_d[0], r0_d[1], r0_d[2] ),
-                      make_tuple( v0_d[0], v0_d[1], v0_d[2] ) );
+	std::vector<double> r0_out(r0), v0_out(v0);
+	propagate_lagrangian(r0_out,v0_out,t,mu);
+	return make_tuple(r0_out,v0_out);
 }
 
 BOOST_PYTHON_MODULE(_keplerian_toolbox) {

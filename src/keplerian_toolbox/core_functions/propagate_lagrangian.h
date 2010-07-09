@@ -38,8 +38,8 @@ namespace kep_toolbox {
  * motion. Lagrange coefficients are used as basic numerical technique. All units systems can be used, as long
  * as the input parameters are all expressed in the same system.
  *
- * \param[in,out] r0 initial position vector. On output contains the propagated position. (r0[1],r0[2],r0[3] need to be preallocated, suggested template type is boost::array<double,3))
- * \param[in,out] v0 initial velocity vector. On output contains the propagated velocity. (v0[1],v0[2],v0[3] need to be preallocated, suggested template type is boost::array<double,3))
+ * \param[in,out] r0 initial position vector. On output contains the propagated position. (r0[1],r0[2],r0[3] need to be preallocated, suggested template type is boost::array<double,3>))
+ * \param[in,out] v0 initial velocity vector. On output contains the propagated velocity. (v0[1],v0[2],v0[3] need to be preallocated, suggested template type is boost::array<double,3>))
  * \param[in] t propagation time
  * \param[in] mu central body gravitational parameter
  *
