@@ -306,10 +306,10 @@ class Camera:
    def __calc( self ):
       r = self.rho * math.cos( self.phi )
       z = self.rho * math.sin( self.phi )
-      self.eye = ( r * math.cos( self.theta ),
+      self.eye = array( ( r * math.cos( self.theta ),
                    r * math.sin( self.theta ),
-                   z )
-      self.at = self.center - self.eye
+                   z ) )
+      self.at = -self.eye
 
    def zoomIn( self, factor=math.sqrt(2.) ):
       self.zoom *= factor
@@ -340,9 +340,10 @@ class Camera:
    def view( self ):
       glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
-      gluLookAt( self.center[0], self.center[1], self.center[2],
+      gluLookAt( 0., 0., 0.,
             self.eye[0], self.eye[1], self.eye[2],
             self.up[0], self.up[1], self.up[2] )
+      glTranslate( self.center[0], self.center[1], self.center[2] )
       glScalef( self.zoom, self.zoom, self.zoom )
 
    def update( self, dt ):
@@ -481,6 +482,7 @@ class traj3d:
 
       # Set zoom and center
       self.__camera.zoom = 1. / dmax
+      self.__camera.center = array( (0., 0., 0.) )
       #self.__camera.center = center * self.__camera.zoom
 
    def terminate( self ):
@@ -624,12 +626,8 @@ class traj3d:
             # Need to normalize vectors
             base_x /= linalg.norm( base_x )
             base_y /= linalg.norm( base_y )
-            print( "Base X", base_x )
-            print( "Base Y", base_y )
             # Move along the projection base
-            move    = base_x * delta[0] + base_y * delta[1]
-            move   /= self.__camera.zoom
-            print( "Move", move )
+            move    = base_x * delta[0] / self.width + -base_y * delta[1] / self.height
             self.__camera.move( move )
          else:
             self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
