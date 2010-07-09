@@ -244,41 +244,23 @@ class Origin(Object):
       self.expanse = expanse
 
    def display( self ):
-      glLineStipple(1, self.stipple)
-      glDisable(GL_LINE_STIPPLE)
       glBegin(GL_LINES)
-      glColor3d(*self.xColor)
-      glVertex3d(0, 0, 0)
-      glVertex3d(self.expanse, 0, 0)
+      glColor3d( *self.xColor )
+      glVertex3d( 0, 0, 0 )
+      glVertex3d( self.expanse, 0, 0 )
       glEnd()
-      glEnable(GL_LINE_STIPPLE)
+
       glBegin(GL_LINES)
-      glVertex3d(0, 0, 0)
-      glVertex3d(-self.expanse, 0, 0)
+      glColor3d( *self.yColor )
+      glVertex3d( 0, 0, 0 )
+      glVertex3d( 0., self.expanse, 0 )
       glEnd()
-      glDisable(GL_LINE_STIPPLE)
+
       glBegin(GL_LINES)
-      glColor3d(*self.yColor)
-      glVertex3d(0, 0, 0)
-      glVertex3d(0, self.expanse, 0)
+      glColor3d( *self.zColor )
+      glVertex3d( 0, 0, 0 )
+      glVertex3d( 0., 0., self.expanse )
       glEnd()
-      glEnable(GL_LINE_STIPPLE)
-      glBegin(GL_LINES)
-      glVertex3d(0, 0, 0)
-      glVertex3d(0, -self.expanse, 0)
-      glEnd()
-      glDisable(GL_LINE_STIPPLE)
-      glBegin(GL_LINES)
-      glColor3d(*self.zColor)
-      glVertex3d(0, 0, 0)
-      glVertex3d(0, 0, self.expanse)
-      glEnd()
-      glEnable(GL_LINE_STIPPLE)
-      glBegin(GL_LINES)
-      glVertex3d(0, 0, 0)
-      glVertex3d(0, 0, -self.expanse)
-      glEnd()
-      glDisable(GL_LINE_STIPPLE)
 
 
 
@@ -289,27 +271,31 @@ class Origin(Object):
 ###############################################################################
 class Camera:
    
-   def __init__( self, rho=1., center=(0., 0., 0.), up=(0., 0., 1.), zoom=1. ):
+   def __init__( self, center=(0., 0., 0.), zoom=1. ):
       self.center = array( center )
-      self.up     = array( up )
-      self.at     = None
       self.zoom   = zoom
 
-      # Internal eye stuff
-      self.rho    = rho
-      self.theta  = 0.
-      self.phi    = 0.
+      # Euler angles
+      self.yaw    = 0.
+      self.pitch  = 0.
+      self.roll   = 0.
 
       # Calculate
       self.__calc()
 
    def __calc( self ):
-      r = self.rho * math.cos( self.phi )
-      z = self.rho * math.sin( self.phi )
-      self.eye = array( ( r * math.cos( self.theta ),
-                   r * math.sin( self.theta ),
-                   z ) )
-      self.at = -self.eye
+      cosy = math.cos( self.yaw )
+      siny = math.sin( self.yaw )
+      cosp = math.cos( self.pitch )
+      sinp = math.sin( self.pitch )
+
+      u = array( ( cosy, siny, 0. ) )
+      v = array( ( siny*cosp, cosy*cosp, sinp ) )
+      w = cross( u, v )
+
+      self.right  = u
+      self.at     = v
+      self.up     = w
 
    def zoomIn( self, factor=math.sqrt(2.) ):
       self.zoom *= factor
@@ -322,27 +308,35 @@ class Camera:
 
    def move( self, vec ):
       self.center += vec
+
+   def rotate( self, yaw, pitch, roll ):
+      self.yaw   += yaw
+      self.pitch += pitch
+      self.roll  += roll
       self.__calc()
 
-   def rotate( self, theta, phi ):
-      self.theta += theta
-      self.phi   += phi
-      self.__calc()
-
-   def absolute( self, theta, phi ):
-      self.theta  = theta
-      self.phi    = phi
+   def absolute( self, yaw, pitch, roll ):
+      self.yaw    = yaw
+      self.pitch  = pitch
+      self.roll   = roll
       self.__calc()
 
    def refresh( self ):
       self.__calc()
 
    def view( self ):
+      # Reset matrix
       glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
-      gluLookAt( 0., 0., 0.,
-            self.eye[0], self.eye[1], self.eye[2],
-            self.up[0], self.up[1], self.up[2] )
+      # Rotate to have x forward, y right, z top
+      glRotatef( -90., 0., 1., 0. )
+      glRotatef( -90., 1., 0., 0. )
+      u = self.right
+      v = self.at
+      w = self.up
+      glRotatef( self.yaw * 180./math.pi,   0., 0., 1. )
+      glRotatef( self.pitch * 180./math.pi, u[0], u[1], u[2] )
+      glRotatef( self.roll * 180./math.pi,  v[0], v[1], v[2] )
       glTranslate( self.center[0], self.center[1], self.center[2] )
       glScalef( self.zoom, self.zoom, self.zoom )
 
@@ -630,7 +624,11 @@ class traj3d:
             move    = base_x * delta[0] / self.width + base_y * delta[1] / self.height
             self.__camera.move( move )
          else:
-            self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
+            yaw   = delta[0] * sensitivity
+            pitch = delta[1] * sensitivity
+            roll  = 0.
+            #self.__camera.rotate( yaw, pitch, 0. )
+            self.__camera.rotate( yaw, 0., pitch )
          self.__posx = x
          self.__posy = y
          self.redisplay()
