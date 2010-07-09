@@ -46,13 +46,10 @@ static inline tuple Py_propagate_kep(const std::vector<double> &r0, const std::v
 }
 
 BOOST_PYTHON_MODULE(_keplerian_toolbox) {
-	//to_tuple_mapping<array_d3>();
-	from_python_sequence<std::vector<double>,variable_capacity_policy>();
-
 	// Translate exceptions for this module.
 	translate_exceptions();
 
-   // Functions
-   def("__propagate_kep", &Py_propagate_kep);
+	// Functions
+	def("propagate_kep", &Py_propagate_kep);
 }
 
