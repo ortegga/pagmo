@@ -284,14 +284,14 @@ class Camera:
       self.__calc()
 
    def __calc( self ):
-      cosy = math.cos( self.yaw )
-      siny = math.sin( self.yaw )
+      cosy = math.sin( self.yaw )
+      siny = math.cos( self.yaw )
       cosp = math.cos( self.pitch )
       sinp = math.sin( self.pitch )
 
-      u = array( ( cosy, siny, 0. ) )
-      v = array( ( siny*cosp, cosy*cosp, sinp ) )
-      w = cross( u, v )
+      u = array( ( siny, cosy, 0. ) ) # On camera right
+      v = array( ( cosy*cosp, siny*cosp, sinp ) ) # Facing away from camera
+      w = cross( u, v ) # Facing up
 
       self.right  = u
       self.at     = v
@@ -615,11 +615,8 @@ class traj3d:
          delta    =  x - self.__posx, y - self.__posy
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
             # Need to calculate projection base
-            base_x = cross( self.__camera.up, self.__camera.at )
-            base_y = cross( base_x, self.__camera.at )
-            # Need to normalize vectors
-            base_x /= linalg.norm( base_x )
-            base_y /= linalg.norm( base_y )
+            base_x = self.__camera.at
+            base_y = -self.__camera.up
             # Move along the projection base
             move    = base_x * delta[0] / self.width + base_y * delta[1] / self.height
             self.__camera.move( move )
