@@ -167,6 +167,7 @@ class Trajectory(Object):
       Generates the vertex trajectory from the data.
       """
       self.__vertex = []
+      center = array( (0., 0., 0.) )
 
       # Create vertex
       for i in range( len( self.__t )-1 ):
@@ -178,15 +179,18 @@ class Trajectory(Object):
          # Add first point
          r = self.__r[ i+0 ]
          self.__vertex.append( [ r[0], r[1], r[2] ] )
+         center += r
 
          # Add interpolated points
          for j in frange( 0., delta, step ):
             r, v = keplerian_toolbox.propagate_kep( tuple(self.__r[ i+0 ]), tuple(self.__v[ i+0 ]), j, self.mu )
             self.__vertex.append( [ r[0], r[1], r[2] ] )
+            center += r
 
       # Add final point
       r = self.__r[ -1 ]
       self.__vertex.append( [ r[0], r[1], r[2] ] )
+      center += r
 
       # Convert to numpy
       self.__vertex = array( self.__vertex, dtype = float32 )
@@ -200,6 +204,17 @@ class Trajectory(Object):
             ADT.arrayByteCount( self.__vertex ),
             ADT.voidDataPointer( self.__vertex ),
             GL_STATIC_DRAW )
+
+      # Calculate center
+      self.__center = center / len( self.__vertex )
+
+      # Calculate size
+      dmax = 0.
+      for r in self.__vertex:
+         dist = linalg.norm( r - self.__center )
+         if dist > dmax:
+            dmax = dist
+      self.__size = dmax
 
 
    def display( self ):
@@ -275,8 +290,9 @@ class Origin(Object):
 class Camera:
    
    def __init__( self, rho=1., center=(0., 0., 0.), up=(0., 0., 1.), zoom=1. ):
-      self.center = center
-      self.up     = up
+      self.center = array( center )
+      self.up     = array( up )
+      self.at     = None
       self.zoom   = zoom
 
       # Internal eye stuff
@@ -293,6 +309,7 @@ class Camera:
       self.eye = ( r * math.cos( self.theta ),
                    r * math.sin( self.theta ),
                    z )
+      self.at = self.center - self.eye
 
    def zoomIn( self, factor=math.sqrt(2.) ):
       self.zoom *= factor
@@ -303,9 +320,8 @@ class Camera:
    def zoomSet( self, value ):
       self.zoom  = value
 
-   def move( self, x, y ):
-      cam = self.eye - self.center
-      self.center = ( self.center[0] + x, self.center[1] + y, 0 )
+   def move( self, vec ):
+      self.center += vec
       self.__calc()
 
    def rotate( self, theta, phi ):
@@ -398,6 +414,7 @@ class traj3d:
       self.keymap = {}
       self.keymap[ 'q' ]      = self.__key_exit
       self.keymap[ '\033' ]   = self.__key_exit
+      self.keymap[ 'c' ]      = self.__key_autoZoom
       self.keymap[ 'z' ]      = self.__key_zoomIn
       self.keymap[ 'Z' ]      = self.__key_zoomOut
 
@@ -414,6 +431,9 @@ class traj3d:
    def __key_zoomOut( self, x, y ):
       self.__camera.zoomOut()
       self.redisplay()
+   def __key_autoZoom( self, x, y ):
+      self.autozoom()
+      self.redisplay()
 
 
    def start( self ):
@@ -428,6 +448,23 @@ class traj3d:
 
 
    def autozoom( self ):
+      """
+      Automatically focuses and zooms in on all the objects (fits entire scene).
+      """
+
+      # Calculate scene center
+      """
+      i = 0.
+      center = array( (0., 0., 0.) )
+      for objs in self.objects:
+         c = objs.center()
+         if c != None:
+            i += 1.
+            center += objs.center()
+      center /= i
+      """
+
+      # Calculate max distance from center
       dmax = 0.
       for objs in self.objects:
          center = objs.center()
@@ -441,7 +478,10 @@ class traj3d:
             dmax = dist
       if dmax == 0.:
          dmax = 1
-      self.__camera.zoomSet( 1. / dmax )
+
+      # Set zoom and center
+      self.__camera.zoom = 1. / dmax
+      #self.__camera.center = center * self.__camera.zoom
 
    def terminate( self ):
       """
@@ -578,7 +618,19 @@ class traj3d:
          sensitivity = 0.005
          delta    =  x - self.__posx, y - self.__posy
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
-            self.__camera.move( delta[0] * sensitivity, delta[1] * sensitivity )
+            # Need to calculate projection base
+            base_x = cross( self.__camera.up, self.__camera.at )
+            base_y = cross( self.__camera.at, base_x )
+            # Need to normalize vectors
+            base_x /= linalg.norm( base_x )
+            base_y /= linalg.norm( base_y )
+            print( "Base X", base_x )
+            print( "Base Y", base_y )
+            # Move along the projection base
+            move    = base_x * delta[0] + base_y * delta[1]
+            move   /= self.__camera.zoom
+            print( "Move", move )
+            self.__camera.move( move )
          else:
             self.__camera.rotate( delta[0] * sensitivity, delta[1] * sensitivity )
          self.__posx = x
