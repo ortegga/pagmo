@@ -29,21 +29,18 @@ import time
 import math
 
 # General OpenGL imports
+from OpenGL.raw   import *
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
 from OpenGL.GLUT.freeglut import *
+from OpenGL.arrays import ArrayDatatype as ADT
 
-# OpenGL VBO imports
-#from OpenGL.arrays.arraydatatype import ArrayDatatype
-#from OpenGL.arrays.formathandler import FormatHandler 
-#from OpenGL.GL.ARB import vertex_buffer_object 
 
 # NumPy
 from numpy import *
 
 # Local imports
-from vector import *
 from frange import *
 
 # Misc PaGMO imports
@@ -111,9 +108,11 @@ class Trajectory(Object):
    Represents a 3D trajectory.
    """
 
-   def __init__( self, data ):
+   def __init__( self, data, mu = 1.32712428e20 ):
       Object.__init__( self )
       self.data = data # Store data
+      self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
+      self.__vbo = None
 
       # Make sure data matches
       if type( data ).__name__ != 'tuple':
@@ -154,35 +153,64 @@ class Trajectory(Object):
             dmax = dist
       self.__size = dmax
 
+      # Generate VBO
+      self.__genTraj()
+
    def center( self ):
       return self.__center
 
    def size( self ):
       return self.__size
 
-   def display( self ):
-      glColor3d( 1., 1., 1. )
-      glBegin( GL_LINE_STRIP )
+   def __genTraj( self, subdivide = 50 ):
+      """
+      Generates the vertex trajectory from the data.
+      """
+      self.__vertex = []
 
-      mu    = 1.32712428e20 # ASTRO_MU_SUN from astro_constants.h
-      s     = 1.
-
+      # Create vertex
       for i in range( len( self.__t )-1 ):
 
+         # Calculate how to chop up
          delta = self.__t[ i+1 ] - self.__t[ i+0 ]
-         step  = delta/50
+         step  = delta / subdivide
 
+         # Add first point
          r = self.__r[ i+0 ]
-         glVertex( r[0]/s, r[1]/s, r[2]/s )
+         self.__vertex.append( [ r[0], r[1], r[2] ] )
 
+         # Add interpolated points
          for j in frange( 0., delta, step ):
-            r, v = keplerian_toolbox.propagate_kep( tuple(self.__r[ i+0 ]), tuple(self.__v[ i+0 ]), j, mu )
-            glVertex( r[0]/s, r[1]/s, r[2]/s )
+            r, v = keplerian_toolbox.propagate_kep( tuple(self.__r[ i+0 ]), tuple(self.__v[ i+0 ]), j, self.mu )
+            self.__vertex.append( [ r[0], r[1], r[2] ] )
 
+      # Add final point
       r = self.__r[ -1 ]
-      glVertex( r[0]/s, r[1]/s, r[2]/s )
+      self.__vertex.append( [ r[0], r[1], r[2] ] )
 
-      glEnd()
+      # Convert to numpy
+      self.__vertex = array( self.__vertex, dtype = float32 )
+
+      # Create the VBO
+      if self.__vbo != None:
+         glDeleteBuffers( 1, GLuint( self.__vbo ) )
+      self.__vbo = glGenBuffers( 1 )
+      glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
+      glBufferData( GL_ARRAY_BUFFER_ARB,
+            ADT.arrayByteCount( self.__vertex ),
+            ADT.voidDataPointer( self.__vertex ),
+            GL_STATIC_DRAW )
+
+
+   def display( self ):
+      glEnableClientState(GL_VERTEX_ARRAY)
+
+      glColor3d( 1., 1., 1. )
+      glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
+      glVertexPointer( 3, GL_FLOAT, 0, None )
+      glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
+
+      glDisableClientState( GL_VERTEX_ARRAY )
 
 
 ###############################################################################
