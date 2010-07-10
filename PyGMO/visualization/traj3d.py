@@ -332,7 +332,7 @@ class Camera:
       glLoadIdentity()
       w = self.__w
       h = self.__h
-      glOrtho( -w, w, -h, h, -1., 1. )
+      glOrtho( -w, w, -h, h, -100., 10. )
       gluLookAt( 0., 0., 0.,
             #self.center[0], self.center[1], self.center[2],
             self.eye[0], self.eye[1], self.eye[2],
@@ -556,6 +556,9 @@ class traj3d:
       # Update objects
       for obj in self.objects:
          obj.update( dt )
+
+      # Draw again
+      self.redisplay()
 
 
    def __reshape( self, width=640, height=480 ):
