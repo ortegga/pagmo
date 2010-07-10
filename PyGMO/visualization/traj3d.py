@@ -153,6 +153,11 @@ class Trajectory(Object):
       # Generate VBO
       self.__genTraj()
 
+   def __del__( self ):
+      # Delete the VBO
+      if self.__vbo != None:
+         glDeleteBuffers( 1, GLuint( self.__vbo ) )
+
    def center( self ):
       return self.__center
 
