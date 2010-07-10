@@ -371,6 +371,7 @@ class traj3d:
       self.__mindt = 1./60.
       self.__buttons = []
       self.__camera = Camera()
+      self.__camera.absolute( math.pi/4., math.pi/4., 0. )
 
       # Set up some stuff
       glShadeModel( GL_FLAT )
