@@ -273,29 +273,22 @@ class Camera:
    
    def __init__( self, center=(0., 0., 0.), zoom=1. ):
       self.center = array( center )
+      self.up     = array( (0., 0., 1.) )
       self.zoom   = zoom
 
-      # Euler angles
-      self.yaw    = 0.
-      self.pitch  = 0.
-      self.roll   = 0.
+      # Initial values
+      self.rho    = 1.
+      self.theta  = 0.
+      self.phi    = 0.
 
       # Calculate
       self.__calc()
 
    def __calc( self ):
-      cosy = math.sin( self.yaw )
-      siny = math.cos( self.yaw )
-      cosp = math.cos( self.pitch )
-      sinp = math.sin( self.pitch )
-
-      u = array( ( siny, cosy, 0. ) ) # On camera right
-      v = array( ( cosy*cosp, siny*cosp, sinp ) ) # Facing away from camera
-      w = cross( u, v ) # Facing up
-
-      self.right  = u
-      self.at     = v
-      self.up     = w
+      r = self.rho*math.cos( self.phi )
+      z = self.rho*math.sin( self.phi )
+      self.eye = array( (r*math.cos(self.theta), r*math.sin(self.theta), z) )
+      self.at = -self.eye
 
    def zoomIn( self, factor=math.sqrt(2.) ):
       self.zoom *= factor
@@ -310,15 +303,15 @@ class Camera:
       self.center += vec
 
    def rotate( self, yaw, pitch, roll ):
-      self.yaw   += yaw
-      self.pitch += pitch
-      self.roll  += roll
+      self.theta += yaw
+      self.phi   += pitch
+      #self.roll  += roll
       self.__calc()
 
    def absolute( self, yaw, pitch, roll ):
-      self.yaw    = yaw
-      self.pitch  = pitch
-      self.roll   = roll
+      self.theta  = yaw
+      self.phi    = pitch
+      #self.roll   = roll
       self.__calc()
 
    def refresh( self ):
@@ -328,16 +321,12 @@ class Camera:
       # Reset matrix
       glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
-      # Rotate to have x forward, y right, z top
-      glRotatef( -90., 0., 1., 0. )
-      glRotatef( -90., 1., 0., 0. )
-      u = self.right
-      v = self.at
-      w = self.up
-      glRotatef( self.yaw * 180./math.pi,   0., 0., 1. )
-      glRotatef( self.pitch * 180./math.pi, u[0], u[1], u[2] )
-      glRotatef( self.roll * 180./math.pi,  v[0], v[1], v[2] )
-      glTranslate( self.center[0], self.center[1], self.center[2] )
+      glOrtho( -1., 1., -1., 1., -100., 10. )
+      gluLookAt( 0., 0., 0.,
+            #self.center[0], self.center[1], self.center[2],
+            self.eye[0], self.eye[1], self.eye[2],
+            self.up[0], self.up[1], self.up[2])
+      glTranslatef( self.center[0], self.center[1], self.center[2] )
       glScalef( self.zoom, self.zoom, self.zoom )
 
    def update( self, dt ):
@@ -615,8 +604,11 @@ class traj3d:
          delta    =  x - self.__posx, y - self.__posy
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
             # Need to calculate projection base
-            base_x = self.__camera.at
-            base_y = -self.__camera.up
+            base_x = cross( self.__camera.up, self.__camera.at )
+            base_y = cross( base_x, self.__camera.at )
+            # Need to normalize vectors
+            base_x /= linalg.norm( base_x )
+            base_y /= linalg.norm( base_y )
             # Move along the projection base
             move    = base_x * delta[0] / self.width + base_y * delta[1] / self.height
             self.__camera.move( move )
@@ -624,8 +616,7 @@ class traj3d:
             yaw   = delta[0] * sensitivity
             pitch = delta[1] * sensitivity
             roll  = 0.
-            #self.__camera.rotate( yaw, pitch, 0. )
-            self.__camera.rotate( yaw, 0., pitch )
+            self.__camera.rotate( yaw, pitch, 0. )
          self.__posx = x
          self.__posy = y
          self.redisplay()
