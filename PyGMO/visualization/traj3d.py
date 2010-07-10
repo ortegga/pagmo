@@ -32,9 +32,7 @@ import math
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
-from OpenGL.GLUT.freeglut import *
 from OpenGL.arrays import ArrayDatatype as ADT
-
 
 # NumPy
 from numpy import *
@@ -398,7 +396,7 @@ class traj3d:
       glutKeyboardFunc(    self.__keyboard )
       #glutSpecialFunc(     self.__special )
       glutMouseFunc(       self.__mouse )
-      glutMouseWheelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
+      #glutMouseWheelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
       glutMotionFunc(      self.__motion )
       #glutPassiveMotionFunc( self.__passive )
       glutVisibilityFunc(  self.__visibility )
