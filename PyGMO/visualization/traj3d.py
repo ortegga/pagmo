@@ -388,6 +388,7 @@ class traj3d:
       # Set up some stuff
       glShadeModel( GL_FLAT )
       glClearColor( 0., 0., 0., 0. )
+      glEnable( GL_LINE_SMOOTH )
       #glEnable( GL_DEPTH_TEST )
       #glEnable( GL_COLOR_MATERIAL )
       #glEnable( GL_LIGHTING )
