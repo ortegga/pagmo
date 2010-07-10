@@ -29,7 +29,6 @@ import time
 import math
 
 # General OpenGL imports
-from OpenGL.raw   import *
 from OpenGL.GL   import *
 from OpenGL.GLU  import *
 from OpenGL.GLUT import *
