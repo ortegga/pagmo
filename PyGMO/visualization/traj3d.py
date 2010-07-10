@@ -368,7 +368,7 @@ class traj3d:
       # Misc variables
       self.__time = 0
       self.__quit = False  # Do not exit yet
-      self.__mindt = 0.
+      self.__mindt = 1./60.
       self.__buttons = []
       self.__camera = Camera()
 
@@ -543,7 +543,8 @@ class traj3d:
       t  = time.time()
       dt = t - self.__time
       if self.__mindt > 0. and dt < self.__mindt:
-         return;
+         time.sleep( self.__mindt - dt )
+         return
       self.__time = t
 
       # Update camera
