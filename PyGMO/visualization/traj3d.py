@@ -283,6 +283,9 @@ class Camera:
       self.theta  = 0.
       self.phi    = 0.
       self.winSize( 1., 1. )
+      self.yawvel = 0.
+      self.pitchvel = 0.
+      self.rollvel = 0.
 
       # Calculate
       self.__calc()
@@ -309,6 +312,12 @@ class Camera:
 
    def move( self, vec ):
       self.center += vec
+
+   def yawVel( self, vel ):
+      self.yawvel = vel
+
+   def pitchVel( self, vel ):
+      self.pitchvel = vel
 
    def rotate( self, yaw, pitch, roll ):
       self.theta += yaw
@@ -343,7 +352,7 @@ class Camera:
       glScalef( self.zoom, self.zoom, self.zoom )
 
    def update( self, dt ):
-      return
+      self.rotate( dt*self.yawvel, dt*self.pitchvel, dt*self.rollvel )
 
 
 ###############################################################################
@@ -400,8 +409,10 @@ class traj3d:
       glutDisplayFunc(     self.__display )
       glutIdleFunc(        self.__idle )
       glutReshapeFunc(     self.__reshape )
-      glutKeyboardFunc(    self.__keyboard )
-      #glutSpecialFunc(     self.__special )
+      glutKeyboardFunc(    self.__keyboarddown )
+      glutKeyboardUpFunc(  self.__keyboardup )
+      glutSpecialFunc(     self.__specialdown )
+      glutSpecialUpFunc(   self.__specialup )
       glutMouseFunc(       self.__mouse )
       #glutMouseWheelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
       glutMotionFunc(      self.__motion )
@@ -417,23 +428,59 @@ class traj3d:
       self.keymap[ 'z' ]      = self.__key_zoomIn
       self.keymap[ 'Z' ]      = self.__key_zoomOut
 
+      # Special keymap
+      self.specialkeymap = {}
+      self.specialkeymap[ GLUT_KEY_LEFT ]    = self.__key_left
+      self.specialkeymap[ GLUT_KEY_RIGHT ]   = self.__key_right
+      self.specialkeymap[ GLUT_KEY_UP ]      = self.__key_up
+      self.specialkeymap[ GLUT_KEY_DOWN ]    = self.__key_down
+
       # Clear the window
       self.clear()
 
 
    # Keybindings
-   def __key_exit( self, x, y ):
-      self.terminate()
-   def __key_zoomIn( self, x, y ):
-      self.__camera.zoomIn()
-      self.redisplay()
-   def __key_zoomOut( self, x, y ):
-      self.__camera.zoomOut()
-      self.redisplay()
-   def __key_autoZoom( self, x, y ):
-      self.autozoom()
-      self.redisplay()
+   def __key_exit( self, p, x, y ):
+      if p:
+         self.terminate()
+   def __key_zoomIn( self, p, x, y ):
+      if p:
+         self.__camera.zoomIn()
+         self.redisplay()
+   def __key_zoomOut( self, p, x, y ):
+      if p:
+         self.__camera.zoomOut()
+         self.redisplay()
+   def __key_autoZoom( self, p, x, y ):
+      if p:
+         self.autozoom()
+         self.redisplay()
 
+   # Special keybindings
+   def __key_left( self, p, x, y ):
+      if p:
+         vel = -math.pi/2.
+      else:
+         vel = 0.
+      self.__camera.yawVel( vel )
+   def __key_right( self, p, x, y ):
+      if p:
+         vel = math.pi/2.
+      else:
+         vel = 0.
+      self.__camera.yawVel( vel )
+   def __key_up( self, p, x, y ):
+      if p:
+         vel = -math.pi/2.
+      else:
+         vel = 0.
+      self.__camera.pitchVel( vel )
+   def __key_down( self, p, x, y ):
+      if p:
+         vel = math.pi/2.
+      else:
+         vel = 0.
+      self.__camera.pitchVel( vel )
 
    def start( self ):
       """
@@ -582,12 +629,36 @@ class traj3d:
       self.redisplay()
 
 
-   def __keyboard( self, key, x, y ):
+   def __keyboarddown( self, key, x, y ):
+      "Wrapper for keyboard button presses."
+      self.__keyboard( True, key, x, y )
+   def __keyboardup( self, key, x, y ):
+      "Wrapper for keyboard button releases."
+      self.__keyboard( False, key, x, y )
+
+
+   def __keyboard( self, pressed, key, x, y ):
       """
       Handles key presses.
       """
       if self.keymap.has_key( key ):
-         self.keymap[key]( x, y )
+         self.keymap[key]( pressed, x, y )
+
+
+   def __specialdown( self, key, x, y ):
+      "Wrapper for keyboard special button presses."
+      self.__special( True, key, x, y )
+   def __specialup( self, key, x, y ):
+      "Wrapper for keyboard special button releases."
+      self.__special( False, key, x, y )
+
+
+   def __special( self, pressed, key, x, y ):
+      """
+      Handles special key presses.
+      """
+      if self.specialkeymap.has_key( key ):
+         self.specialkeymap[key]( pressed, x, y )
 
 
    def __mouse( self, button, state, x, y ):
