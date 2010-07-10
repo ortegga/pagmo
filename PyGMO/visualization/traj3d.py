@@ -356,14 +356,29 @@ class traj3d:
       Initalizes the engine.
       """
 
-      # Initialize GLUT
-      glutInit()
-
       # Set variables
       self.objects = []  # No objects yet
       self.width  = width
       self.height = height
       self.title  = title
+
+      # Initialize GLUT
+      glutInit()
+
+      # Create window
+      glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE )
+      glutInitWindowSize( self.width, self.height )
+      self.window = glutCreateWindow( self.title )
+      glutSetWindow( self.window )
+
+      # Set up some stuff
+      glShadeModel( GL_FLAT )
+      glClearColor( 0., 0., 0., 0. )
+      #glEnable( GL_DEPTH_TEST )
+      #glEnable( GL_COLOR_MATERIAL )
+      #glEnable( GL_LIGHTING )
+      #glEnable( GL_LIGHT0 )
+      self.clear()
 
       # Misc variables
       self.__time = 0
@@ -372,20 +387,6 @@ class traj3d:
       self.__buttons = []
       self.__camera = Camera()
       self.__camera.absolute( math.pi/4., math.pi/4., 0. )
-
-      # Set up some stuff
-      glShadeModel( GL_FLAT )
-      glClearColor( 1., 1., 1., 0. )
-      glEnable( GL_DEPTH_TEST )
-      #glEnable( GL_COLOR_MATERIAL )
-      #glEnable( GL_LIGHTING )
-      #glEnable( GL_LIGHT0 )
-
-      # Create window
-      glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE )
-      glutInitWindowSize( self.width, self.height )
-      self.window = glutCreateWindow( self.title )
-      glutSetWindow( self.window )
 
       # Resize window
       self.reshape( width, height )
