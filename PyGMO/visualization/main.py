@@ -32,10 +32,11 @@ import traj3d
 """
 Class:
 """
-class TrajectoryVisualizer:
+class Trajectory3D:
 
    def __init__( self, data ):
       """
+      Constructor for the TrajectoryVisualizer
       """
       self.__axes = None
       self.__origin = None
@@ -89,12 +90,11 @@ if __name__ == "__main__":
                   0. )
 
    # Create the engine
-   traj = TrajectoryVisualizer( data )
+   traj = Trajectory3D( data )
 
    # Create some stuff
    traj.origin( True )
    #traj.axes( True )
-
 
    # Start the engine
    traj.start()
