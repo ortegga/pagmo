@@ -280,6 +280,7 @@ class Camera:
       self.rho    = 1.
       self.theta  = 0.
       self.phi    = 0.
+      self.winSize( 1., 1. )
 
       # Calculate
       self.__calc()
@@ -287,8 +288,13 @@ class Camera:
    def __calc( self ):
       r = self.rho*math.cos( self.phi )
       z = self.rho*math.sin( self.phi )
-      self.eye = array( (r*math.cos(self.theta), r*math.sin(self.theta), z) )
-      self.at = -self.eye
+      self.eye    = array( (r*math.cos(self.theta), r*math.sin(self.theta), z) )
+      self.at     = -self.eye
+
+   def winSize( self, width, height ):
+      d = math.sqrt(width**2 + height**2)
+      self.__w = width / d
+      self.__h = height / d
 
    def zoomIn( self, factor=math.sqrt(2.) ):
       self.zoom *= factor
@@ -305,12 +311,15 @@ class Camera:
    def rotate( self, yaw, pitch, roll ):
       self.theta += yaw
       self.phi   += pitch
+      if abs(self.phi) > math.pi/2.:
+         self.phi = math.pi/2 * (self.phi/abs(self.phi))
       #self.roll  += roll
       self.__calc()
 
    def absolute( self, yaw, pitch, roll ):
       self.theta  = yaw
       self.phi    = pitch
+      self.phi    = math.fmod( self.phi, math.pi/2. )
       #self.roll   = roll
       self.__calc()
 
@@ -321,7 +330,9 @@ class Camera:
       # Reset matrix
       glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
-      glOrtho( -1., 1., -1., 1., -100., 10. )
+      w = self.__w
+      h = self.__h
+      glOrtho( -w, w, -h, h, -1., 1. )
       gluLookAt( 0., 0., 0.,
             #self.center[0], self.center[1], self.center[2],
             self.eye[0], self.eye[1], self.eye[2],
@@ -379,7 +390,7 @@ class traj3d:
       glutSetWindow( self.window )
 
       # Resize window
-      #self.reshape( width, height )
+      self.reshape( width, height )
 
       # Set the callbacks
       glutDisplayFunc(     self.__display )
@@ -391,7 +402,7 @@ class traj3d:
       glutMouseWheelFunc(  self.__wheel )  # From FreeGLUT, not standard GLUT
       glutMotionFunc(      self.__motion )
       #glutPassiveMotionFunc( self.__passive )
-      #glutVisibilityFunc(  self.__visibility )
+      glutVisibilityFunc(  self.__visibility )
       #glutEntryFunc(       self.__entry )
 
       # Set keymap
@@ -557,6 +568,7 @@ class traj3d:
       self.height = height
       glViewport( 0, 0, width, height )
       # Update camera
+      self.__camera.winSize( width, height )
       self.__camera.refresh()
       # Redraw
       self.redisplay()
@@ -620,6 +632,9 @@ class traj3d:
          self.__posx = x
          self.__posy = y
          self.redisplay()
+
+   def __visibility( self, vis ):
+      self.__idle()
 
 
    def redisplay( self ):
