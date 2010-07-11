@@ -139,6 +139,7 @@ SET(ANN_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cudainfo.cpp
 )
 
 IF(ENABLE_CUDA)

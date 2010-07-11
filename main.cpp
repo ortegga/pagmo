@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <vector>
+#include "src/cudainfo.h"
 #include "src/ann_toolbox/cudaty.h"
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/perceptron.h"
@@ -9,7 +10,10 @@
 int main( int argc, char **argv )
 {
 
-  int i=2, h=2, o=2;
+  CudaInfo info;
+  std::cout<<info;
+
+  /*int i=2, h=2, o=2;
   std::vector<CUDA_TY> X (i, 1.0f);
 
 
@@ -49,7 +53,7 @@ int main( int argc, char **argv )
     {
       std::cout<<*iter<<" ";
     }
-  
+  */
   return 0;
 };
 
