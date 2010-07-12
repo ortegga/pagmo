@@ -162,14 +162,17 @@ class Environment(object):
     def __init__(self):
         r = Robot("Robot", [0, 150, 0])
         p = xode.parser.Parser()
+#        p.setParams(spaceFactory=ode.HashSpace)
         self.root = p.parseString(r.get_xode())
 #        e = ALifeEnvironment()
 #        e.load_robot(r.get_xode())
         
 if __name__ == "__main__":
     envs = []
-    for i in range(200):
+    for i in range(20):
+        print i
         e = Environment()
         print e
-        envs.append(e)
+        del e
+#        envs.append(e)
         

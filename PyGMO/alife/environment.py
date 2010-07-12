@@ -496,7 +496,7 @@ class ALifeEnvironment(object):
             self.body_geom.append((body, geom))
             # todo: do we need to call geom.setBody(body)?
             #       http://pyode.sourceforge.net/tutorials/tutorial3.html
-            geom.setBody(body)
+#            geom.setBody(body)
         
         # geom on its own without body
         elif isinstance(node, xode.geom.Geom):
