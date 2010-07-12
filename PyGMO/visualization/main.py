@@ -34,7 +34,7 @@ Class:
 """
 class Trajectory3D:
 
-   def __init__( self, data ):
+   def __init__( self, data, width=800, height=600, conv_t=1., conv_r=1., conv_v=1., conv_dv=1. ):
       """
       Constructor for the TrajectoryVisualizer
       """
@@ -43,12 +43,15 @@ class Trajectory3D:
       self.__data = data
 
       # Create opengl context
-      self.engine = traj3d.traj3d( "3D Trajectory Test", 800, 600 )
-      self.traj   = traj3d.Trajectory( data )
+      self.engine = traj3d.traj3d( "3D Trajectory Test", width, height )
+      self.traj   = traj3d.Trajectory( data, conv_t, conv_r, conv_v, conv_dv )
       self.engine.add( self.traj )
 
    def start( self ):
       self.engine.start()
+
+   def resize( self, width, height ):
+      self.engine.reshape( width, height )
 
    def axes( self, enable ):
       if enable and self.__axes is None:
@@ -90,7 +93,8 @@ if __name__ == "__main__":
                   0. )
 
    # Create the engine
-   traj = Trajectory3D( data )
+   traj = Trajectory3D( data, 800, 600,
+         24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
 
    # Create some stuff
    traj.origin( True )

@@ -105,7 +105,7 @@ class Trajectory(Object):
    Represents a 3D trajectory.
    """
 
-   def __init__( self, data, mu = 1.32712428e20 ):
+   def __init__( self, data, conv_t=1., conv_r=1., conv_v=1., conv_dv=1., mu = 1.32712428e20 ):
       Object.__init__( self )
       self.data = data # Store data
       self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
@@ -128,10 +128,10 @@ class Trajectory(Object):
       center      = array( [ 0., 0., 0. ] )
       for i in range( 0, len(data), 10 ):
          # Unit conversion
-         t  = data[ i+0 ] * 24. * 3600. # days -> seconds
-         r  = array( [ data[i+1], data[i+2], data[i+3] ] ) * 1000. # km -> m
-         v  = array( [ data[i+4], data[i+5], data[i+6] ] ) * 1000. # km/s -> m/s
-         dv = array( [ data[i+7], data[i+8], data[i+9] ] ) # ??
+         t  = data[ i+0 ] * conv_t
+         r  = array( [ data[i+1], data[i+2], data[i+3] ] ) * conv_r
+         v  = array( [ data[i+4], data[i+5], data[i+6] ] ) * conv_v
+         dv = array( [ data[i+7], data[i+8], data[i+9] ] ) * conv_dv
          # Add value
          self.__t.append(  t  )
          self.__r.append(  r  )
