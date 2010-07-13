@@ -34,6 +34,9 @@ from OpenGL.GLU  import *
 from OpenGL.GLUT import *
 from OpenGL.arrays import ArrayDatatype as ADT
 
+# FTGL
+import FTGL
+
 # NumPy
 from numpy import *
 
@@ -67,6 +70,10 @@ class Object:
          raise NotImplementedError
 
    def display( self ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
+   def displayOver( self, width, height ):
       if self.__class__ is Object:
          raise NotImplementedError
 
@@ -110,6 +117,7 @@ class Trajectory(Object):
       self.data = data # Store data
       self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
       self.__vbo = None
+      self.fontsize( 16 )
 
       # Make sure data matches
       if type( data ).__name__ != 'tuple':
@@ -142,6 +150,9 @@ class Trajectory(Object):
       # Center
       self.__center = center / (len(data) / 10)
 
+      # Select starting point
+      self.__cur = self.__r[ 0 ]
+
       # Calculate size
       dmax = 0.
       for r in self.__r:
@@ -157,6 +168,11 @@ class Trajectory(Object):
       # Delete the VBO
       if self.__vbo != None:
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
+
+   def fontsize( self, size ):
+      self.font = FTGL.PixmapFont( "font.ttf" )
+      self.font.FaceSize( size )
+      self.fontsize = size
 
    def center( self ):
       return self.__center
@@ -185,7 +201,7 @@ class Trajectory(Object):
 
          # Add interpolated points
          for j in frange( 0., delta, step ):
-            r, v = keplerian_toolbox.propagate_kep( tuple(self.__r[ i+0 ]), tuple(self.__v[ i+0 ]), j, self.mu )
+            r, v = keplerian_toolbox.propagate_kep( self.__r[ i+0 ], self.__v[ i+0 ], j, self.mu )
             self.__vertex.append( [ r[0], r[1], r[2] ] )
             center += r
 
@@ -218,6 +234,27 @@ class Trajectory(Object):
             dmax = dist
       self.__size = dmax
 
+   
+   def position( self, t ):
+
+      i = 0
+      while i < len( self.__t ):
+         if self.__t[i] > t:
+            break
+         i += 1
+
+      if i > 0:
+         i -= 1
+
+      # Calculate point
+      t  = self.__t[i] - t
+      r  = self.__r[i]
+      v  = self.__v[i]
+      dv = self.__dv[i]
+      r, v = keplerian_toolbox.propagate_kep( r, v, t, self.mu )
+
+      return r, v, dv
+
 
    def display( self ):
       glEnableClientState(GL_VERTEX_ARRAY)
@@ -228,6 +265,39 @@ class Trajectory(Object):
       glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
 
       glDisableClientState( GL_VERTEX_ARRAY )
+
+
+   def displayOver( self, width, height):
+
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+      r, v, dv = self.position( 0. )
+
+      bx = 10.
+      y  = 10. + 2.*( 1.5 *  self.fontsize )
+
+      # Text to render
+      sr = "Dist: %.2E m" % linalg.norm( r )
+      sv = "Vel: %.2E m" % linalg.norm( v )
+
+      # Calculate width
+      w  = max( self.font.Advance( sr ),
+                self.font.Advance( sv ) )
+      x = width - w  - bx
+
+      # Position
+      glColor3d( 1., 0., 0. )
+      glRasterPos( x, y )
+      self.font.Render( sr )
+
+      # Velocity
+      y  -= self.fontsize * 1.5
+      glColor3d( 0., 1., 0. )
+      glRasterPos( x, y )
+      self.font.Render( sv )
+
+      glDisable(GL_BLEND)
 
 
 ###############################################################################
@@ -263,7 +333,6 @@ class Origin(Object):
       glVertex3d( 0, 0, 0 )
       glVertex3d( 0., 0., self.expanse )
       glEnd()
-
 
 
 ###############################################################################
@@ -580,10 +649,21 @@ class traj3d:
       """
       # Camera
       self.__camera.view()
+
       # Objects
       self.clear()
       for obj in self.objects:
          obj.display()
+
+      # Change to 2D
+      glMatrixMode( GL_PROJECTION )
+      glLoadIdentity()
+      glOrtho( 0., self.width, 0., self.height, -1., 1. )
+
+      # Go to ortho overlay
+      for obj in self.objects:
+         obj.displayOver( self.width, self.height )
+
       self.flush()
 
 
