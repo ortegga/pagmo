@@ -150,9 +150,6 @@ class Trajectory(Object):
       # Center
       self.__center = center / (len(data) / 10)
 
-      # Select starting point
-      self.__cur = self.__r[ 0 ]
-
       # Calculate size
       dmax = 0.
       for r in self.__r:
@@ -160,6 +157,10 @@ class Trajectory(Object):
          if dist > dmax:
             dmax = dist
       self.__size = dmax
+
+      # Select starting point
+      self.__cur = self.__t[ 0 ]
+      self.__rad = dmax / 100.
 
       # Generate VBO
       self.__genTraj()
@@ -247,7 +248,7 @@ class Trajectory(Object):
          i -= 1
 
       # Calculate point
-      t  = self.__t[i] - t
+      t  = t - self.__t[i]
       r  = self.__r[i]
       v  = self.__v[i]
       dv = self.__dv[i]
@@ -266,18 +267,36 @@ class Trajectory(Object):
 
       glDisableClientState( GL_VERTEX_ARRAY )
 
+      # Display current position.
+      glPushMatrix()
+      r, v, dv = self.position( self.__cur )
+      glTranslatef( r[0], r[1], r[2] )
+      glutSolidSphere( self.__rad, 10, 10 )
+      glPopMatrix()
+
+
+   def update( self, dt ):
+      start = self.__t[ 0 ]
+      end   = self.__t[ -1 ]
+      delta = end - start
+      self.__cur += (delta/10.) * dt
+      # Watch overflows
+      if self.__cur > end:
+         self.__cur = start
 
    def displayOver( self, width, height):
 
       glEnable(GL_BLEND)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-      r, v, dv = self.position( 0. )
+      t = self.__cur
+      r, v, dv = self.position( t )
 
       bx = 10.
       y  = 10. + 2.*( 1.5 *  self.fontsize )
 
       # Text to render
+      st = "Time: %.2E s" % linalg.norm( t )
       sr = "Dist: %.2E m" % linalg.norm( r )
       sv = "Vel: %.2E m" % linalg.norm( v )
 
@@ -286,7 +305,13 @@ class Trajectory(Object):
                 self.font.Advance( sv ) )
       x = width - w  - bx
 
+      # Time
+      glColor3d( 1., 1., 1. )
+      glRasterPos( x, y )
+      self.font.Render( st )
+
       # Position
+      y  -= self.fontsize * 1.5
       glColor3d( 1., 0., 0. )
       glRasterPos( x, y )
       self.font.Render( sr )
@@ -298,6 +323,7 @@ class Trajectory(Object):
       self.font.Render( sv )
 
       glDisable(GL_BLEND)
+
 
 
 ###############################################################################
