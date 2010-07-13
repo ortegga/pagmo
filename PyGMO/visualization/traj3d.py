@@ -171,7 +171,7 @@ class Trajectory(Object):
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
 
    def fontsize( self, size ):
-      self.font = FTGL.PixmapFont( "font.ttf" )
+      self.font = FTGL.PixmapFont( "Vera.ttf" )
       self.font.FaceSize( size )
       self.fontsize = size
 
