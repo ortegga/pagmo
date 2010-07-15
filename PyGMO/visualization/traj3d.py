@@ -554,28 +554,16 @@ class traj3d:
 
    # Special keybindings
    def __key_left( self, p, x, y ):
-      if p:
-         vel = -math.pi/2.
-      else:
-         vel = 0.
+      vel = -math.pi/2. if p else 0.
       self.__camera.yawVel( vel )
    def __key_right( self, p, x, y ):
-      if p:
-         vel = math.pi/2.
-      else:
-         vel = 0.
+      vel = math.pi/2. if p else 0.
       self.__camera.yawVel( vel )
    def __key_up( self, p, x, y ):
-      if p:
-         vel = -math.pi/2.
-      else:
-         vel = 0.
+      vel = -math.pi/2. if p else 0.
       self.__camera.pitchVel( vel )
    def __key_down( self, p, x, y ):
-      if p:
-         vel = math.pi/2.
-      else:
-         vel = 0.
+      vel = math.pi/2. if p else 0.
       self.__camera.pitchVel( vel )
 
    def start( self ):
@@ -801,15 +789,7 @@ class traj3d:
          sensitivity = 0.005
          delta    =  x - self.__posx, y - self.__posy
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
-            # Need to calculate projection base
-            base_x = cross( self.__camera.up, self.__camera.at )
-            base_y = cross( base_x, self.__camera.at )
-            # Need to normalize vectors
-            base_x /= linalg.norm( base_x )
-            base_y /= linalg.norm( base_y )
-            # Move along the projection base
-            move    = base_x * delta[0] / self.width + base_y * delta[1] / self.height
-            self.__camera.move( move )
+            self.__moveCam( delta[0], delta[1] )
          else:
             yaw   = delta[0] * sensitivity
             pitch = delta[1] * sensitivity
@@ -818,6 +798,17 @@ class traj3d:
          self.__posx = x
          self.__posy = y
          self.redisplay()
+
+   def __moveCam( self, x, y ):
+      # Need to calculate projection base
+      base_x = cross( self.__camera.up, self.__camera.at )
+      base_y = cross( base_x, self.__camera.at )
+      # Need to normalize vectors
+      base_x /= linalg.norm( base_x )
+      base_y /= linalg.norm( base_y )
+      # Move along the projection base
+      move    = base_x * x / self.width + base_y * y / self.height
+      self.__camera.move( move )
 
    def __visibility( self, vis ):
       self.__idle()
