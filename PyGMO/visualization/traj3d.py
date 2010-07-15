@@ -319,10 +319,28 @@ class Trajectory(Object):
       glPopMatrix()
 
 
+   def faster( self, factor=1.1 ):
+      "Speeds up the animation."
+      self.playspeed *= factor
+   
+   def slower( self, factor=1.1 ):
+      "Slows down the animation."
+      self.playspeed /= factor
+
+   def speed( self, speed ):
+      "Sets the animation speed."
+      self.playspeed = speed
+
+   def duration( self, duration ):
+      "Sets the animation total duration in seconds."
+      self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / duration
+
    def restart( self ):
+      "Restarts the playback."
       self.__curt = self.__t[ 0 ]
 
    def pause( self, enable ):
+      "Pauses the playback."
       self.playing = not enable
 
    def update( self, dt ):

@@ -97,6 +97,10 @@ class Trajectory3D:
          self.__playing = not self.__playing
       if key is 'r' and pressed:
          self.traj.restart()
+      if key is 'f' and pressed:
+         self.traj.faster()
+      if key is 's' and pressed:
+         self.traj.slower()
 
 # Run some tests
 if __name__ == "__main__":
