@@ -173,6 +173,7 @@ class Trajectory(Object):
       self.__curt    = self.__t[ 0 ]
       self.__rad     = dmax / 100.
       self.__showvec = False
+      self.__repeat  = False
       self.update( 0. )
 
       # Generate VBO
@@ -339,9 +340,17 @@ class Trajectory(Object):
       "Restarts the playback."
       self.__curt = self.__t[ 0 ]
 
+   def repeat( self, enable ):
+      "Sets animation repetition."
+      self.__repeat = enable
+
    def pause( self, enable ):
       "Pauses the playback."
       self.playing = not enable
+
+   def ispaused( self ):
+      "Checks to see if is paused."
+      return not self.playing
 
    def update( self, dt ):
       "Updates the animation of the trajectory."
@@ -351,8 +360,11 @@ class Trajectory(Object):
          self.__curt += self.playspeed * dt
          # Stop when finished
          if self.__curt > self.__t[ -1 ]:
-            self.__curt = self.__t[ -1 ]
-            self.playing = False
+            if self.__repeat:
+               self.__curt = self.__t[ 0 ]
+            else:
+               self.__curt = self.__t[ -1 ]
+               self.playing = False
       r, v, dv = self.position( self.__curt )
       self.__curr  = r
       self.__curv  = v
