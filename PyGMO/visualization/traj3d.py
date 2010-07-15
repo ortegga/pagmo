@@ -138,6 +138,7 @@ class Trajectory(Object):
       self.__v    = []
       self.__dv   = []
       center      = array( [ 0., 0., 0. ] )
+      self.__maxv = 0.
       for i in range( 0, len(data), 10 ):
          # Unit conversion
          t  = data[ i+0 ] * conv_t
@@ -151,6 +152,10 @@ class Trajectory(Object):
          self.__dv.append( dv )
          # Calculate center
          center += r
+         # Calculate maximum velocity
+         v_n = linalg.norm( v )
+         if v_n > self.__maxv:
+            self.__maxv = v_n
       # Center
       self.__center = center / (len(data) / 10)
 
@@ -165,8 +170,9 @@ class Trajectory(Object):
       # Animation stuff
       self.playing   = True
       self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / 10.
-      self.__cur     = self.__t[ 0 ]
+      self.__curt    = self.__t[ 0 ]
       self.__rad     = dmax / 100.
+      self.update( 0. )
 
       # Generate VBO
       self.__genTraj()
@@ -186,7 +192,6 @@ class Trajectory(Object):
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
       self.__rad  = 0.01 / zoom
-      print( self.__rad )
 
    def center( self ):
       "Gets the center of the object."
@@ -269,22 +274,34 @@ class Trajectory(Object):
       dv = self.__dv[i]
       r, v = keplerian_toolbox.propagate_kep( r, v, t, self.mu )
 
-      return r, v, dv
+      return array(r), array(v), dv
 
 
    def display( self ):
       "Displays the trajectory."
       # Render the trajectory VBO
-      glEnableClientState(GL_VERTEX_ARRAY)
       glColor3d( 1., 1., 1. )
+      glEnableClientState(GL_VERTEX_ARRAY)
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glVertexPointer( 3, GL_FLOAT, 0, None )
       glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
       glDisableClientState( GL_VERTEX_ARRAY )
 
+      # Get data
+      r = self.__curr
+      v = self.__curv
+
+      # Render velocity vector.
+      glColor3d( 0., 1., 0. )
+      glBegin( GL_LINES )
+      rv = r + v * (1. / self.__maxv) * self.size() / 5.
+      glVertex( rv[0], rv[1], rv[2] )
+      glVertex( r[0], r[1], r[2] )
+      glEnd()
+
       # Display current position.
+      glColor3d( 1., 1., 1. )
       glPushMatrix()
-      r, v, dv = self.position( self.__cur )
       glTranslatef( r[0], r[1], r[2] )
       glutSolidSphere( self.__rad, 10, 10 )
       glPopMatrix()
@@ -293,14 +310,17 @@ class Trajectory(Object):
    def update( self, dt ):
       "Updates the animation of the trajectory."
       # must be playing
-      if not self.playing:
-         return
-      # Update
-      self.__cur += self.playspeed * dt
-      # Stop when finished
-      if self.__cur > self.__t[ -1 ]:
-         self.__cur = self.__t[ -1 ]
-         self.playing = False
+      if self.playing:
+         # Update
+         self.__curt += self.playspeed * dt
+         # Stop when finished
+         if self.__curt > self.__t[ -1 ]:
+            self.__curt = self.__t[ -1 ]
+            self.playing = False
+      r, v, dv = self.position( self.__curt )
+      self.__curr  = r
+      self.__curv  = v
+      self.__curdv = dv
 
    def displayOver( self, width, height):
       "Displays the trajectory overlay."
@@ -308,8 +328,10 @@ class Trajectory(Object):
       glEnable(GL_BLEND)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-      t = self.__cur
-      r, v, dv = self.position( t )
+      t  = self.__curt
+      r  = self.__curr
+      v  = self.__curv
+      dv = self.__curdv
 
       bx = 10.
       y  = 10. + 2.*( 1.5 *  self.fontsize )
