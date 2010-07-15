@@ -539,6 +539,9 @@ class traj3d:
       self.__camera = Camera()
       self.__camera.absolute( math.pi/4., math.pi/4., 0. )
 
+      # Input
+      self.__keyboardfunc = None
+
       # Resize window
       self.reshape( width, height )
 
@@ -792,6 +795,11 @@ class traj3d:
       """
       if self.keymap.has_key( key ):
          self.keymap[key]( pressed, x, y )
+      if self.__keyboardfunc != None:
+         self.__keyboardfunc( pressed, key, x, y )
+
+   def inputKeyboard( self, func ):
+      self.__keyboardfunc = func
 
 
    def __specialdown( self, key, x, y ):

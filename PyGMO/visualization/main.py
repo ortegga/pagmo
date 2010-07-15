@@ -47,6 +47,9 @@ class Trajectory3D:
       self.traj   = traj3d.Trajectory( data, conv_t, conv_r, conv_v, conv_dv )
       self.engine.add( self.traj )
 
+      # Bind keyboard input
+      self.engine.inputKeyboard( self.__keyboard )
+
    def start( self ):
       self.engine.start()
 
@@ -68,6 +71,9 @@ class Trajectory3D:
       elif not enable and self.__origin is not None:
          self.engine.remove( self.__origin )
          self.__origin = None
+
+   def __keyboard( self, pressed, key, x, y ):
+      return
 
 # Run some tests
 if __name__ == "__main__":
