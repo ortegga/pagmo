@@ -63,6 +63,9 @@ class Trajectory3D:
       """
       self.engine.reshape( width, height )
 
+   def vectors( self, enable ):
+      self.traj.showVectors( enable )
+
    def axes( self, enable ):
       """
       Shows axes.
@@ -124,6 +127,7 @@ if __name__ == "__main__":
 
    # Create some stuff
    traj.origin( True )
+   traj.vectors( True )
    #traj.axes( True )
 
    # Start the engine

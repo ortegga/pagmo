@@ -172,6 +172,7 @@ class Trajectory(Object):
       self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / 10.
       self.__curt    = self.__t[ 0 ]
       self.__rad     = dmax / 100.
+      self.__showvec = False
       self.update( 0. )
 
       # Generate VBO
@@ -188,6 +189,9 @@ class Trajectory(Object):
       self.font = FTGL.PixmapFont( "Vera.ttf" )
       self.font.FaceSize( size )
       self.fontsize = size
+
+   def showVectors( self, enable ):
+      self.__showvec = enable
 
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
@@ -291,13 +295,21 @@ class Trajectory(Object):
       r = self.__curr
       v = self.__curv
 
-      # Render velocity vector.
-      glColor3d( 0., 1., 0. )
-      glBegin( GL_LINES )
-      rv = r + v * (1. / self.__maxv) * self.size() / 5.
-      glVertex( rv[0], rv[1], rv[2] )
-      glVertex( r[0], r[1], r[2] )
-      glEnd()
+      if self.__showvec:
+         # Render position vector
+         glColor3d( 1., 0., 0. )
+         glBegin( GL_LINES )
+         glVertex( 0., 0., 0. )
+         glVertex( r[0], r[1], r[2] )
+         glEnd()
+
+         # Render velocity vector.
+         glColor3d( 0., 1., 0. )
+         glBegin( GL_LINES )
+         rv = r + v * (1. / self.__maxv) * self.size() / 5.
+         glVertex( rv[0], rv[1], rv[2] )
+         glVertex( r[0], r[1], r[2] )
+         glEnd()
 
       # Display current position.
       glColor3d( 1., 1., 1. )
