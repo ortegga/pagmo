@@ -158,9 +158,11 @@ class Trajectory(Object):
             dmax = dist
       self.__size = dmax
 
-      # Select starting point
-      self.__cur = self.__t[ 0 ]
-      self.__rad = dmax / 100.
+      # Animation stuff
+      self.playing   = True
+      self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / 10.
+      self.__cur     = self.__t[ 0 ]
+      self.__rad     = dmax / 100.
 
       # Generate VBO
       self.__genTraj()
@@ -276,13 +278,15 @@ class Trajectory(Object):
 
 
    def update( self, dt ):
-      start = self.__t[ 0 ]
-      end   = self.__t[ -1 ]
-      delta = end - start
-      self.__cur += (delta/10.) * dt
-      # Watch overflows
-      if self.__cur > end:
-         self.__cur = start
+      # must be playing
+      if not self.playing:
+         return
+      # Update
+      self.__cur += self.playspeed * dt
+      # Stop when finished
+      if self.__cur > self.__t[ -1 ]:
+         self.__cur = self.__t[ -1 ]
+         self.playing = False
 
    def displayOver( self, width, height):
 
