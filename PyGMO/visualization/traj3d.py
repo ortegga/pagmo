@@ -65,6 +65,10 @@ class Object:
       if self.__class__ is Object:
          raise NotImplementedError
 
+   def setScale( self, zoom ):
+      if self.__class__ is Object:
+         raise NotImplementedError
+
    def center( self ):
       if self.__class__ is Object:
          raise NotImplementedError
@@ -168,19 +172,28 @@ class Trajectory(Object):
       self.__genTraj()
 
    def __del__( self ):
+      "Cleans up after the trajectory."
       # Delete the VBO
       if self.__vbo != None:
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
 
    def fontsize( self, size ):
+      "Sets the font size."
       self.font = FTGL.PixmapFont( "Vera.ttf" )
       self.font.FaceSize( size )
       self.fontsize = size
 
+   def setScale( self, zoom ):
+      "Gives an indication of the current scale size."
+      self.__rad  = 0.01 / zoom
+      print( self.__rad )
+
    def center( self ):
+      "Gets the center of the object."
       return self.__center
 
    def size( self ):
+      "Gets the size of the object."
       return self.__size
 
    def __genTraj( self, subdivide = 50 ):
@@ -239,7 +252,7 @@ class Trajectory(Object):
 
    
    def position( self, t ):
-
+      "Gets the position and velocity vectors of the trajectory at a given instant."
       i = 0
       while i < len( self.__t ):
          if self.__t[i] > t:
@@ -260,13 +273,13 @@ class Trajectory(Object):
 
 
    def display( self ):
+      "Displays the trajectory."
+      # Render the trajectory VBO
       glEnableClientState(GL_VERTEX_ARRAY)
-
       glColor3d( 1., 1., 1. )
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glVertexPointer( 3, GL_FLOAT, 0, None )
       glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
-
       glDisableClientState( GL_VERTEX_ARRAY )
 
       # Display current position.
@@ -278,6 +291,7 @@ class Trajectory(Object):
 
 
    def update( self, dt ):
+      "Updates the animation of the trajectory."
       # must be playing
       if not self.playing:
          return
@@ -289,6 +303,7 @@ class Trajectory(Object):
          self.playing = False
 
    def displayOver( self, width, height):
+      "Displays the trajectory overlay."
 
       glEnable(GL_BLEND)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -546,14 +561,17 @@ class traj3d:
    def __key_zoomIn( self, p, x, y ):
       if p:
          self.__camera.zoomIn()
+         self.__objScale()
          self.redisplay()
    def __key_zoomOut( self, p, x, y ):
       if p:
          self.__camera.zoomOut()
+         self.__objScale()
          self.redisplay()
    def __key_autoZoom( self, p, x, y ):
       if p:
          self.autozoom()
+         self.__objScale()
          self.redisplay()
 
    # Special keybindings
@@ -616,7 +634,17 @@ class traj3d:
       # Set zoom and center
       self.__camera.zoom = 1. / dmax
       self.__camera.center = array( (0., 0., 0.) )
+      self.__camera.absolute( math.pi/4., math.pi/4., 0. )
       #self.__camera.center = center * self.__camera.zoom
+      self.__objScale()
+
+   def __objScale( self ):
+      """
+      Tells all the objects what the current scale level is.
+      """
+      z = self.__camera.zoom
+      for obj in self.objects:
+         obj.setScale( z )
 
    def terminate( self ):
       """
@@ -779,9 +807,11 @@ class traj3d:
    def __wheel( self, wheel, direction, x, y ):
       if direction > 0:
          self.__camera.zoomOut()
+         self.__objScale()
          self.redisplay()
       elif direction < 0:
          self.__camera.zoomIn()
+         self.__objScale()
          self.redisplay()
 
    def __motion( self, x, y ):
