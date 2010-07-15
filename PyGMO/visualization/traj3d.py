@@ -307,6 +307,12 @@ class Trajectory(Object):
       glPopMatrix()
 
 
+   def restart( self ):
+      self.__curt = self.__t[ 0 ]
+
+   def pause( self, enable ):
+      self.playing = not enable
+
    def update( self, dt ):
       "Updates the animation of the trajectory."
       # must be playing

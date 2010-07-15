@@ -38,9 +38,10 @@ class Trajectory3D:
       """
       Constructor for the TrajectoryVisualizer
       """
-      self.__axes = None
-      self.__origin = None
-      self.__data = data
+      self.__axes    = None
+      self.__origin  = None
+      self.__data    = data
+      self.__playing = True
 
       # Create opengl context
       self.engine = traj3d.traj3d( "3D Trajectory Test", width, height )
@@ -51,12 +52,21 @@ class Trajectory3D:
       self.engine.inputKeyboard( self.__keyboard )
 
    def start( self ):
+      """
+      Starts the engine.
+      """
       self.engine.start()
 
    def resize( self, width, height ):
+      """
+      Resizes the window.
+      """
       self.engine.reshape( width, height )
 
    def axes( self, enable ):
+      """
+      Shows axes.
+      """
       if enable and self.__axes is None:
          #self.__axes = traj3d.Axes()
          self.engine.add( self.__axes )
@@ -65,6 +75,9 @@ class Trajectory3D:
          self.__axes = None
 
    def origin( self, enable ):
+      """
+      Sets visual indicator of the origin.
+      """
       if enable and self.__origin is None:
          self.__origin = traj3d.Origin( self.traj.size() )
          self.engine.add( self.__origin )
@@ -73,7 +86,14 @@ class Trajectory3D:
          self.__origin = None
 
    def __keyboard( self, pressed, key, x, y ):
-      return
+      """
+      Handles keyboard input.
+      """
+      if key is 'p' and pressed:
+         self.traj.pause( self.__playing )
+         self.__playing = not self.__playing
+      if key is 'r' and pressed:
+         self.traj.restart()
 
 # Run some tests
 if __name__ == "__main__":
