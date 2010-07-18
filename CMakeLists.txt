@@ -56,6 +56,9 @@ OPTION(BUILD_MAIN "Build 'main.cpp'." ON)
 # Build Option: when active the bindings to Python are compiled and linked (installation).
 OPTION(BUILD_PYGMO "Build Python bindings." OFF)
 
+# Build Option: interplanetary trajectory visualizer.
+OPTION(BUILD_VISUALIZATION "Build 3D Trajectory Visualizer Python Module." OFF)
+
 # Build Option: minimisers from the GNU scientific library (GSL).
 OPTION(ENABLE_GSL "Enable support for GSL minimisers (requires GSL >= 1.13)." OFF)
 
