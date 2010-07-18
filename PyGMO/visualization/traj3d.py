@@ -24,6 +24,7 @@
 
 
 # General imports
+import os
 import sys
 import time
 import math
@@ -187,7 +188,7 @@ class Trajectory(Object):
 
    def fontsize( self, size ):
       "Sets the font size."
-      self.font = FTGL.PixmapFont( "Vera.ttf" )
+      self.font = FTGL.PixmapFont( os.path.join( os.path.dirname(__file__), "Vera.ttf" ) )
       self.font.FaceSize( size )
       self.fontsize = size
 
