@@ -258,7 +258,8 @@ class Trajectory(Object):
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glBufferData( GL_ARRAY_BUFFER_ARB,
             #ADT.arrayByteCount( self.__vertex ),
-            ADT.voidDataPointer( self.__vertex ),
+            #ADT.voidDataPointer( self.__vertex ),
+            self.__vertex,
             GL_STATIC_DRAW )
 
       # Calculate center
