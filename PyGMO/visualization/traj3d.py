@@ -30,16 +30,27 @@ import time
 import math
 
 # General OpenGL imports
-from OpenGL.GL   import *
-from OpenGL.GLU  import *
-from OpenGL.GLUT import *
-from OpenGL.arrays import ArrayDatatype as ADT
+try:
+   from OpenGL.GL   import *
+   from OpenGL.GLU  import *
+   from OpenGL.GLUT import *
+   from OpenGL.arrays import ArrayDatatype as ADT
+except ImportError:
+   print( "Warning: The python-opengl bindings are missing, you won't be able to use the visualization module." )
+   raise ImportError
 
 # FTGL
-import FTGL
+try:
+   import FTGL
+except ImportError:
+   print( "Warning: The python-ftgl bindings are missing, you won't be able to use the visualization module." )
+   raise ImportError
 
 # NumPy
-from numpy import *
+try:
+   from numpy import *
+except ImportError:
+   print( "Warning: The numpy bindings are missing, you won't be able to use the visualization module." )
 
 # Local imports
 from frange import *
