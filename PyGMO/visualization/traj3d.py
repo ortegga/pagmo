@@ -257,7 +257,7 @@ class Trajectory(Object):
       self.__vbo = glGenBuffers( 1 )
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glBufferData( GL_ARRAY_BUFFER_ARB,
-            ADT.arrayByteCount( self.__vertex ),
+            #ADT.arrayByteCount( self.__vertex ),
             ADT.voidDataPointer( self.__vertex ),
             GL_STATIC_DRAW )
 
