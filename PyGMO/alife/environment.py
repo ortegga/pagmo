@@ -260,10 +260,6 @@ class ALifeEnvironment(object):
         self.asteroid = None
         ## @var robot_body The robot body object, defined in _parseBodies
         self.robot_body = None
-        ## @var textures The textures dictionary
-        self.textures = {}
-        ## @var experiments List of experiments performed in this environment
-        self._experiments = [] 
         ## @var joints The robot's joints
         self.joints = []
         ## @var contactgroup A joint group for the contact joints that 
@@ -314,6 +310,10 @@ class ALifeEnvironment(object):
         
         # now parse the additional parameters at the end of the xode file
         self._loadConfig(data, reload)
+        
+        # set world erp, cfm
+        self.world.setERP(0.9)
+        self.world.setCFM(0.001)
         
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a xode trimesh object, stored in the variable self.asteroid.
@@ -494,9 +494,6 @@ class ALifeEnvironment(object):
             # if geom doesn't have own name, use the name of its body
             geom.name = node.getName()
             self.body_geom.append((body, geom))
-            # todo: do we need to call geom.setBody(body)?
-            #       http://pyode.sourceforge.net/tutorials/tutorial3.html
-#            geom.setBody(body)
         
         # geom on its own without body
         elif isinstance(node, xode.geom.Geom):
@@ -514,26 +511,6 @@ class ALifeEnvironment(object):
         elif isinstance(node, xode.joint.Joint):
             joint = node.getODEObject()
             self.joints.append(joint)
-            
-            if type(joint) == ode.UniversalJoint:
-                # insert an additional AMotor joint to read the angles from and to add torques
-                # amotor = ode.AMotor(self.world)
-                # amotor.attach(joint.getBody(0), joint.getBody(1))
-                # amotor.setNumAxes(3)
-                # amotor.setAxis(0, 0, joint.getAxis2())
-                # amotor.setAxis(2, 0, joint.getAxis1())
-                # amotor.setMode(ode.AMotorEuler)
-                # xode_amotor = xode.joint.Joint(node.getName() + '[amotor]', node.getParent())
-                # xode_amotor.setODEObject(amotor)
-                # node.getParent().addChild(xode_amotor, None)
-                pass
-            if type(joint) == ode.AMotor:
-                # do the euler angle calculations automatically (ref. ode manual)
-                joint.setMode(ode.AMotorEuler)
-                
-            if type(joint) == ode.FixedJoint:
-                # prevent fixed joints from bouncing to center of first body
-                joint.setFixed()
 
         # recursive call for all child nodes
         for c in node.getChildren():
@@ -567,12 +544,15 @@ class ALifeEnvironment(object):
             p = c.getContactGeomParams()
             # parameters from Niko Wolf
             c.setBounce(0.2)
-            c.setBounceVel(0.05) #Set the minimum incoming velocity necessary for bounce
-            c.setSoftERP(0.6) #Set the contact normal "softness" parameter
-            c.setSoftCFM(0.00005) #Set the contact normal "softness" parameter
-            c.setSlip1(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 1
-            c.setSlip2(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 2
-            c.setMu(self.friction) #Set the Coulomb friction coefficient
+#            c.setBounceVel(0.05) #Set the minimum incoming velocity necessary for bounce
+#            c.setSoftERP(0.6) #Set the contact normal "softness" parameter
+#            c.setSoftCFM(0.00005) #Set the contact normal "softness" parameter
+#            c.setSoftERP(0.9) #Set the contact normal "softness" parameter
+#            c.setSoftCFM(0.001) #Set the contact normal "softness" parameter
+#            c.setSlip1(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 1
+#            c.setSlip2(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 2
+#            c.setMu(self.friction) #Set the Coulomb friction coefficient
+            c.setMu(5000)
             j = ode.ContactJoint(world, contactgroup, c)
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())
@@ -628,11 +608,6 @@ class ALifeEnvironment(object):
     #  @return list of robot's joints
     def get_robot_joints(self):
         return self.joints
-    
-    ## Add a new experiment to this environment
-    #  @param experiment The experiment to add
-    def add_experiment(self, experiment):
-        self._experiments.append(experiment) 
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
@@ -663,6 +638,10 @@ class ALifeEnvironment(object):
                 # apply this force to the body
                 force = (f*direction[0], f*direction[1], f*direction[2])
                 body.addForce(force)
+                # damping
+                f = body.getAngularVel()
+                scale = m2 * 0.01
+                body.addTorque((-f[0]*scale, -f[1]*scale, -f[2]*scale))
                 
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
@@ -672,10 +651,6 @@ class ALifeEnvironment(object):
         
         # Remove all contact joints
         self.contactgroup.empty()
-            
-        # update all experiments
-        for e in self._experiments:
-            e.update()
         
         # increase step counter
         self.step_count += 1
