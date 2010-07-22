@@ -315,6 +315,10 @@ class ALifeEnvironment(object):
         # now parse the additional parameters at the end of the xode file
         self._loadConfig(data, reload)
         
+        # set world erp, cfm
+        self.world.setERP(0.9)
+        self.world.setCFM(0.001)
+        
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a xode trimesh object, stored in the variable self.asteroid.
     #  The asteroid is then added to the ALife ODE space.
@@ -544,12 +548,15 @@ class ALifeEnvironment(object):
             p = c.getContactGeomParams()
             # parameters from Niko Wolf
             c.setBounce(0.2)
-            c.setBounceVel(0.05) #Set the minimum incoming velocity necessary for bounce
-            c.setSoftERP(0.6) #Set the contact normal "softness" parameter
-            c.setSoftCFM(0.00005) #Set the contact normal "softness" parameter
-            c.setSlip1(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 1
-            c.setSlip2(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 2
-            c.setMu(self.friction) #Set the Coulomb friction coefficient
+#            c.setBounceVel(0.05) #Set the minimum incoming velocity necessary for bounce
+#            c.setSoftERP(0.6) #Set the contact normal "softness" parameter
+#            c.setSoftCFM(0.00005) #Set the contact normal "softness" parameter
+#            c.setSoftERP(0.9) #Set the contact normal "softness" parameter
+#            c.setSoftCFM(0.001) #Set the contact normal "softness" parameter
+#            c.setSlip1(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 1
+#            c.setSlip2(0.02) #Set the coefficient of force-dependent-slip (FDS) for friction direction 2
+#            c.setMu(self.friction) #Set the Coulomb friction coefficient
+            c.setMu(5000)
             j = ode.ContactJoint(world, contactgroup, c)
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())

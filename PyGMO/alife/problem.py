@@ -58,8 +58,6 @@ class ALifeProblem(base):
         # perform another run of the experiment
         result = self.experiment.perform()
         # return the distance moved by the robot
-#        if result:
-#            print result
         return (result,)
       
         
