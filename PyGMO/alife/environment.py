@@ -260,10 +260,6 @@ class ALifeEnvironment(object):
         self.asteroid = None
         ## @var robot_body The robot body object, defined in _parseBodies
         self.robot_body = None
-        ## @var textures The textures dictionary
-        self.textures = {}
-        ## @var experiments List of experiments performed in this environment
-        self._experiments = [] 
         ## @var joints The robot's joints
         self.joints = []
         ## @var contactgroup A joint group for the contact joints that 
@@ -278,6 +274,10 @@ class ALifeEnvironment(object):
         #  model of gravity based on Newton's law, but the forces are only applied
         #  to the bodies in the world, they do not exert any force on the asteroid.
         self.grav_constant = 1.0
+        ## @var max_distance_from_asteroid The maximum distance that a body can be from
+        #  the asteroid. An exception is raised by the step() function if this value is
+        #  exceeded.
+        self.max_distance_from_asteroid = 500
         ## @var max_force The maximum force of gravity that can be applied to a body.
         #  There seems to be a problem with ODE collision detection if the gravitational
         #  force is too large. This value is just based on trial and error.
@@ -494,9 +494,6 @@ class ALifeEnvironment(object):
             # if geom doesn't have own name, use the name of its body
             geom.name = node.getName()
             self.body_geom.append((body, geom))
-            # todo: do we need to call geom.setBody(body)?
-            #       http://pyode.sourceforge.net/tutorials/tutorial3.html
-#            geom.setBody(body)
         
         # geom on its own without body
         elif isinstance(node, xode.geom.Geom):
@@ -514,26 +511,6 @@ class ALifeEnvironment(object):
         elif isinstance(node, xode.joint.Joint):
             joint = node.getODEObject()
             self.joints.append(joint)
-            
-            if type(joint) == ode.UniversalJoint:
-                # insert an additional AMotor joint to read the angles from and to add torques
-                # amotor = ode.AMotor(self.world)
-                # amotor.attach(joint.getBody(0), joint.getBody(1))
-                # amotor.setNumAxes(3)
-                # amotor.setAxis(0, 0, joint.getAxis2())
-                # amotor.setAxis(2, 0, joint.getAxis1())
-                # amotor.setMode(ode.AMotorEuler)
-                # xode_amotor = xode.joint.Joint(node.getName() + '[amotor]', node.getParent())
-                # xode_amotor.setODEObject(amotor)
-                # node.getParent().addChild(xode_amotor, None)
-                pass
-            if type(joint) == ode.AMotor:
-                # do the euler angle calculations automatically (ref. ode manual)
-                joint.setMode(ode.AMotorEuler)
-                
-            if type(joint) == ode.FixedJoint:
-                # prevent fixed joints from bouncing to center of first body
-                joint.setFixed()
 
         # recursive call for all child nodes
         for c in node.getChildren():
@@ -581,13 +558,11 @@ class ALifeEnvironment(object):
     #  @param body the body
     #  @return distance between the given body and the centre of the asteroid (float)
     def _distance_to_asteroid(self, body):
+        a = self.asteroid.getPosition()
         b = body.getPosition()
-        if not self.asteroid.getPosition() == (0, 0, 0):
-            # if the asteroid is not at the origin, change the body position, keeping
-            # it the same relative to the asteroid, but with the asteroid centred at
-            # the origin
-            a = self.asteroid.getPosition()
-            b = (b[0]+a[0], b[1]+a[1], b[2]+a[2])
+        # change the body position, keeping it the same relative to the asteroid, 
+        # but with the asteroid centred at the origin
+        b = (b[0]+a[0], b[1]+a[1], b[2]+a[2])
         # get the length of the body vector
         return np.sqrt(b[0]**2 + b[1]**2 + b[2]**2)
     
@@ -604,6 +579,7 @@ class ALifeEnvironment(object):
         a = (a[0]-b[0], a[1]-b[1], a[2]-b[2])
         # return a unit vector in the direction of the asteroid
         length = np.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+        # check that length is non-zero
         if length:
             return (a[0]/length, a[1]/length, a[2]/length)
         else:
@@ -628,11 +604,6 @@ class ALifeEnvironment(object):
     #  @return list of robot's joints
     def get_robot_joints(self):
         return self.joints
-    
-    ## Add a new experiment to this environment
-    #  @param experiment The experiment to add
-    def add_experiment(self, experiment):
-        self._experiments.append(experiment) 
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
@@ -644,6 +615,9 @@ class ALifeEnvironment(object):
             if body:
                 # calculate the distance to the centre of the asteroid
                 distance = self._distance_to_asteroid(body)
+                if distance > self.max_distance_from_asteroid:
+                    # todo: more detail on this exception
+                    raise Exception("BodyTooFarFromAsteroid")
                 # get the direction of the force
                 direction = self._direction_of_asteroid(body)
                 # calculate the force of gravity, based on the 
@@ -663,6 +637,10 @@ class ALifeEnvironment(object):
                 # apply this force to the body
                 force = (f*direction[0], f*direction[1], f*direction[2])
                 body.addForce(force)
+                # damping
+                #f = body.getAngularVel()
+                #scale = m2 * 0.01
+                #body.addTorque((-f[0]*scale, -f[1]*scale, -f[2]*scale))
                 
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
@@ -672,10 +650,6 @@ class ALifeEnvironment(object):
         
         # Remove all contact joints
         self.contactgroup.empty()
-            
-        # update all experiments
-        for e in self._experiments:
-            e.update()
         
         # increase step counter
         self.step_count += 1

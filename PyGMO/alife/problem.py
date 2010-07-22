@@ -28,17 +28,17 @@ from environment import ALifeEnvironment, Robot
 from task import ALifeExperiment, ALifeAgent, ALifeTask
 import random
 
+
 class ALifeProblem(base):
     def __init__(self):
         self.environment = ALifeEnvironment()
-        random.seed()
-        r = Robot("Robot", [random.randint(-100, 100), 150, 0])
+#        r = Robot("Robot", [random.randint(-100, 100), 150, 0])
+        r = Robot("Robot", [0, 110, 0])
         self.environment.load_robot(r.get_xode())
         self.environment.load_asteroid("models/asteroid.x3d")
         self.task = ALifeTask(self.environment)
         self.agent = ALifeAgent(len(self.task.getObservation()))
-        self.experiment = ALifeExperiment(self.task, self.agent)
-        self.environment.add_experiment(self.experiment)
+        self.experiment = ALifeExperiment(self.task, self.agent, self.environment)
         
         super(ALifeProblem, self).__init__(self.agent.num_weights())    
         self.lb = [-10 for i in range(self.agent.num_weights())]
@@ -49,19 +49,25 @@ class ALifeProblem(base):
     
     def __copy__(self):
         p = ALifeProblem()
+        p.agent.set_weights(self.agent.get_weights())
         return p
     
     def _objfun_impl(self, x):
         # update agent weights
+        self.agent.set_weights(x)
         # perform another run of the experiment
-        # get the distance moved by the robot
-        return (0.0,)
+        result = self.experiment.perform()
+        # return the distance moved by the robot
+#        if result:
+#            print result
+        return (result,)
       
         
 if __name__ == "__main__":
     from PyGMO import problem, algorithm, topology, archipelago
     from viewer import ALifeViewer
         
+    # evolve control for the robot
     prob = ALifeProblem()
     algo = algorithm.scipy_slsqp()
     topo = topology.ring()
@@ -70,7 +76,7 @@ if __name__ == "__main__":
     a.join()
     print min([i.population.champion.f[0] for i in a])
     
-#    # viewer
+    # view the robot with winning control data
 #    v = ALifeViewer()
 #    v.set_environment(e)
 #    v.print_controls()

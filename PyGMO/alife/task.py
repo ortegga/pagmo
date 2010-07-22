@@ -53,37 +53,37 @@ import random
 class ALifeExperiment(Experiment):
     # @param task an ALifeTask object
     # @param agent an ALifeAgent object  
-    def __init__(self, task, agent):
+    # @param env The ALifeEnvironment object
+    def __init__(self, task, agent, env):
         Experiment.__init__(self, task, agent)
-        ## @var steps_per_evaluation Number of update calls between each
-        #  Task evaluation
-        self._steps_per_evaluation = 50
-        ## @var step The current step number
-        self._step = 0
-    
-    ## Update the experiment, getting action data from the Agent
-    #  and passing it to the Task. 
-    #  Evaluates the task at regular intervals.
-    #  This is called at each step of the ODE environment
-    def update(self):
-        # perform task action
-        if not self.task.isFinished():
-            self._oneInteraction()
-            
-        # evaluate task at regular intervals
-        if self._step == self._steps_per_evaluation:
-            self._step = 0
-            self.agent.giveReward(self.task.getReward())
-        else:
-            self._step += 1
+        ## @var step_size The amount by which the ODE environment moves forward
+        #  at each step.
+        self.step_size = 0.04
+        ## @var _env The ODE Environment
+        self._env = env
             
     ## Change the default behaviour of _oneInteraction so that the reward
-    #  is only given to the agent after each task evaluation. This is done
-    #  in the update function.
+    #  is only given to the agent after each task evaluation. 
     def _oneInteraction(self):
         self.stepid += 1
+        self._env.step(self.step_size)
         self.agent.integrateObservation(self.task.getObservation())
         self.task.performAction(self.agent.getAction())
+        
+    ## Run this experiment until the task finishes.
+    #  @return The result of the experiment (distance moved by the robot).
+    def perform(self):
+        self.task.reset()
+        while not self.task.isFinished():
+            try:
+                self._oneInteraction()
+            except Exception as e:
+                #print "Warning: Error in experiment:", e
+                self.agent.giveReward(0)
+                return 0
+        result = self.task.getReward()
+        self.agent.giveReward(result)
+        return result
 
 
 ## ALifeAgent class
@@ -150,6 +150,10 @@ class ALifeAgent(Agent):
     def giveReward(self, reward):
         self._last_reward = reward
         
+    ##  @return The Agent's neural network weights
+    def get_weights(self):
+        return self._network.params
+        
     ## Set the Agent's neural network weights
     #  @var weights New weights for the Agent's neural network
     def set_weights(self, weights):
@@ -179,10 +183,14 @@ class ALifeTask(EpisodicTask):
         #  A robot is stable if it moves less than 1m between consecutive calls to evaluate()
         #  The task will not really start until this has happened. 
         self._robot_stable = False
+        ## @var max_samples The maximum number of samples (steps) before this task is finished.
+        self.max_samples = 200
         ## @var _robot The Robot being controlled in this task
         self._robot = env.get_robot_body()
         ## @var _prev_robot_position The position of the robot at the previous  Task evaluation 
         self._prev_robot_position = self._robot.getPosition()
+        ## @var _initial_robot_position The initial position of the robot. Used to reset it.
+        self._initial_robot_position = self._robot.getPosition()
         ## @var _distance_moved The distance moved by the robot between consecutive evaluations
         self._distance_moved = 0.0
         ## @var _sensors The Robot's joint sensors
@@ -198,16 +206,28 @@ class ALifeTask(EpisodicTask):
         self._actuator._numValues = self._actuator._countValues()
 
     ## Perform an action with the robot using the given action data
+    #  Overwrite Task.performAction as it calls environment.performAction 
+    #  which doesn't exist for ALiveEnvironment objects.
     #  @param action Action data from an ALifeAgent 
     def performAction(self, action):
-        # statements from EpisodicTask and Task performAction methods
-        # Task.performAction calls environment.performAction which we want to avoid
-        self.samples += 1
         # check that robot has stabilised on the asteroid surface
         if not self._robot_stable:
-            return
+            # calculate distance travelled since last check
+            p = self._robot.getPosition()
+            # subtract previous position
+            p = (p[0] - self._prev_robot_position[0], 
+                 p[1] - self._prev_robot_position[1], 
+                 p[2] - self._prev_robot_position[2])
+            # get the length of the vector
+            self._distance_moved = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
+            self._prev_robot_position = self._robot.getPosition()
+            if not self._robot_stable and self._distance_moved < 0.005:
+                self._robot_stable = True
+            else:
+                return
         # update actuator with values from action
         self._actuator._update(action)
+        self.samples += 1
         
     ## Evaluate the recent actions of the robot. Calculates how far it has
     #  moved since the last evaluation.
@@ -222,8 +242,6 @@ class ALifeTask(EpisodicTask):
         # get the length of the vector
         self._distance_moved = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
         self._prev_robot_position = self._robot.getPosition()
-        if not self._robot_stable and self._distance_moved < 1.0:
-            self._robot_stable = True
         return self._distance_moved
     
     ## Get the observation for the task, which is the current value of 
@@ -235,14 +253,12 @@ class ALifeTask(EpisodicTask):
     
     ## @return True if the task has finished, False otherwise
     def isFinished(self):
-        # for now, just run until the user quits the task
-        # this task could be limited to a maximum number of steps (self.samples), 
-        # and/or set to stop once a given self._distance_moved value is obtained
-        return False
+        return self.samples >= self.max_samples
     
     ## Reset the task
     def reset(self):
-        pass
+        self.samples = 0
+        self._robot.setPosition(self._initial_robot_position)
   
         
 if __name__ == "__main__":  
@@ -251,17 +267,20 @@ if __name__ == "__main__":
     random.seed()
     # environment
     e = ALifeEnvironment()
-    robot_position = [random.randint(-100, 100), 150, 0]
+    robot_position = [0, 110, 0]
     r = Robot("Robot", robot_position)
     e.load_robot(r.get_xode())
     e.load_asteroid("models/asteroid.x3d")
-    # task, agent, experiment
-    t = ALifeTask(e)
-    a = ALifeAgent(len(t.getObservation()))
-    exp = ALifeExperiment(t, a)
-    e.add_experiment(exp)
     # viewer
     v = ALifeViewer()
     v.set_environment(e)
     v.print_controls()
+    # task, agent, experiment
+    t = ALifeTask(e)
+    a = ALifeAgent(len(t.getObservation()))
+    exp = ALifeExperiment(t, a, e)
+    print
+    print "Distance moved after stablisation:", 
+    print exp.perform()
+    # view end of experiment
     v.start()
