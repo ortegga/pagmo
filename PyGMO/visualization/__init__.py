@@ -70,12 +70,7 @@ class Trajectory3D:
       """
       Shows axes.
       """
-      if enable and self.__axes is None:
-         #self.__axes = traj3d.Axes()
-         self.engine.add( self.__axes )
-      elif not enable and self.__axes is not None:
-         self.engine.remove( self.__axes )
-         self.__axes = None
+      self.traj.axes( enable )
 
    def origin( self, enable ):
       """
@@ -141,7 +136,7 @@ if __name__ == "__main__":
    traj.origin( True )
    traj.vectors( True )
    traj.repeat( True )
-   #traj.axes( True )
+   traj.axes( True )
 
    # Start the engine
    traj.start()

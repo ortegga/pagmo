@@ -133,6 +133,8 @@ class Trajectory(Object):
       self.data = data # Store data
       self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
       self.__vbo = None
+      self.__zoom = 1.
+      self.__axes = None
       self.fontsize( 16 )
 
       # Make sure data matches
@@ -197,6 +199,12 @@ class Trajectory(Object):
       if self.__vbo != None:
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
 
+   def axes( self, enable ):
+      if enable:
+         self.__axes = Axes()
+      else:
+         self.__axes = None
+
    def fontsize( self, size ):
       "Sets the font size."
       self.font = FTGL.PixmapFont( os.path.join( os.path.dirname(__file__), "Vera.ttf" ) )
@@ -208,6 +216,7 @@ class Trajectory(Object):
 
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
+      self.__zoom = zoom
       self.__rad  = 0.01 / zoom
 
    def center( self ):
@@ -308,6 +317,9 @@ class Trajectory(Object):
       # Get data
       r = self.__curr
       v = self.__curv
+      self.__curscreen = gluProject( r[0], r[1], r[2] ) # Save screen position
+      if self.__axes:
+         self.__axes.refresh( self.__curscreen, self.__zoom )
 
       if self.__showvec:
          # Render position vector
@@ -395,7 +407,7 @@ class Trajectory(Object):
       dv = self.__curdv
 
       bx = 10.
-      y  = 10. + 2.*( 1.5 *  self.fontsize )
+      y  = 10. + 3.*( 1.5 *  self.fontsize )
 
       # Text to render
       st = "Time: %.2E s" % linalg.norm( t )
@@ -425,6 +437,10 @@ class Trajectory(Object):
       self.font.Render( sv )
 
       glDisable(GL_BLEND)
+
+      # Display axes if set
+      if self.__axes:
+         self.__axes.displayOver( width, height )
 
 
 
@@ -460,6 +476,42 @@ class Origin(Object):
       glColor3d( *self.zColor )
       glVertex3d( 0, 0, 0 )
       glVertex3d( 0., 0., self.expanse )
+      glEnd()
+
+
+###############################################################################
+class Axes(Object):
+   """
+   Shows the X/Y axes.
+   """
+
+   def __init__( self, pos = (0., 0., 0.), scale=1. ):
+      self.refresh( pos, scale )
+
+   def refresh( self, pos, scale ):
+      self.__pos     = pos
+      self.__scale   = scale
+
+   def displayOver( self, width, height ):
+      margin = 25.
+
+      glColor3d( 1., 1., 1. )
+      glBegin(GL_LINES)
+      # Print Base
+      glVertex3d( margin, margin, 0. )
+      glVertex3d( margin, height-margin, 0. )
+      glVertex3d( margin, margin, 0. )
+      glVertex3d( width-margin, margin, 0. )
+      # Print Horizontal
+      x = self.__pos[0]
+      if x > margin and x < width-margin:
+         glVertex3d( x, margin, 0. )
+         glVertex3d( x, 0., 0. )
+      # Print vertical
+      y = self.__pos[1]
+      if y > margin and y < height-margin:
+         glVertex3d( margin, y, 0. )
+         glVertex3d( 0., y, 0. )
       glEnd()
 
 
