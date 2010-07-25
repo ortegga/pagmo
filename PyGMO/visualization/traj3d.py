@@ -320,7 +320,8 @@ class Trajectory(Object):
       origin = gluProject( 0., 0., 0. )
       pos    = gluProject( r[0], r[1], r[2] ) # Save screen position
       if self.__axes:
-         self.__axes.refresh( origin, self.__zoom, [ pos ] )
+         self.__axes.refresh( origin, self.__zoom,
+               [ { "colour" : (1.,0.,0.),"pos" : pos } ] )
 
       if self.__showvec:
          # Render position vector
@@ -515,12 +516,13 @@ class Axes(Object):
          glVertex3d( 0., y, 0. )
       # Print Horizontal
       for t in self.__track:
-         x = t[0]
+         glColor3d( *t["colour"] )
+         x = t["pos"][0]
          if x > margin and x < width-margin:
             glVertex3d( x, margin, 0. )
             glVertex3d( x, 0., 0. )
          # Print vertical
-         y = t[1]
+         y = t["pos"][1]
          if y > margin and y < height-margin:
             glVertex3d( margin, y, 0. )
             glVertex3d( 0., y, 0. )
