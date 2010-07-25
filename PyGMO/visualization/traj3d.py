@@ -317,9 +317,10 @@ class Trajectory(Object):
       # Get data
       r = self.__curr
       v = self.__curv
-      self.__curscreen = gluProject( r[0], r[1], r[2] ) # Save screen position
+      origin = gluProject( 0., 0., 0. )
+      pos    = gluProject( r[0], r[1], r[2] ) # Save screen position
       if self.__axes:
-         self.__axes.refresh( self.__curscreen, self.__zoom )
+         self.__axes.refresh( origin, self.__zoom, [ pos ] )
 
       if self.__showvec:
          # Render position vector
@@ -485,12 +486,13 @@ class Axes(Object):
    Shows the X/Y axes.
    """
 
-   def __init__( self, pos = (0., 0., 0.), scale=1. ):
-      self.refresh( pos, scale )
+   def __init__( self, origin = (0., 0., 0.), scale=1., track=[] ):
+      self.refresh( origin, scale, track )
 
-   def refresh( self, pos, scale ):
-      self.__pos     = pos
+   def refresh( self, origin, scale, track ):
+      self.__origin  = origin
       self.__scale   = scale
+      self.__track   = track
 
    def displayOver( self, width, height ):
       margin = 25.
@@ -502,16 +504,26 @@ class Axes(Object):
       glVertex3d( margin, height-margin, 0. )
       glVertex3d( margin, margin, 0. )
       glVertex3d( width-margin, margin, 0. )
-      # Print Horizontal
-      x = self.__pos[0]
+      # Print origin
+      x = self.__origin[0]
       if x > margin and x < width-margin:
          glVertex3d( x, margin, 0. )
          glVertex3d( x, 0., 0. )
-      # Print vertical
-      y = self.__pos[1]
+      y = self.__origin[1]
       if y > margin and y < height-margin:
          glVertex3d( margin, y, 0. )
          glVertex3d( 0., y, 0. )
+      # Print Horizontal
+      for t in self.__track:
+         x = t[0]
+         if x > margin and x < width-margin:
+            glVertex3d( x, margin, 0. )
+            glVertex3d( x, 0., 0. )
+         # Print vertical
+         y = t[1]
+         if y > margin and y < height-margin:
+            glVertex3d( margin, y, 0. )
+            glVertex3d( 0., y, 0. )
       glEnd()
 
 
