@@ -496,36 +496,47 @@ class Axes(Object):
       self.__track   = track
 
    def displayOver( self, width, height ):
-      margin = 25.
+      empty    = 20.
+      margin   = 35.
 
       glColor3d( 1., 1., 1. )
       glBegin(GL_LINES)
+
       # Print Base
       glVertex3d( margin, margin, 0. )
       glVertex3d( margin, height-margin, 0. )
       glVertex3d( margin, margin, 0. )
       glVertex3d( width-margin, margin, 0. )
-      # Print origin
-      x = self.__origin[0]
-      if x > margin and x < width-margin:
+
+      # Print coordinates
+      step  = 50
+      x     = self.__origin[0] % step
+      if x < margin:
+         x += step
+      while x < width-margin:
          glVertex3d( x, margin, 0. )
-         glVertex3d( x, 0., 0. )
-      y = self.__origin[1]
-      if y > margin and y < height-margin:
+         glVertex3d( x, empty, 0. )
+         x += step
+      y     = self.__origin[1] % step
+      if y < margin:
+         y += step
+      while y < height-margin:
          glVertex3d( margin, y, 0. )
-         glVertex3d( 0., y, 0. )
-      # Print Horizontal
+         glVertex3d( empty, y, 0. )
+         y += step
+
+      # Print tracking markers
       for t in self.__track:
          glColor3d( *t["colour"] )
          x = t["pos"][0]
          if x > margin and x < width-margin:
             glVertex3d( x, margin, 0. )
-            glVertex3d( x, 0., 0. )
+            glVertex3d( x, empty, 0. )
          # Print vertical
          y = t["pos"][1]
          if y > margin and y < height-margin:
             glVertex3d( margin, y, 0. )
-            glVertex3d( 0., y, 0. )
+            glVertex3d( empty, y, 0. )
       glEnd()
 
 
