@@ -409,7 +409,7 @@ class Trajectory(Object):
       dv = self.__curdv
 
       bx = 10.
-      y  = 10. + 3.*( 1.5 *  self.fontsize )
+      y  = 20. + 3.*( 1.5 *  self.fontsize )
 
       # Text to render
       st = "Time: %.2E s" % linalg.norm( t )
