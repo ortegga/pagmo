@@ -44,6 +44,7 @@ import ode
 import numpy as np
 import random
 
+
 ## ALifeExperiment class
 #
 #  Experiments manage the interaction between Agent and Task objects,
@@ -59,8 +60,10 @@ class ALifeExperiment(Experiment):
         ## @var step_size The amount by which the ODE environment moves forward
         #  at each step.
         self.step_size = 0.04
+        self.task._stable_distance = self.step_size / 40000
         ## @var _env The ODE Environment
         self._env = env
+#        self.stable = False
             
     ## Change the default behaviour of _oneInteraction so that the reward
     #  is only given to the agent after each task evaluation. 
@@ -69,6 +72,13 @@ class ALifeExperiment(Experiment):
         self._env.step(self.step_size)
         self.agent.integrateObservation(self.task.getObservation())
         self.task.performAction(self.agent.getAction())
+#        if not self.stable and self.task._robot_stable and self.stepid < 1000:
+#            print 'stable at', self.stepid
+#            self.stable = True
+#            raise Exception("stable")
+        
+    def step(self):
+        self._oneInteraction()
         
     ## Run this experiment until the task finishes.
     #  @return The result of the experiment (distance moved by the robot).
@@ -78,12 +88,15 @@ class ALifeExperiment(Experiment):
             try:
                 self._oneInteraction()
             except Exception as e:
-                #print "Warning: Error in experiment:", e
+                print "Warning: Error in experiment:", e
                 self.agent.giveReward(0)
                 return 0
         result = self.task.getReward()
         self.agent.giveReward(result)
         return result
+    
+    def get_environment(self):
+        return self._env
 
 
 ## ALifeAgent class
@@ -167,6 +180,7 @@ class ALifeAgent(Agent):
     def num_weights(self):
         return len(self._network.params)
 
+
 ## ALifeTask class
 #
 #  Tasks associate a purpose with an environment.
@@ -184,7 +198,7 @@ class ALifeTask(EpisodicTask):
         #  The task will not really start until this has happened. 
         self._robot_stable = False
         ## @var max_samples The maximum number of samples (steps) before this task is finished.
-        self.max_samples = 200
+        self.max_samples = 1000
         ## @var _robot The Robot being controlled in this task
         self._robot = env.get_robot_body()
         ## @var _prev_robot_position The position of the robot at the previous  Task evaluation 
@@ -193,6 +207,9 @@ class ALifeTask(EpisodicTask):
         self._initial_robot_position = self._robot.getPosition()
         ## @var _distance_moved The distance moved by the robot between consecutive evaluations
         self._distance_moved = 0.0
+        ## @var _stable_distance The robot is said to be stable if it moves less than this distance
+        #  between successive calls to performAction
+        self._stable_distance = 0.000001
         ## @var _sensors The Robot's joint sensors
         self._sensors = sensors.JointSensor()
         for j in env.get_robot_joints():
@@ -221,7 +238,7 @@ class ALifeTask(EpisodicTask):
             # get the length of the vector
             self._distance_moved = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
             self._prev_robot_position = self._robot.getPosition()
-            if not self._robot_stable and self._distance_moved < 0.005:
+            if not self._robot_stable and self._distance_moved < self._stable_distance:
                 self._robot_stable = True
             else:
                 return
@@ -262,7 +279,8 @@ class ALifeTask(EpisodicTask):
   
         
 if __name__ == "__main__":  
-    from environment import ALifeEnvironment, Robot
+    from environment import ALifeEnvironment
+    from robot import Robot
     from viewer import ALifeViewer
     random.seed()
     # environment
@@ -273,14 +291,14 @@ if __name__ == "__main__":
     e.load_asteroid("models/asteroid.x3d")
     # viewer
     v = ALifeViewer()
-    v.set_environment(e)
     v.print_controls()
     # task, agent, experiment
     t = ALifeTask(e)
     a = ALifeAgent(len(t.getObservation()))
     exp = ALifeExperiment(t, a, e)
+    v.set_experiment(exp)
     print
-    print "Distance moved after stablisation:", 
+    print "Distance moved after stabilisation:", 
     print exp.perform()
     # view end of experiment
     v.start()

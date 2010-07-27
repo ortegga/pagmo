@@ -41,7 +41,9 @@ import time
 #  @author John Glover
 class ALifeViewer(object):
     def __init__(self):
-        ## @var env ALife Environment object
+        ## @var exp ALifeExperiment object
+        self.exp = None
+        ## @var env ALifeEnvironment object
         self.env = None
         ## @var width viewport width
         self.width = 800
@@ -51,7 +53,7 @@ class ALifeViewer(object):
         # initialize object which the camera follows
         self.centerObj = None
         self.mouseView = True
-        self.viewDistance = 300
+        self.viewDistance = 100
         self.lastx = -0.5
         self.lasty = 1
         self.lastz = -1
@@ -60,7 +62,6 @@ class ALifeViewer(object):
         self.fps = 25
         self.dt = 1.0 / self.fps
         self.lasttime = time.time()
-        self.starttime = self.lasttime
         
         ## @var zoom_increment when zooming the viewing distance changes by 
         #  this amount at every step
@@ -202,8 +203,8 @@ class ALifeViewer(object):
         else:
             # no body found, then it must be a plane or triangular mesh
             if type(geom) == ode.GeomPlane:
-                # set color of plane (currently green)
-                glColor3f(0.2, 0.6, 0.3)
+                # set color of plane
+                glColor3f(0.53, 0.44, 0.35)
     
                 # for planes, we need a Quadric object
                 quad = gluNewQuadric()
@@ -222,7 +223,7 @@ class ALifeViewer(object):
                 glPushMatrix()
                 glTranslate(d * p[0], d * p[1], d * p[2])
                 glRotate(-theta, c[0], c[1], c[2])
-                gluDisk(quad, 0, 20, 20, 1)
+                gluDisk(quad, 0, 200, 200, 1)
                 glPopMatrix()
                 
             elif type(geom) == ode.GeomTriMesh:
@@ -250,7 +251,14 @@ class ALifeViewer(object):
         self._prepare()
         
         if self.env:
-            self.env.step(self.dt)
+            if self.exp:
+                self.exp.step()
+#                print self.exp.stepid
+#                print self.exp.task.getObservation()
+#                print self.exp.agent.getAction()
+#                print
+            else:
+                self.env.step(self.dt)
             for (body, geom) in self.env.get_objects():
                 self._draw_object(body, geom)
         
@@ -316,6 +324,12 @@ class ALifeViewer(object):
         self.lasty = y1
         self.lastx = x1
         self.lastz = z1
+        
+    ## Sets the ALifeExperiment that is being viewed
+    #  @param exp The ALifeExperiment object
+    def set_experiment(self, exp):
+        self.exp = exp
+        self.set_environment(exp.get_environment())
 
     ## Sets the ODE environment to be rendered
     #  @param env The ALifeEnvironment object
@@ -335,11 +349,10 @@ class ALifeViewer(object):
         print "Move the mouse to move the camera around the robot"
         
 if __name__ == "__main__":  
-    from environment import ALifeEnvironment, Robot
-    import random
-    random.seed()
+    from environment import ALifeEnvironment
+    from robot import Robot
     e = ALifeEnvironment()
-    robot_position = [random.randint(-100, 100), 150, 0]
+    robot_position = [0, 150, 0]
     r = Robot("Robot", robot_position)
     e.load_robot(r.get_xode())
     e.load_asteroid("models/asteroid.x3d")
