@@ -219,7 +219,7 @@ class Trajectory(Object):
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
       self.__zoom = zoom
-      self.__rad  = 0.01 / zoom
+      self.__rad  = 5. / zoom # 10 pixel diameter
 
    def center( self ):
       "Gets the center of the object."
@@ -347,7 +347,6 @@ class Trajectory(Object):
       glTranslatef( r[0], r[1], r[2] )
       glutSolidSphere( self.__rad, 10, 10 )
       glPopMatrix()
-
 
    def faster( self, factor=1.1 ):
       "Speeds up the animation."
@@ -515,9 +514,8 @@ class Axes(Object):
       glVertex3d( width-margin, margin, 0. )
 
       # Print coordinates
-      div   = 10
-      vstep = 10. ** floor( math.log( (1./self.__scale) / div, 10. ) )
-      step  = (1./self.__scale) / vstep
+      vstep = 10. ** floor( math.log( 250.*(1./self.__scale), 10. ) )
+      step  = vstep * self.__scale
       x     = self.__origin[0] % step
       if x < margin:
          x += step
@@ -566,6 +564,9 @@ class Axes(Object):
          self.__font.Render( s )
          y += step
 
+      # Display scale
+      glRasterPos( 5., height - margin*0.75 )
+      self.__font.Render( "%.0E m" % vstep )
 
 ###############################################################################
 #
@@ -574,10 +575,11 @@ class Axes(Object):
 ###############################################################################
 class Camera:
    
-   def __init__( self, center=(0., 0., 0.), zoom=1. ):
+   def __init__( self, width, height, center=(0., 0., 0.), zoom=1. ):
       self.center = array( center )
       self.up     = array( (0., 0., 1.) )
-      self.zoom   = zoom
+      self.winSize( width, height )
+      self.zoomSet( 1. )
 
       # Initial values
       self.rho    = 1.
@@ -598,18 +600,36 @@ class Camera:
       self.at     = -self.eye
 
    def winSize( self, width, height ):
-      d = math.sqrt(width**2 + height**2)
+      d        = math.sqrt(width**2 + height**2)
       self.__w = width / d
       self.__h = height / d
 
    def zoomIn( self, factor=math.sqrt(2.) ):
-      self.zoom *= factor
+      return self.zoomSet( self.zoom * factor )
 
    def zoomOut( self, factor=math.sqrt(2.) ):
-      self.zoom /= factor
+      return self.zoomSet( self.zoom / factor )
 
    def zoomSet( self, value ):
       self.zoom  = value
+      return self.zoomEffective()
+
+   def zoomEffective( self ):
+      glPushMatrix()
+      glLoadIdentity()
+      w = self.__w
+      h = self.__h
+      glOrtho( -w, w, -h, h, -100., 10. )
+      gluLookAt(  0., 0., 0.,
+                  1., 0., 0.,
+                  0., 0., 1. )
+      glScalef( self.zoom, self.zoom, self.zoom )
+      off       = 10. ** floor( math.log( 1./self.zoom, 10. ) )
+      proj_base = gluProject( 0., 0., 0. )[1]
+      proj_off  = gluProject( 0., 0., off )[1]
+      zoom      = (proj_off-proj_base) / off
+      glPopMatrix()
+      return zoom
 
    def move( self, vec ):
       self.center += vec
@@ -640,7 +660,6 @@ class Camera:
 
    def view( self ):
       # Reset matrix
-      glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
       w = self.__w
       h = self.__h
@@ -701,8 +720,7 @@ class traj3d:
       self.__quit = False  # Do not exit yet
       self.__mindt = 1./60.
       self.__buttons = []
-      self.__camera = Camera()
-      self.__camera.absolute( math.pi/4., math.pi/4., 0. )
+      self.__camera = Camera( self.width, self.height )
 
       # Input
       self.__keyboardfunc = None
@@ -788,6 +806,9 @@ class traj3d:
       self.__time = time.time()
       glutMainLoop()
 
+   def zoom( self, z ):
+      self.__camera.zoomSet( z )
+      self.__objScale()
 
    def autozoom( self ):
       """
@@ -822,7 +843,7 @@ class traj3d:
          dmax = 1
 
       # Set zoom and center
-      self.__camera.zoom = 1. / dmax
+      self.zoom( 1. / dmax )
       self.__camera.center = array( (0., 0., 0.) )
       self.__camera.absolute( math.pi/4., math.pi/4., 0. )
       #self.__camera.center = center * self.__camera.zoom
@@ -832,7 +853,7 @@ class traj3d:
       """
       Tells all the objects what the current scale level is.
       """
-      z = self.__camera.zoom
+      z = self.__camera.zoomEffective()
       for obj in self.objects:
          obj.setScale( z )
 
@@ -892,7 +913,6 @@ class traj3d:
          obj.display()
 
       # Change to 2D
-      glMatrixMode( GL_PROJECTION )
       glLoadIdentity()
       glOrtho( 0., self.width, 0., self.height, -1., 1. )
 
