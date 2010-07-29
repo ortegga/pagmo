@@ -32,6 +32,14 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from math import acos, pi, sqrt
 import time
+import os
+try:
+    import Image
+    image_found = True
+except:
+    image_found = False
+    print "Warning: Cannot capture screen, Python imaging library not found"
+
 
 ## ALifeViewer class
 #  
@@ -49,27 +57,45 @@ class ALifeViewer(object):
         self.width = 800
         ## @var height viewport height
         self.height = 600  
-        
-        # initialize object which the camera follows
-        self.centerObj = None
-        self.mouseView = True
-        self.viewDistance = 100
-        self.lastx = -0.5
-        self.lasty = 1
-        self.lastz = -1
-
-        ## @var fps the number of frames to render per second 
-        self.fps = 25
-        self.dt = 1.0 / self.fps
-        self.lasttime = time.time()
-        
+        ## @var _center_obj The ode object to center the camera view on
+        self._center_obj = None
+        ## @var _center_on_obj Whether or not to center the camera view on self._center_obj
+        self._center_on_obj = True
+        ## @var _center_x x coordinate of the center of the current view point
+        self._center_x = 0
+        ## @var _center_y y coordinate of the center of the current view point
+        self._center_y = 0
+        ## @var _center_z z coordinate of the center of the current view point
+        self._center_z = 0
+        ## @var _mouse_view Whether or not the view point can be changed by the moving the mouse
+        self._mouse_view = True
+        ## @var _view_distance The initial distance between the camera and the robot
+        self._view_distance = 100
+        ## @var _last_x The last x coordinate of the camera
+        self._last_x = -0.5
+        ## @var _last_y The last y coordinate of the camera
+        self._last_y = 1
+        ## @var _last_z The last z coordinate of the camera
+        self._last_z = -1
+        ## @var fps The number of frames to render per second 
+        self._fps = 25
+        ## @var _dt The increment by which to progress (step) the Environment
+        #  Only used for this if there is no self.experiment set, 
+        #  otherwise experiment.update is called.
+        #  This value is also used to control the FPS rate by calling sleep() in the
+        #  GLUT idle callback
+        self._dt = 1.0 / self._fps
+        ## @var _last_time The value of time.time at the last check
+        self._last_time = time.time()
         ## @var zoom_increment when zooming the viewing distance changes by 
         #  this amount at every step
         self.zoom_increment = 10.0
-
-        # init OpenGL
+        ## @var _capture_screen Whether or not each frame should be saved (as a PNG image)
+        self._capture_screen = False
+        ## @var _screenshot_dir Directory to write image files to when taking screen shots
+        self._screenshot_dir = "screenshots/"
+        # initialise OpenGL
         self._init()  
-
         # set callback functions
         glutMotionFunc(self._motion)
         glutPassiveMotionFunc(self._passive_motion)
@@ -130,16 +156,15 @@ class ALifeViewer(object):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        # View transformation (if "centerOn(...)" is set, keep camera to specific object)
-        if self.centerObj is not None:
-            (centerX, centerY, centerZ) = self.centerObj.getPosition()
-        else:
-            centerX = centerY = centerZ = 0
+        # keep camera pointed at a specific object)
+        if self._center_on_obj and self._center_obj:
+            (self._center_x, self._center_y, self._center_z) = self._center_obj.getPosition()
+
         # use the mouse to shift eye sensor on a hemisphere
-        eyeX = self.viewDistance * self.lastx
-        eyeY = self.viewDistance * self.lasty + centerY
-        eyeZ = self.viewDistance * self.lastz
-        gluLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, 0, 1, 0)
+        eyeX = self._view_distance * self._last_x
+        eyeY = self._view_distance * self._last_y + self._center_y
+        eyeZ = self._view_distance * self._last_z
+        gluLookAt(eyeX, eyeY, eyeZ, self._center_x, self._center_y, self._center_z, 0, 1, 0)
         
     ## Draw an ODE object.
     #  @param body The body object.
@@ -253,54 +278,57 @@ class ALifeViewer(object):
         if self.env:
             if self.exp:
                 self.exp.step()
-#                print self.exp.stepid
-#                print self.exp.task.getObservation()
-#                print self.exp.agent.getAction()
-#                print
             else:
-                self.env.step(self.dt)
+                self.env.step(self._dt)
             for (body, geom) in self.env.get_objects():
                 self._draw_object(body, geom)
         
         glutSwapBuffers()
-#        if self.captureScreen:
-#            self._screenshot()  
+        if self._capture_screen:
+            self.screenshot()
     
     ## The idle callback function.
     #  Calculates how long to sleep to achieve the target frame rate, then tells GLUT
     #  to draw a new frame.
     def _idle(self):
-        t = self.dt - (time.time() - self.lasttime)
+        t = self._dt - (time.time() - self._last_time)
         if (t > 0):
             time.sleep(t)
-        self.lasttime = time.time()
+        self._last_time = time.time()
         glutPostRedisplay() 
 
     ## The keyboard callback function.
     #  @param key The key that was pressed
     def _key_pressed(self, key, x, y):
         if key == 's':
-            self.setCaptureScreen(not self.getCaptureScreen())
-            print "Screen Capture: " + (self.getCaptureScreen() and "on" or "off")
+            if image_found:
+                self._capture_screen = not self._capture_screen
+                print "Screen Capture: " + (self._capture_screen and "on" or "off")
+            else:
+                print "Python imaging library not found, cannot capture screen"
+        if key == 'c':        
+            self._center_on_obj = not self._center_on_obj
+            print "Centering camera: " + (self._center_on_obj and "on" or "off")
         if key in ['x', 'q']:
             sys.exit()
         if key == 'v':
-            self.mouseView = not self.mouseView
+            self._mouse_view = not self._mouse_view
+            print "Mouse view:" + (self._mouse_view and "on" or "off")
             
     ## Callback function for 'special' keys
     #  Up and down arrow keys are used for zooming in and out respectively
     #  @param key The key that was pressed     
     def _special_func(self, key, x, y):
         if key == GLUT_KEY_UP:
-            self.viewDistance -= self.zoom_increment
+            self._view_distance -= self.zoom_increment
         elif key == GLUT_KEY_DOWN:
-            self.viewDistance += self.zoom_increment
+            self._view_distance += self.zoom_increment
     
     ## Control the zoom factor
     def _motion(self, x, z):
-        if not self.mouseView: return
+        if not self._mouse_view: return
         zn = 2.75 * float(z) / self.height + 0.25   # [0.25,3]
-        self.viewDistance = 3.0 * zn * zn
+        self._view_distance = 3.0 * zn * zn
         self._passive_motion(x, z)
     
     ## Store the mouse coordinates (relative to centre and normalised)
@@ -309,7 +337,7 @@ class ALifeViewer(object):
     #  such that approaching the perimeter does not cause a huge change in the
     #  viewing direction. The limit for l is thus cos(arcsin(0.1)).
     def _passive_motion(self, x, z):
-        if not self.mouseView: return
+        if not self._mouse_view: return
         x1 = 3 * float(x) / self.width - 1.5
         z1 = -3 * float(z) / self.height + 1.5
         lsq = x1 * x1 + z1 * z1
@@ -321,9 +349,9 @@ class ALifeViewer(object):
             y1 = 0
         else:
             y1 = max(0.0, sqrt(1.0 - x1 * x1 - z1 * z1) - 0.1)
-        self.lasty = y1
-        self.lastx = x1
-        self.lastz = z1
+        self._last_y = y1
+        self._last_x = x1
+        self._last_z = z1
         
     ## Sets the ALifeExperiment that is being viewed
     #  @param exp The ALifeExperiment object
@@ -335,18 +363,42 @@ class ALifeViewer(object):
     #  @param env The ALifeEnvironment object
     def set_environment(self, env):
         self.env = env
-        self.centerObj = env.get_robot_body()
+        self._center_obj = env.get_robot_body()
         
     ## Start the main GLUT rendering loop
     def start(self):
         glutMainLoop()
         
+    ## Save the current frame to a png image
+    #  The path is <self._screenshot_dir><img_number>.png
+    #  self._screenshot_dir is automatically created if it does not exist.
+    #  Shots are automatically numerated based on how many files are already 
+    #  in the directory.
+    def screenshot(self):
+        if not os.path.exists(self._screenshot_dir):
+            os.makedirs(self._screenshot_dir)
+        
+        num_present = len(os.listdir(self._screenshot_dir))
+        num_digits = len(str(num_present))
+        index = '0' * (5 - num_digits) + str(num_present) 
+        
+        path = os.path.join(self._screenshot_dir, index + '.png')
+        glPixelStorei(GL_PACK_ALIGNMENT, 1)
+        data = glReadPixels(0, 0, self.width, self.height, GL_RGB, GL_UNSIGNED_BYTE)
+        image = Image.fromstring("RGB", (self.width, self.height), data)
+        image = image.transpose(Image.FLIP_TOP_BOTTOM)
+        image.save(path, 'png')
+
     ## Prints the key/mouse controls for this viewer object
     def print_controls(self):
-        print "Press q to exit"
+        print "Press 'q' to exit"
+        print "Press 'c' to toggle camera centering on the robot on/off"
+        print "Press 's' to toggle screen capturing on/off"
+        print "Press 'v' to toggle mouse view on/off"
         print "Press the up arrow to zoom in"
         print "Press the down arrow to zoom out"
         print "Move the mouse to move the camera around the robot"
+        
         
 if __name__ == "__main__":  
     from environment import ALifeEnvironment

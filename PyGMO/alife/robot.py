@@ -165,24 +165,28 @@ class Robot(XODEObject):
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]-1.2),
-                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+                         axis={'x':-1, 'y':0, 'z':0,
+                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
         self.insertJoint('robot_body', 'robot_leg2', 'hinge', 
                          name="robot_body_leg2",
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]-1.2),
-                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+                         axis={'x':-1, 'y':0, 'z':0,
+                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
         self.insertJoint('robot_body', 'robot_leg3', 'hinge',
                          name="robot_body_leg3", 
                          anchor=(body_position[0]+1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]+1.2),
-                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+                         axis={'x':-1, 'y':0, 'z':0,
+                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
         self.insertJoint('robot_body', 'robot_leg4', 'hinge',
                          name="robot_body_leg4", 
                          anchor=(body_position[0]-1.2, 
                                  body_position[1]-(body_size[1]/2), 
                                  body_position[2]+1.2),
-                         axis={'x':-1, 'y':0, 'z':0, 'HiStop':1.2, 'LowStop':-1.2})
+                         axis={'x':-1, 'y':0, 'z':0,
+                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
         
         self.centerOn('robot_body')

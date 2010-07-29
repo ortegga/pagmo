@@ -32,7 +32,7 @@ import ode
 import xode.parser
 import xml.dom.minidom as md
 import numpy as np
-
+from robot import Robot
         
 ## ConfigGrabber class
 #
@@ -155,6 +155,7 @@ class ALifeEnvironment(object):
                 
         # load bodies and geoms for painting
         self.body_geom = [] 
+        self.joints = []
         self._parseBodies(self.root)
         
         # now parse the additional parameters at the end of the xode file
@@ -448,6 +449,10 @@ class ALifeEnvironment(object):
     #  @return list of robot's joints
     def get_robot_joints(self):
         return self.joints
+    
+    ## Resets the environment
+    def reset(self):
+        self.step_count = 0
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
@@ -502,6 +507,9 @@ class ALifeEnvironment(object):
 class ALifePlane(ALifeEnvironment):
     def __init__(self):
         super(ALifePlane, self).__init__()
+        # todo: Robot should not be hardcoded in
+        self.r = Robot("Robot", [0, 20, 0])
+        self.load_robot(self.r.get_xode())
         
     ## Loads the robot XODE data (xml format) and parses it.
     #  @param data The XODE data for the robot.
@@ -512,22 +520,21 @@ class ALifePlane(ALifeEnvironment):
         p.name = "ground"
         self.body_geom.append((None, p))
         self.world.setGravity((0.0, -4.9, 0.0))
-        self.world.setERP(0.9)
-        self.world.setCFM(0.001)
+        
+    def reset(self):
+        super(ALifePlane, self).reset()
+        self.load_robot(self.r.get_xode())
         
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
     #  @return The current step count
-    def step(self, dt=0.04):     
+    def step(self, dt=0.04):   
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
-        
         # Simulation step
         self.world.step(dt)
-        
         # Remove all contact joints
         self.contactgroup.empty()
-        
         # increase step counter
         self.step_count += 1
         return self.step_count

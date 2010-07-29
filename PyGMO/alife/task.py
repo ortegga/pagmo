@@ -37,7 +37,7 @@
 #  to maximise the distance moved between fitness evaluations.
 from pybrain.rl.experiments import Experiment
 from pybrain.rl.environments import EpisodicTask
-from pybrain.rl.environments.ode import sensors, actuators
+from pybrain.rl.environments.ode import sensors
 from pybrain.rl.agents.agent import Agent
 from pybrain.structure import RecurrentNetwork, LinearLayer, FullConnection
 import ode
@@ -63,7 +63,6 @@ class ALifeExperiment(Experiment):
         self.task._stable_distance = self.step_size / 40000
         ## @var _env The ODE Environment
         self._env = env
-#        self.stable = False
             
     ## Change the default behaviour of _oneInteraction so that the reward
     #  is only given to the agent after each task evaluation. 
@@ -72,10 +71,6 @@ class ALifeExperiment(Experiment):
         self._env.step(self.step_size)
         self.agent.integrateObservation(self.task.getObservation())
         self.task.performAction(self.agent.getAction())
-#        if not self.stable and self.task._robot_stable and self.stepid < 1000:
-#            print 'stable at', self.stepid
-#            self.stable = True
-#            raise Exception("stable")
         
     def step(self):
         self._oneInteraction()
@@ -83,6 +78,7 @@ class ALifeExperiment(Experiment):
     ## Run this experiment until the task finishes.
     #  @return The result of the experiment (distance moved by the robot).
     def perform(self):
+        self._env.reset()
         self.task.reset()
         while not self.task.isFinished():
             try:
@@ -179,6 +175,53 @@ class ALifeAgent(Agent):
     ##  @return The number of weights in the Agent's neural network
     def num_weights(self):
         return len(self._network.params)
+    
+    
+## JointActuator class
+#
+#  This class provides a similar function and API to corresponding
+#  class in pybrain.rl.environments.ode.actuators
+# 
+#  The main difference is that the update method applies forces to
+#  each joint using joint motors instead of directly applying torque
+#  to the joints. It was found that this greatly improved the stability
+#  of the simuations.
+#
+#  The connect method also takes a list of joints as input, rather than
+#  getting this information directly from an Environment object.
+#
+#  @author John Glover
+class JointActuator(object):
+    ## Constructor. Initialises an array of joints.
+    def __init__(self):
+        self._joints = []
+        self._num_values = 0
+    
+    ## Connect every joint in joints to this JointActuator.
+    #  Also sets the number of values expected by the update function
+    #  based on the number of joints and the type of each joint.
+    #  @param joints A list of joints to connect to this JointActuator
+    def connect(self, joints):
+        self._num_values = 0
+        for j in joints:
+            self._joints.append(j)
+            if type(j) == ode.HingeJoint:
+                self._num_values += 1
+    
+    ## Set the velocity of the joint motor of each joint in this actuator
+    #  to the corresponding value in values
+    #  @param values The velocity values to apply to each joint motor
+    def update(self, values):
+        if not len(values) == self._num_values:
+            raise Exception("Invalid number of values: ", len(values))
+        for j in self._joints:
+            if type(j) == ode.HingeJoint:
+                j.setParam(ode.ParamVel, values[0])
+                values = values[1:]
+    
+    ## @return The number of velocity values required for the update function
+    def num_values(self):
+        return self._num_values
 
 
 ## ALifeTask class
@@ -198,7 +241,7 @@ class ALifeTask(EpisodicTask):
         #  The task will not really start until this has happened. 
         self._robot_stable = False
         ## @var max_samples The maximum number of samples (steps) before this task is finished.
-        self.max_samples = 1000
+        self.max_samples = 2000
         ## @var _robot The Robot being controlled in this task
         self._robot = env.get_robot_body()
         ## @var _prev_robot_position The position of the robot at the previous  Task evaluation 
@@ -217,10 +260,8 @@ class ALifeTask(EpisodicTask):
         self._sensors._update()
         self._sensors._numValues = len(self._sensors.getValues())
         ## @var _actuator The Robot's actuator, moves the legs 
-        self._actuator = actuators.JointActuator()
-        for j in env.get_robot_joints():
-            self._actuator._joints.append(j)
-        self._actuator._numValues = self._actuator._countValues()
+        self._actuator = JointActuator()
+        self._actuator.connect(self.env.get_robot_joints())
 
     ## Perform an action with the robot using the given action data
     #  Overwrite Task.performAction as it calls environment.performAction 
@@ -243,7 +284,7 @@ class ALifeTask(EpisodicTask):
             else:
                 return
         # update actuator with values from action
-        self._actuator._update(action)
+        self._actuator.update(action)
         self.samples += 1
         
     ## Evaluate the recent actions of the robot. Calculates how far it has
@@ -275,18 +316,26 @@ class ALifeTask(EpisodicTask):
     ## Reset the task
     def reset(self):
         self.samples = 0
-        self._robot.setPosition(self._initial_robot_position)
+        self._robot_stable = False
+        self._robot = self.env.get_robot_body()
+        self._prev_robot_position = self._robot.getPosition()
+        self._distance_moved = 0.0
+        self._sensors = sensors.JointSensor()
+        for j in self.env.get_robot_joints():
+            self._sensors._joints.append(j)
+        self._sensors._update()
+        self._sensors._numValues = len(self._sensors.getValues()) 
+        self._actuator = JointActuator()
+        self._actuator.connect(self.env.get_robot_joints())
   
         
 if __name__ == "__main__":  
     from environment import ALifeEnvironment
     from robot import Robot
     from viewer import ALifeViewer
-    random.seed()
     # environment
     e = ALifeEnvironment()
-    robot_position = [0, 110, 0]
-    r = Robot("Robot", robot_position)
+    r = Robot("Robot", [0, 110, 0])
     e.load_robot(r.get_xode())
     e.load_asteroid("models/asteroid.x3d")
     # viewer
