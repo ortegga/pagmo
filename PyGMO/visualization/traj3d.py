@@ -201,7 +201,7 @@ class Trajectory(Object):
 
    def axes( self, enable ):
       if enable:
-         self.__axes = Axes()
+         self.__axes = Axes( self.font )
       else:
          self.__axes = None
 
@@ -210,6 +210,8 @@ class Trajectory(Object):
       self.font = FTGL.PixmapFont( os.path.join( os.path.dirname(__file__), "Vera.ttf" ) )
       self.font.FaceSize( size )
       self.fontsize = size
+      if self.__axes != None:
+         self.__axes.setFont( self.font )
 
    def showVectors( self, enable ):
       self.__showvec = enable
@@ -487,13 +489,17 @@ class Axes(Object):
    Shows the X/Y axes.
    """
 
-   def __init__( self, origin = (0., 0., 0.), scale=1., track=[] ):
+   def __init__( self, font = None, origin = (0., 0., 0.), scale=1., track=[] ):
+      self.__font = font
       self.refresh( origin, scale, track )
 
    def refresh( self, origin, scale, track ):
       self.__origin  = origin
       self.__scale   = scale
       self.__track   = track
+
+   def setFont( self, font ):
+      self.__font = font
 
    def displayOver( self, width, height ):
       empty    = 20.
@@ -509,7 +515,9 @@ class Axes(Object):
       glVertex3d( width-margin, margin, 0. )
 
       # Print coordinates
-      step  = 50
+      div   = 10
+      vstep = 10. ** floor( math.log( (1./self.__scale) / div, 10. ) )
+      step  = (1./self.__scale) / vstep
       x     = self.__origin[0] % step
       if x < margin:
          x += step
@@ -538,6 +546,25 @@ class Axes(Object):
             glVertex3d( margin, y, 0. )
             glVertex3d( empty, y, 0. )
       glEnd()
+
+      # Render text - needs to be done outside of glBeign()
+      glColor3d( 1., 1., 1. )
+      x     = self.__origin[0] % step
+      if x < margin:
+         x += step
+      while x < width-margin:
+         s = "%.0f" % ((x - self.__origin[0]) / step)
+         glRasterPos( x-self.__font.Advance(s)/2., 2. )
+         self.__font.Render( s )
+         x += step
+      y     = self.__origin[1] % step
+      if y < margin:
+         y += step
+      while y < height-margin:
+         s = "%.0f" % ((y - self.__origin[1]) / step)
+         glRasterPos( (margin-self.__font.Advance(s))/2., y )
+         self.__font.Render( s )
+         y += step
 
 
 ###############################################################################
