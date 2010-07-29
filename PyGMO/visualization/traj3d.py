@@ -70,30 +70,37 @@ class Object:
    """
 
    def __init__( self ):
+      "Initializes the object."
       if self.__class__ is Object:
          raise NotImplementedError
 
    def size( self ):
+      "Returns the size of the object."
       if self.__class__ is Object:
          raise NotImplementedError
 
    def setScale( self, zoom ):
+      "Sets the global zoom in 'unites per pixel'"
       if self.__class__ is Object:
          raise NotImplementedError
 
    def center( self ):
+      "Returns the center of the object."
       if self.__class__ is Object:
          raise NotImplementedError
 
    def display( self ):
+      "Draws the object on the window."
       if self.__class__ is Object:
          raise NotImplementedError
 
    def displayOver( self, width, height ):
+      "Draws the object overlay."
       if self.__class__ is Object:
          raise NotImplementedError
 
    def update( self, dt ):
+      "Updates the object."
       if self.__class__ is Object:
          raise NotImplementedError
 
