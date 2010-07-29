@@ -522,6 +522,10 @@ class Axes(Object):
       while x < width-margin:
          glVertex3d( x, margin, 0. )
          glVertex3d( x, empty, 0. )
+         if step > 25:
+            hx = x + step/2.
+            glVertex3d( hx, margin, 0. )
+            glVertex3d( hx, (margin+empty)/2., 0. )
          x += step
       y     = self.__origin[1] % step
       while y < margin:
@@ -529,6 +533,10 @@ class Axes(Object):
       while y < height-margin:
          glVertex3d( margin, y, 0. )
          glVertex3d( empty, y, 0. )
+         if step > 25:
+            hy = y + step/2.
+            glVertex3d( margin, hy, 0. )
+            glVertex3d( (margin+empty)/2., hy, 0. )
          y += step
 
       # Print tracking markers
