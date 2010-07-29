@@ -129,7 +129,7 @@ if __name__ == "__main__":
                   0. )
 
    # Create the engine
-   traj = Trajectory3D( data, 640, 480,
+   traj = Trajectory3D( data, 800, 600,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
 
    # Create some stuff
