@@ -517,14 +517,14 @@ class Axes(Object):
       vstep = 10. ** floor( math.log( 250.*(1./self.__scale), 10. ) )
       step  = vstep * self.__scale
       x     = self.__origin[0] % step
-      if x < margin:
+      while x < margin:
          x += step
       while x < width-margin:
          glVertex3d( x, margin, 0. )
          glVertex3d( x, empty, 0. )
          x += step
       y     = self.__origin[1] % step
-      if y < margin:
+      while y < margin:
          y += step
       while y < height-margin:
          glVertex3d( margin, y, 0. )
