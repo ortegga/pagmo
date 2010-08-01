@@ -30,33 +30,48 @@
 #include <vector>
 #include <iostream>
 #include <string>
-#include "cudaty.h"
+#include "../cuda/cudaty.h"
+#include "../cuda/cudatask.h"
 
 namespace ann_toolbox {
 
+  class neural_network {
+  public:
+    neural_network(unsigned int input_nodes_, unsigned int output_nodes_, 
+		   CudaTask * pTask);
+    virtual ~neural_network();
 
-class neural_network {
-public:
-  neural_network(unsigned int input_nodes_, unsigned int output_nodes_);
-  virtual ~neural_network();
+    virtual const std::vector<CUDA_TY> compute_outputs(std::vector<CUDA_TY> &inputs) = 0;
 
-  virtual void set_weights(const std::vector<CUDA_TY> &chromosome); 
-  virtual const std::vector<CUDA_TY> compute_outputs(std::vector<CUDA_TY> &inputs) = 0;
+    unsigned int get_number_of_input_nodes() const{ return get_number_of_inputs(); }
+    unsigned int get_number_of_inputs() const	{ return m_inputs; }	
+    unsigned int get_number_of_output_nodes() const	{ return get_number_of_outputs(); }
+    unsigned int get_number_of_outputs() const	{ return m_outputs; }
+    unsigned int get_number_of_weights() const	{ return m_weights; }
+    unsigned int get_id() const { return m_id;} 
 
-  unsigned int get_number_of_input_nodes() const{ return get_number_of_inputs(); };
-  unsigned int get_number_of_inputs() const	{ return m_inputs; };	
-  unsigned int get_number_of_output_nodes() const	{ return get_number_of_output_nodes(); };
-  unsigned int get_number_of_outputs() const	{ return m_outputs; };
-  unsigned int get_number_of_weights() const	{ return m_weights.size(); };
+    virtual bool set_inputs(const std::vector<CUDA_TY> & inputs);
+    virtual bool set_weights(const std::vector<CUDA_TY> &chromosome); 
+    virtual bool get_outputs( std::vector<CUDA_TY> & outputs);
+    virtual bool prepare_outputs();
 
-  virtual void print();
-  virtual void print(const char * message, std::vector<CUDA_TY> & c);
+
+    virtual void print();
+    virtual void print(const char * message, std::vector<CUDA_TY> & c);
+
+    void set_task(int id) { m_id = id;}
 	
- protected:
-  const char*		m_name;
-  unsigned int	m_inputs, m_outputs;
-  std::vector<CUDA_TY>	m_weights;
-};
+  protected:
+
+    virtual bool prepare_dataset(int parameter, int size);
+
+    const char*	m_name;
+    unsigned int	m_inputs, m_outputs;
+    unsigned int  m_id;
+    unsigned int	m_weights;
+    CudaTask * m_pTask;
+
+  };
 
 }
 #endif

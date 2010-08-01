@@ -130,24 +130,33 @@ IF(ENABLE_IPOPT)
 	)
 ENDIF(ENABLE_IPOPT)
 
-# ANN Toolbox
 
+# ANN Toolbox
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/")
 SET(ANN_FILES 
-  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cudainfo.cpp
 )
 
 IF(ENABLE_CUDA)
-	SET(ANN_FILES	ann_toolbox/cuda/layer.cu "${ANN_FILES}" )
-	INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/cuda")
-	CUDA_ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+  INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/cuda/")
+  SET(ANN_FILES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudainfo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatimer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatask.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/dataset.cpp
+    "${ANN_FILES}" )
+
+  SET(ANN_FILES
+    cuda/layer.cu
+    "${ANN_FILES}")
+
+  CUDA_ADD_LIBRARY(ann_toolbox ${ANN_FILES})
 ELSE(ENABLE_CUDA)
-	ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+  ADD_LIBRARY(ann_toolbox ${ANN_FILES})
 ENDIF(ENABLE_CUDA)
 
 

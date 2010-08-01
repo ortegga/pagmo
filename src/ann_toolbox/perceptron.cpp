@@ -30,22 +30,17 @@
 #include <vector>        
 #include <exception>
 #include "../exceptions.h"
-#include "layer.h"
 
 #include "perceptron.h"
 
 using namespace ann_toolbox;
 
 // Constructor
-perceptron::perceptron(unsigned int input_nodes_, unsigned int output_nodes_, const std::vector<CUDA_TY> &w) : 
-    neural_network(input_nodes_, output_nodes_)
+perceptron::perceptron(unsigned int input_nodes_, unsigned int output_nodes_, 
+		       CudaTask * pTask) : 
+  neural_network(input_nodes_, output_nodes_, pTask)
 {
-	// the number of weights is equal to all the inputs (and a bias)
-	// for every output, i.e. it is fully connected
-	unsigned int wghts = (m_inputs + 1) * m_outputs;
-	m_weights = std::vector<CUDA_TY>(wghts, 0);
-
-	if(! w.empty()) set_weights(w);
+  m_weights = (m_inputs + 1) * m_outputs;
 }
 
 // Destructor
@@ -54,46 +49,7 @@ perceptron::~perceptron() {}
 // Computing the outputs
 const std::vector<CUDA_TY> perceptron::compute_outputs(std::vector<CUDA_TY> &inputs) 
 {
-	// check for correct input size
-	if(inputs.size() != m_inputs) {
-		pagmo_throw(value_error, "incorrect size of input vector");
-	}
-	
-	CUDA_TY * input = new CUDA_TY [inputs.size()];
-	std::copy(inputs.begin(), inputs.end(), input);
-
-	CUDA_TY * weights = new CUDA_TY [m_weights.size()];
-	std::copy(m_weights.begin(), m_weights.end(), weights);
-
-	int inputSize = m_inputs * sizeof(CUDA_TY);
-	int outputSize = m_outputs * sizeof(CUDA_TY);
-	int weightSize = m_weights.size() * sizeof(CUDA_TY);
-	CUDA_TY  * cInput, * cWeights, * cOutput;
-
-	//Hidden can be garbage for all we care over here
-	cudaMalloc((void **) & cOutput, outputSize);
-
-	cudaMalloc((void **) & cInput, inputSize);
-	cudaMemcpy(cInput, input, inputSize, cudaMemcpyHostToDevice);
-
-	cudaMalloc((void **) & cWeights, weightSize);
-	cudaMemcpy(cWeights, weights, weightSize, cudaMemcpyHostToDevice);
-
-	//Run the hidden layer kernel
-	dim3 blocksize1(m_outputs,1,1);
-	dim3 gridsize1(1,1,1);
-	cuComputeLayer(cInput, cWeights, cOutput,  m_inputs, gridsize1, blocksize1);
-	//Run the output layer kernel
-
-	CUDA_TY * output = new CUDA_TY [m_outputs];
-	cudaMemcpy(output, cOutput, outputSize, cudaMemcpyDeviceToHost);
-	std::vector<CUDA_TY>outputs;
-	outputs.assign(&output[0], &output[get_number_of_outputs()]);
-
-	delete [] input;
-	delete [] output;
-	delete [] weights;
-	cudaFree(cInput);cudaFree(cOutput);
-
-    return outputs;
+  std::vector<CUDA_TY>outputs;
+  return outputs;
+  
 }

@@ -1,59 +1,88 @@
 
 #include <stdio.h>
 #include <vector>
-#include "src/cudainfo.h"
-#include "src/ann_toolbox/cudaty.h"
+
+
+#include "src/cuda/cudainfo.h"
+#include "src/cuda/cudatimer.h"
+#include "src/cuda/cudatask.h"
+#include "src/cuda/cudaty.h"
+
 #include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/perceptron.h"
-#include "src/ann_toolbox/elman_network.h"
+
+
+int load_subtask( int taskid, ann_toolbox::neural_network * pNet);
+int print_subtask( int taskid, ann_toolbox::neural_network * pNet);
 
 int main( int argc, char **argv )
 {
-
   CudaInfo info;
-  std::cout<<info;
+  std::cout << info << std::endl;
 
-  /*int i=2, h=2, o=2;
-  std::vector<CUDA_TY> X (i, 1.0f);
+  int taskCount = 200;
+  MultilayerPerceptronTask task (info, taskCount);
+  int I = 4, H = 4, O = 4;
+  ann_toolbox::multilayer_perceptron perc(I, H, & task, O);
+  //Timer scope
+  {
+    ScopedCudaTimer timer("multilayer nnet cumulative timer");
+    for (int i=0; i < taskCount; i++)
+      {
+	load_subtask(i, & perc);
+      }
+    //Timer scope
+    {
+      ScopedCudaTimer launchTimer("nnet launch timer");
+      task.Launch();
+    }
+  }
 
+  for (int i=0; i < taskCount; i++)
+  {
+    print_subtask(i, & perc);
+  }
+}
+int load_subtask(int taskid, ann_toolbox::neural_network * pNet)
+{
 
-  //int size = (i + 1)*h + (h + 1)*o;
-    int size = (i + h + 1)*h + o*(h + 1);
-  //   int size = (i + 1)*o;
+  CUDA_TY x = 1.0f + taskid;
 
-    std::cout<<" weight size = "<<size<<std::endl;
-
-  //std::vector<CUDA_TY> W(size, 2.0f);
+  std::vector<CUDA_TY> X (pNet->get_number_of_inputs(), x);
   std::vector<CUDA_TY> W;
 
-
-  for (int j=1; j<=size; j++)
+  std::cout<<"weight count"<<pNet->get_number_of_weights()<<std::endl;
+  for (int j=0; j< pNet->get_number_of_weights(); j++)
     {
-      W.push_back((CUDA_TY)j);
+      W.push_back(j + 1 + taskid);
     }
 
+  std::cout<<"Prepare task"<<std::endl;
+  pNet->set_task(taskid);
+  std::cout<<"Prepare weights"<<std::endl;
+  pNet->set_weights(W);
+  std::cout<<"Prepare inputs"<<std::endl;
+  pNet->set_inputs(X);
+  std::cout<<"Prepare outputs"<<std::endl;
+  pNet->prepare_outputs();
+  std::cout<<"done"<<std::endl;
+  return 0;
+};
 
-  //ann_toolbox::multilayer_perceptron net(i,h,o, W);
-  //ann_toolbox::perceptron net(i,o, W);
-  ann_toolbox::elman_network net(i,h,o,W);
 
+int print_subtask(int taskid, ann_toolbox::neural_network * pNet)
+{
 
-  net.set_weights(W);
+  std::vector<CUDA_TY> O;
+  pNet->set_task(taskid);
+  pNet->get_outputs(O);
 
-  std::vector<CUDA_TY> Z = net.compute_outputs(X);
+  for(std::vector<CUDA_TY>::iterator iter = O.begin(); iter != O.end(); ++iter)
+  {
+    std::cout<<*iter<<" ";
+  }
 
-  for(std::vector<CUDA_TY>::iterator iter = Z.begin(); iter != Z.end(); ++iter)
-    {
-      std::cout<<*iter<<" ";
-    }
+  std::cout<<std::endl;
 
-  Z = net.compute_outputs(X);
-
-  for(std::vector<CUDA_TY>::iterator iter = Z.begin(); iter != Z.end(); ++iter)
-    {
-      std::cout<<*iter<<" ";
-    }
-  */
   return 0;
 };
 

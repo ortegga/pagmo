@@ -4,23 +4,26 @@
 #include "stdio.h"
 #include "cudaty.h"
 
-#define SIGMOID(X) (1.0f/(1 + exp(-(X))))
+#define SIGMOID(X) (1.0f/(1 + exp(-(X))));
+//#define SIGMOID(X) (X)
 
 
 __global__ void cu_computelayer(CUDA_TY *X, CUDA_TY *W,  CUDA_TY *Y, int width) 
 {
 
-  int bx = blockIdx.x, by = blockIdx.y;
-  int tx = threadIdx.x, ty = threadIdx.y;
+  int bx = blockIdx.x;
+  int tx = threadIdx.x;
 
-  int offset = tx * (width + 1);
-
-  CUDA_TY value = W[offset + width];
+  int offset = bx*blockDim.x;
+  int itemid = offset + tx;
+  int woffset = itemid * width;
+  
+  CUDA_TY value = W[woffset + width];
   for (int i=0; i < width; ++i)
   {
-    value += X[i]*W[offset + i];
+    value += X[offset + i]*W[woffset + i];
   }
-  Y[tx] = SIGMOID( value );
+  Y[itemid] = SIGMOID( value );
 };
 
 __global__ void cu_computelayerWithSegment(CUDA_TY *X,  CUDA_TY *W,  CUDA_TY *Y, int width, int seg) 
