@@ -144,6 +144,7 @@ class Trajectory(Object):
       self.__axes = None
       self.__controls = False
       self.control_size = 20
+      self.control_pos = array( (50., 50.) )
       self.fontsize( 16 )
 
       # Make sure data matches
@@ -456,9 +457,10 @@ class Trajectory(Object):
       glColor3d( 1., 1., 1. )
 
       # Backwards button
-      x = 50
-      y = 50
+      x = self.control_pos[0]
+      y = self.control_pos[1]
       h = self.control_size
+      self.control_len = x - 20 - w
       glVertex3d( x,       y+h/2, 0 )
       glVertex3d( x+h*0.7, y, 0 )
       glVertex3d( x+h*0.7, y+h, 0 )
