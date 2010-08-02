@@ -29,6 +29,14 @@
 #include <boost/lexical_cast.hpp>
 #include"../src/pagmo.h"
 
+/**
+DESCRITPION: This example tests several algorithms, topologies and problems and prints out a latex
+table summarizing all results. The purpose is to show the effect of the generalized migration operator
+and of the topology in the archipelago.
+
+CPU TIME: each optimization open 20 threads. The example completes in minutes.
+*/
+
 using namespace pagmo;
 using namespace kep_toolbox;
 
@@ -68,7 +76,8 @@ int main()
 	//0 - Experiment parameters
 	int number_of_islands = 20;
 	int number_of_individuals = 20;
-	int evolution_time = 1000;
+	//int evolution_time = 1000;
+	int number_of_migrations = 20;
 
 	//1 - We instantiate the problems
 	problem::cassini_1 prob1;
@@ -82,6 +91,7 @@ int main()
 	algorithm::sa_corana algo3(2000,1,0.001);
 	algorithm::pso algo4(100);
 	algorithm::ihs algo5(2000);
+	algorithm::bee_colony algo6(50);
 
 	//b - We instantiate the topologies
 	topology::unconnected topo1;
@@ -96,6 +106,7 @@ int main()
 	algo.push_back(algo3.clone());
 	algo.push_back(algo4.clone());
 	algo.push_back(algo5.clone());
+	algo.push_back(algo6.clone());
 
 	//4 - And a container of problems
 	std::vector<problem::base_ptr> prob;
@@ -129,7 +140,7 @@ int main()
 					else
 						a.push_back(island(*prob[pr],*algo[al],number_of_individuals));
 				}
-				a.evolve_t(evolution_time);
+				a.evolve(number_of_migrations);
 				a.join();
 				std::cout << topo[to]->get_name() << ":\t " << mean(a) << "\t" << std_dev(a,mean(a)) << std::endl;
 				print_row(myfile,topo[to]->get_name(),mean(a),std_dev(a,mean(a)));

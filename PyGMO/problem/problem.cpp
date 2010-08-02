@@ -25,15 +25,16 @@
 #include <boost/python/class.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/enum.hpp>
 #include <boost/python/make_function.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/operators.hpp>
-#include <boost/python/pure_virtual.hpp>
 #include <boost/python/register_ptr_to_python.hpp>
 #include <boost/utility.hpp>
 #include <cstddef>
 #include <string>
 
+#include "../../src/exceptions.h"
 #include "../../src/problems.h"
 #include "../../src/types.h"
 #include "../exceptions.h"
@@ -45,7 +46,6 @@ template <class Problem>
 static inline class_<Problem,bases<problem::base> > problem_wrapper(const char *name, const char *descr)
 {
 	class_<Problem,bases<problem::base> > retval(name,descr,init<const Problem &>());
-	retval.def("__copy__", &Problem::clone);
 	return retval;
 }
 
@@ -58,7 +58,11 @@ struct python_problem: problem::base, wrapper<problem::base>
 	python_problem(const problem::base &p):problem::base(p) {}
 	problem::base_ptr clone() const
 	{
-		return this->get_override("__copy__")();
+		if (override f = this->get_override("__copy__")) {
+			return f();
+		}
+		pagmo_throw(not_implemented_error,"problem cloning has not been implemented");
+		return problem::base_ptr();
 	}
 	std::string get_name() const
 	{
@@ -77,7 +81,11 @@ struct python_problem: problem::base, wrapper<problem::base>
 	}
 	fitness_vector py_objfun(const decision_vector &x) const
 	{
-		return this->get_override("_objfun_impl")(x);
+		if (override f = this->get_override("_objfun_impl")) {
+			return f(x);
+		}
+		pagmo_throw(not_implemented_error,"objective function has not been implemented");
+		return fitness_vector();
 	}
 	bool is_blocking() const
 	{
@@ -96,6 +104,7 @@ struct python_problem: problem::base, wrapper<problem::base>
 	}
 	bool equality_operator_extra(const base &p) const
 	{
+		// NOTE: here the dynamic cast is safe because in base equality we already checked the C++ type.
 		if (get_typename() != dynamic_cast<const python_problem &>(p).get_typename()) {
 			return false;
 		}
@@ -111,17 +120,6 @@ struct python_problem: problem::base, wrapper<problem::base>
 			return f();
 		}
 		return problem::base::human_readable_extra();
-	}
-	bool is_compatible_extra(const problem::base &p) const
-	{
-		return py_is_compatible_extra(p);
-	}
-	bool py_is_compatible_extra(const problem::base &p) const
-	{
-		if (override f = this->get_override("_is_compatible_extra")) {
-			return f(p);
-		}
-		return problem::base::is_compatible_extra(p);
 	}
 	void compute_constraints_impl(constraint_vector &c, const decision_vector &x) const
 	{
@@ -156,6 +154,7 @@ BOOST_PYTHON_MODULE(_problem) {
 		.def(init<const decision_vector &, const decision_vector &, optional<int,int,int,int, const double &> >())
 		.def(init<const problem::base &>())
 		.def("__repr__", &problem::base::human_readable)
+		.def("__copy__", &problem::base::clone)
 		.def("is_blocking",&problem::base::is_blocking)
 		.def("_get_typename",&python_problem::get_typename)
 		// Dimensions.
@@ -189,14 +188,50 @@ BOOST_PYTHON_MODULE(_problem) {
 		.def("objfun",return_fitness(&problem::base::objfun),"Compute and return fitness vector.")
 		.def("compare_fitness",&problem::base::compare_fitness,"Compare fitness vectors.")
 		// Virtual methods that can be (re)implemented.
-		.def("__copy__",pure_virtual(&problem::base::clone))
 		.def("get_name",&problem::base::get_name,&python_problem::default_get_name)
 		.def("_objfun_impl",&python_problem::py_objfun)
 		.def("_human_readable_extra",&python_problem::py_human_readable_extra)
 		.def("_equality_operator_extra",&python_problem::py_equality_operator_extra)
-		.def("_is_compatible_extra",&python_problem::py_is_compatible_extra)
 		.def("_compute_constraints_impl",&python_problem::py_compute_constraints_impl);
+	
+	// Ackley problem.
+	problem_wrapper<problem::ackley>("ackley","Ackley function.")
+		.def(init<int>());
 
+	// Griewank problem.
+	problem_wrapper<problem::griewank>("griewank","Griewank function.")
+		.def(init<int>());
+
+	// GTOC1 problem.
+	problem_wrapper<problem::gtoc_1>("gtoc_1","GTOC1 problem.")
+		.def(init<>());
+
+	// GTOC2 problem.
+	problem_wrapper<problem::gtoc_2>("gtoc_2","GTOC problem.")
+		.def(init<int,int,int,int,optional<int,problem::gtoc_2::objective> >());
+
+	// GTOC2's objectives enum.
+	enum_<problem::gtoc_2::objective>("gtoc2_objective")
+		.value("MASS",problem::gtoc_2::MASS)
+		.value("TIME",problem::gtoc_2::TIME)
+		.value("MASS_TIME",problem::gtoc_2::MASS_TIME);
+
+	// Inventory problem.
+	problem_wrapper<problem::inventory>("inventory","Inventory problem.")
+		.def(init<int, int>());
+	
+	// Laplace problem.
+	problem_wrapper<problem::laplace>("laplace","Laplace problem.")
+		.def(init< const std::vector<int> &>());
+	
+	// Lennard Jones problem.
+	problem_wrapper<problem::lennard_jones>("lennard_jones","Lennard Jones problem.")
+		.def(init<int>());
+	
+	// Levy5 problem.
+	problem_wrapper<problem::levy5>("levy5","Levy5 problem.")
+		.def(init<int>());
+	
 	// Paraboloid problem.
 	problem_wrapper<problem::paraboloid>("paraboloid","Multi-dimensional paraboloid miminisation.")
 		.def(init<>())
@@ -205,7 +240,23 @@ BOOST_PYTHON_MODULE(_problem) {
 	// Rosenbrock problem.
 	problem_wrapper<problem::rosenbrock>("rosenbrock","Multi-dimensional Rosenbrock function.")
 		.def(init<int>());
-
+	
+	// NSGA-II fon problem.
+	problem_wrapper<problem::nsga_ii_fon>("nsga_ii_fon","NSGA-II FON problem.")
+		.def(init<>());
+	
+	// NSGA-II sch problem.
+	problem_wrapper<problem::nsga_ii_sch>("nsga_ii_sch","NSGA-II SCH problem.")
+		.def(init<>());
+	
+	// Rosetta problem.
+	problem_wrapper<problem::rosetta>("rosetta","Rosetta problem.")
+		.def(init<>());
+	
+	// Sagas problem.
+	problem_wrapper<problem::sagas>("sagas","Sagas problem.")
+		.def(init<>());
+	
 	// Rastrigin problem.
 	problem_wrapper<problem::rastrigin>("rastrigin","Generalised Rastrigin function.")
 		.def(init<int>());
@@ -265,6 +316,10 @@ BOOST_PYTHON_MODULE(_problem) {
 	// Cassini 2.
 	problem_wrapper<problem::cassini_2>("cassini_2","Cassini 2 interplanetary trajectory problem.")
 		.def(init<>());
+	
+	// Tandem.
+	problem_wrapper<problem::tandem>("tandem","Tandem problem.")
+		.def(init< optional<int, double> >());
 
 	// Function for the total number of objective function evaluations.
 	def("objfun_calls",&problem::objfun_calls,"Return the total number of calls to the objective function.");

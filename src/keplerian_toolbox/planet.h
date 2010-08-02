@@ -29,6 +29,7 @@
 #include "epoch.h"
 #include <vector>
 #include <string>
+#include <boost/lexical_cast.hpp>
 
 namespace kep_toolbox{
 
