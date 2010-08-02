@@ -89,6 +89,12 @@ class Object:
       if self.__class__ is Object:
          raise NotImplementedError
 
+   def mouseDown( self, button, x, y ):
+      "Handles mouse down events."
+      if self.__class__ is Object:
+         raise NotImplementedError
+      return False
+
    def mouseUp( self, button, x, y ):
       "Handles mouse up events."
       if self.__class__ is Object:
@@ -154,6 +160,8 @@ class Trajectory(Object):
       self.__zoom = 1.
       self.__axes = None
       self.__controls = True
+      self.__drag = False
+      self.__dragPlaying = True
       self.control_size = 20
       self.control_pos = array( (50., 50.) )
       self.fontsize( 16 )
@@ -401,11 +409,34 @@ class Trajectory(Object):
       "Checks to see if is paused."
       return not self.playing
 
+   def mouseDown( self, button, x, y ):
+      if button != GLUT_LEFT_BUTTON:
+         return False
+      # Check position
+      x = x - self.control_pos[0]
+      y = y - self.control_pos[1]
+      if y < 0 or y >= self.control_size:
+         return False
+      w = self.control_size
+      if x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
+         self.__drag = True
+         self.__dragPlaying = self.playing
+         self.pause()
+         return True
+      return False
+
+
    def mouseUp( self, button, x, y ):
       "Handle mouse clicks."
       # Check button
       if button != GLUT_LEFT_BUTTON:
          return False
+
+      # Stop dragging
+      if self.__drag:
+         self.__drag = False
+         self.pause( not self.__dragPlaying )
+         print("Drag stop")
 
       # Check position
       x = x - self.control_pos[0]
@@ -432,9 +463,25 @@ class Trajectory(Object):
       elif x >= self.control_len-w-10-w and x < self.control_len-10-w: # Play
          self.pause( not self.ispaused() )
          return True
-      elif x >= w+10+w+10+w and x < self.control_len-w-10-w-10: # Position bar
-         return True
+      elif x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
+         x = x - 30*2
+         w = self.control_len - 30*4
+         p = x / w
+         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
       return False
+
+   def mouseMove( self, x, y ):
+      if not self.__drag:
+         return
+      print("Drag")
+      # Check position
+      x = x - self.control_pos[0]
+      w = self.control_size
+      if x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
+         x = x - 30*2
+         w = self.control_len - 30*4
+         p = x / w
+         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
 
    def update( self, dt ):
       "Updates the animation of the trajectory."
@@ -530,7 +577,7 @@ class Trajectory(Object):
          x = x + 30
 
          # Position Bar
-         w = width - 10 - 30*2 - 10 - w - x
+         w = self.control_len - 30*4
          glColor3d( 0.8, 0.8, 0.8 )
          glVertex3d( x,       y+h*0.2, 0 )
          glVertex3d( x,       y+h*0.8, 0 )
@@ -1174,6 +1221,8 @@ class traj3d:
          self.__buttons.append( button )
          self.__posx = x
          self.__posy = y
+         for obj in self.objects:
+            obj.mouseDown( button, x, self.height-y )
       elif state == GLUT_UP:
          self.__buttons.remove( button )
          # Hack because otherwise __wheel doesn't seem to run...
@@ -1211,9 +1260,9 @@ class traj3d:
             self.__camera.rotate( yaw, pitch, 0. )
          self.__posx = x
          self.__posy = y
-         for obj in self.objects:
-            obj.mouseMove( x, y )
          self.redisplay()
+      for obj in self.objects:
+         obj.mouseMove( x, self.height-y )
 
    def __moveCam( self, x, y ):
       # Need to calculate projection base
