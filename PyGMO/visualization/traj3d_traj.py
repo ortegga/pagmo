@@ -99,12 +99,11 @@ class Trajectory(Object):
          self.__axes.setFont( self.font )
 
    def showVectors( self, enable ):
-      self.__showvec = enable
+      self.__path.showVectors( enable )
 
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
-      self.__zoom = zoom
-      self.__rad  = 5. / zoom # 10 pixel diameter
+      self.__path.setScale( zoom )
 
    def center( self ):
       "Gets the center of the object."
@@ -178,7 +177,8 @@ class Trajectory(Object):
          x = x - 3*(w+10)
          w = self.control_len - 6*(w+10)
          p = x / w
-         self.__path.setPosition( (self.__t[-1] - self.__t[0])*p + self.__t[0] )
+         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
+         self.__path.setPosition( self.__curt )
          return True
       return False
 
@@ -236,7 +236,8 @@ class Trajectory(Object):
          x = x - 3*(w+10)
          w = self.control_len - 6*(w+10)
          p = x / w
-         self.__path.setPosition( (self.__t[-1] - self.__t[0])*p + self.__t[0] )
+         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
+         self.__path.setPosition( self.__curt )
 
    def update( self, dt ):
       "Updates the animation of the trajectory."
@@ -247,10 +248,11 @@ class Trajectory(Object):
          # Stop when finished
          if self.__curt > self.__t[ -1 ]:
             if self.__repeat:
-               self.__path.setPosition( self.__t[0] )
+               self.__curt = self.__t[0]
             else:
-               self.__path.setPosition( self.__t[-1] )
+               self.__curt = self.__t[-1]
                self.playing = False
+         self.__path.setPosition( self.__curt )
       r, v, dv = self.__path.position( self.__curt )
       self.__curr  = r
       self.__curv  = v

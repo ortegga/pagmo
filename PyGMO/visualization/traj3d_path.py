@@ -225,6 +225,10 @@ class Path(Object):
 
       return array(r), array(v), dv
 
+
+   def setPosition( self, t ):
+      self.curt = t
+
    
    def interval( self ):
       return array( [self.__t[0], self.__t[-1]] )
