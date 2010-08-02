@@ -25,7 +25,6 @@
 
 # General imports
 import os
-import time
 import math
 
 # General OpenGL imports
@@ -56,7 +55,7 @@ from frange import *
 from traj3d_object import *
 
 # Misc PaGMO imports
-from PyGMO import keplerian_toolbox
+from PyGMO import keplerian_toolbox, astro_toolbox
 
 
 ###############################################################################

@@ -46,7 +46,7 @@ class Trajectory3D:
 
       # Create opengl context
       self.engine = traj3d.traj3d( "3D Trajectory Test", width, height )
-      self.traj   = traj3d.Trajectory( data, conv_t, conv_r, conv_v, conv_dv )
+      self.traj   = traj3d_traj.Trajectory( data, conv_t, conv_r, conv_v, conv_dv )
       self.engine.add( self.traj )
 
       # Bind keyboard input
@@ -78,7 +78,7 @@ class Trajectory3D:
       Sets visual indicator of the origin.
       """
       if enable and self.__origin is None:
-         self.__origin = traj3d.Origin( self.traj.size() )
+         self.__origin = traj3d_traj.Origin( self.traj.size() )
          self.engine.add( self.__origin )
       elif not enable and self.__origin is not None:
          self.engine.remove( self.__origin )
