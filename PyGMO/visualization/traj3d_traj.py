@@ -105,6 +105,7 @@ class Trajectory(Object):
 
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
+      self.__zoom = zoom
       self.__path.setScale( zoom )
       for pnt in self.__planets:
          pnt.setScale( zoom )
