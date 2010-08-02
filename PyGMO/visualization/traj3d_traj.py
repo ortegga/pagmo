@@ -53,6 +53,7 @@ except ImportError:
 # Local imports
 from frange import *
 from traj3d_object import *
+from traj3d_path import *
 
 # Misc PaGMO imports
 from PyGMO import keplerian_toolbox, astro_toolbox
@@ -66,79 +67,22 @@ class Trajectory(Object):
 
    def __init__( self, data, conv_t=1., conv_r=1., conv_v=1., conv_dv=1., mu = 1.32712428e20 ):
       Object.__init__( self )
-      self.data = data # Store data
-      self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
       self.__vbo = None
       self.__zoom = 1.
       self.__axes = None
       self.__controls = True
       self.__drag = False
       self.__dragPlaying = True
+      self.playing = True
       self.control_size = 20
       self.control_pos = array( (50., 50.) )
       self.fontsize( 16 )
-
-      # Make sure data matches
-      if type( data ).__name__ != 'tuple':
-         raise TypeError
-      for v in data:
-         if type( v ).__name__ != 'float':
-            raise TypeError
-      if len( data ) % 10 != 0:
-         raise AssertionError
-
-      # Initial data processing
-      self.__t    = []
-      self.__r    = []
-      self.__v    = []
-      self.__dv   = []
-      center      = array( [ 0., 0., 0. ] )
-      self.__maxv = 0.
-      for i in range( 0, len(data), 10 ):
-         # Unit conversion
-         t  = data[ i+0 ] * conv_t
-         r  = array( [ data[i+1], data[i+2], data[i+3] ] ) * conv_r
-         v  = array( [ data[i+4], data[i+5], data[i+6] ] ) * conv_v
-         dv = array( [ data[i+7], data[i+8], data[i+9] ] ) * conv_dv
-         # Add value
-         self.__t.append(  t  )
-         self.__r.append(  r  )
-         self.__v.append(  v  )
-         self.__dv.append( dv )
-         # Calculate center
-         center += r
-         # Calculate maximum velocity
-         v_n = linalg.norm( v )
-         if v_n > self.__maxv:
-            self.__maxv = v_n
-      # Center
-      self.__center = center / (len(data) / 10)
-
-      # Calculate size
-      dmax = 0.
-      for r in self.__r:
-         dist = linalg.norm( r - self.__center )
-         if dist > dmax:
-            dmax = dist
-      self.__size = dmax
-
-      # Animation stuff
-      self.playing   = True
-      self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / 10.
-      self.__curt    = self.__t[ 0 ]
-      self.__rad     = dmax / 100.
-      self.__showvec = False
-      self.__repeat  = False
+      self.__path = Path( data, conv_t, conv_r, conv_v, conv_dv, mu )
+      self.__t = self.__path.interval()
+      self.__curt = self.__t[0]
+      self.duration( 30. )
       self.update( 0. )
 
-      # Generate VBO
-      self.__genTraj()
-
-   def __del__( self ):
-      "Cleans up after the trajectory."
-      # Delete the VBO
-      if self.__vbo != None:
-         glDeleteBuffers( 1, GLuint( self.__vbo ) )
 
    def axes( self, enable ):
       if enable:
@@ -164,130 +108,27 @@ class Trajectory(Object):
 
    def center( self ):
       "Gets the center of the object."
-      return self.__center
+      return self.__path.center()
 
    def size( self ):
       "Gets the size of the object."
-      return self.__size
+      return self.__path.size()
 
-   def __genTraj( self, subdivide = 50 ):
-      """
-      Generates the vertex trajectory from the data.
-      """
-      self.__vertex = []
-      center = array( (0., 0., 0.) )
-
-      # Create vertex
-      for i in range( len( self.__t )-1 ):
-
-         # Calculate how to chop up
-         delta = self.__t[ i+1 ] - self.__t[ i+0 ]
-         step  = delta / subdivide
-
-         # Add first point
-         r = self.__r[ i+0 ]
-         self.__vertex.append( [ r[0], r[1], r[2] ] )
-         center += r
-
-         # Add interpolated points
-         for j in frange( 0., delta, step ):
-            r, v = keplerian_toolbox.propagate_kep( self.__r[ i+0 ], self.__v[ i+0 ], j, self.mu )
-            self.__vertex.append( [ r[0], r[1], r[2] ] )
-            center += r
-
-      # Add final point
-      r = self.__r[ -1 ]
-      self.__vertex.append( [ r[0], r[1], r[2] ] )
-      center += r
-
-      # Convert to numpy
-      self.__vertex = array( self.__vertex, dtype = float32 )
-
-      # Create the VBO
-      if self.__vbo != None:
-         glDeleteBuffers( 1, GLuint( self.__vbo ) )
-      self.__vbo = glGenBuffers( 1 )
-      glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
-      glBufferData( GL_ARRAY_BUFFER_ARB,
-            #ADT.arrayByteCount( self.__vertex ),
-            #ADT.voidDataPointer( self.__vertex ),
-            self.__vertex,
-            GL_STATIC_DRAW )
-
-      # Calculate center
-      self.__center = center / len( self.__vertex )
-
-      # Calculate size
-      dmax = 0.
-      for r in self.__vertex:
-         dist = linalg.norm( r - self.__center )
-         if dist > dmax:
-            dmax = dist
-      self.__size = dmax
-
-   
-   def position( self, t ):
-      "Gets the position and velocity vectors of the trajectory at a given instant."
-      i = 0
-      while i < len( self.__t ):
-         if self.__t[i] > t:
-            break
-         i += 1
-
-      if i > 0:
-         i -= 1
-
-      # Calculate point
-      t  = t - self.__t[i]
-      r  = self.__r[i]
-      v  = self.__v[i]
-      dv = self.__dv[i]
-      r, v = keplerian_toolbox.propagate_kep( r, v, t, self.mu )
-
-      return array(r), array(v), dv
 
 
    def display( self ):
       "Displays the trajectory."
-      # Render the trajectory VBO
-      glColor3d( 1., 1., 1. )
-      glEnableClientState(GL_VERTEX_ARRAY)
-      glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
-      glVertexPointer( 3, GL_FLOAT, 0, None )
-      glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
-      glDisableClientState( GL_VERTEX_ARRAY )
+      self.__path.display()
 
       # Get data
       r = self.__curr
       v = self.__curv
+      dv = self.__curdv
       origin = gluProject( 0., 0., 0. )
       pos    = gluProject( r[0], r[1], r[2] ) # Save screen position
       if self.__axes:
          self.__axes.refresh( origin, self.__zoom,
                [ { "colour" : (1.,0.,0.),"pos" : pos } ] )
-
-      if self.__showvec:
-         # Render position vector
-         glColor3d( 1., 0., 0. )
-         glBegin( GL_LINES )
-         glVertex( 0., 0., 0. )
-         glVertex( r[0], r[1], r[2] )
-         glEnd()
-
-         # Render velocity vector.
-         glColor3d( 0., 1., 0. )
-         glBegin( GL_LINES )
-         rv = r + v * (1. / self.__maxv) * self.size() / 5.
-         glVertex( rv[0], rv[1], rv[2] )
-         glVertex( r[0], r[1], r[2] )
-         glEnd()
-
-      # Display current position.
-      glColor3d( 1., 1., 1. )
-      glPushMatrix()
-      glTranslatef( r[0], r[1], r[2] )
-      glutSolidSphere( self.__rad, 10, 10 )
-      glPopMatrix()
 
    def faster( self, factor=1.1 ):
       "Speeds up the animation."
@@ -307,7 +148,7 @@ class Trajectory(Object):
 
    def restart( self ):
       "Restarts the playback."
-      self.__curt = self.__t[ 0 ]
+      self.__path.setPosition( self.__t[0] )
 
    def repeat( self, enable=True ):
       "Sets animation repetition."
@@ -337,10 +178,9 @@ class Trajectory(Object):
          x = x - 3*(w+10)
          w = self.control_len - 6*(w+10)
          p = x / w
-         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
+         self.__path.setPosition( (self.__t[-1] - self.__t[0])*p + self.__t[0] )
          return True
       return False
-
 
    def mouseUp( self, button, x, y ):
       "Handle mouse clicks."
@@ -376,7 +216,7 @@ class Trajectory(Object):
          return True
       elif x >= self.control_len-w: # End
          self.pause()
-         self.__curt = self.__t[ -1 ]
+         self.__path.setPosition( self.__t[ -1 ] )
          return True
       elif x >= self.control_len-(w+10)-w and x < self.control_len-(10+w): # Play
          self.pause( not self.ispaused() )
@@ -396,7 +236,7 @@ class Trajectory(Object):
          x = x - 3*(w+10)
          w = self.control_len - 6*(w+10)
          p = x / w
-         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
+         self.__path.setPosition( (self.__t[-1] - self.__t[0])*p + self.__t[0] )
 
    def update( self, dt ):
       "Updates the animation of the trajectory."
@@ -407,11 +247,11 @@ class Trajectory(Object):
          # Stop when finished
          if self.__curt > self.__t[ -1 ]:
             if self.__repeat:
-               self.__curt = self.__t[ 0 ]
+               self.__path.setPosition( self.__t[0] )
             else:
-               self.__curt = self.__t[ -1 ]
+               self.__path.setPosition( self.__t[-1] )
                self.playing = False
-      r, v, dv = self.position( self.__curt )
+      r, v, dv = self.__path.position( self.__curt )
       self.__curr  = r
       self.__curv  = v
       self.__curdv = dv
