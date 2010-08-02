@@ -422,6 +422,10 @@ class Trajectory(Object):
          self.__drag = True
          self.__dragPlaying = self.playing
          self.pause()
+         x = x - 30*2
+         w = self.control_len - 30*4
+         p = x / w
+         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
          return True
       return False
 
@@ -436,7 +440,6 @@ class Trajectory(Object):
       if self.__drag:
          self.__drag = False
          self.pause( not self.__dragPlaying )
-         print("Drag stop")
 
       # Check position
       x = x - self.control_pos[0]
@@ -463,23 +466,17 @@ class Trajectory(Object):
       elif x >= self.control_len-w-10-w and x < self.control_len-10-w: # Play
          self.pause( not self.ispaused() )
          return True
-      elif x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
-         x = x - 30*2
-         w = self.control_len - 30*4
-         p = x / w
-         self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
       return False
 
    def mouseMove( self, x, y ):
       if not self.__drag:
          return
-      print("Drag")
       # Check position
       x = x - self.control_pos[0]
       w = self.control_size
-      if x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
-         x = x - 30*2
-         w = self.control_len - 30*4
+      if x >= w+10+w+10 and x < self.control_len-w-10-w-10:
+         x = x - (10+w)*2
+         w = self.control_len - (10+w)*4
          p = x / w
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
 
