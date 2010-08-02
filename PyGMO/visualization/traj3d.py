@@ -418,12 +418,12 @@ class Trajectory(Object):
       if y < 0 or y >= self.control_size:
          return False
       w = self.control_size
-      if x >= w+10+w+10+w and x < self.control_len-w-10-w-10:
+      if x >= 3*(w+10) and x < self.control_len-3*(w+10):
          self.__drag = True
          self.__dragPlaying = self.playing
          self.pause()
-         x = x - 30*2
-         w = self.control_len - 30*4
+         x = x - 3*(w+10)
+         w = self.control_len - 6*(w+10)
          p = x / w
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
          return True
@@ -451,6 +451,7 @@ class Trajectory(Object):
 
       # Check click
       w = self.control_size
+      print(self.playspeed)
       if x < w: # Rewind
          self.pause()
          self.restart()
@@ -459,12 +460,18 @@ class Trajectory(Object):
          self.pause()
          self.__controls = False
          return True
+      elif x >= 2*(w+10) and x < 2*(w+10)+w: # Slow down
+         self.playspeed /= 1.1
+         return True
       elif x >= self.control_len-w: # End
          self.pause()
          self.__curt = self.__t[ -1 ]
          return True
-      elif x >= self.control_len-w-10-w and x < self.control_len-10-w: # Play
+      elif x >= self.control_len-(w+10)-w and x < self.control_len-(10+w): # Play
          self.pause( not self.ispaused() )
+         return True
+      elif x >= self.control_len-2*(w+10)-w and x < self.control_len-2*(10+w): # Speed up
+         self.playspeed *= 1.1
          return True
       return False
 
@@ -474,9 +481,9 @@ class Trajectory(Object):
       # Check position
       x = x - self.control_pos[0]
       w = self.control_size
-      if x >= w+10+w+10 and x < self.control_len-w-10-w-10:
-         x = x - (10+w)*2
-         w = self.control_len - (10+w)*4
+      if x >= 3*(w+10) and x < self.control_len-3*(w+10):
+         x = x - 3*(w+10)
+         w = self.control_len - 6*(w+10)
          p = x / w
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
 
@@ -573,8 +580,17 @@ class Trajectory(Object):
          glVertex3d( x+h,     y+h, 0 )
          x = x + 30
 
+         # Slow up Button
+         glVertex3d( x+h*0.0, y+h/2, 0 )
+         glVertex3d( x+h*0.5, y, 0 )
+         glVertex3d( x+h*0.5, y+h, 0 )
+         glVertex3d( x+h*0.5, y+h/2, 0 )
+         glVertex3d( x+h*1.0, y, 0 )
+         glVertex3d( x+h*1.0, y+h, 0 )
+         x = x + 30
+
          # Position Bar
-         w = self.control_len - 30*4
+         w = self.control_len - 30*6
          glColor3d( 0.8, 0.8, 0.8 )
          glVertex3d( x,       y+h*0.2, 0 )
          glVertex3d( x,       y+h*0.8, 0 )
@@ -592,6 +608,15 @@ class Trajectory(Object):
          glVertex3d( x+w*p+2, y+h*0.0, 0 )
          glVertex3d( x+w*p+2, y+h*1.0, 0 )
          x = x + w + 10
+
+         # Speed up button
+         glVertex3d( x+h*0.5, y+h/2, 0 )
+         glVertex3d( x+h*0.0, y, 0 )
+         glVertex3d( x+h*0.0, y+h, 0 )
+         glVertex3d( x+h*1.0, y+h/2, 0 )
+         glVertex3d( x+h*0.5, y, 0 )
+         glVertex3d( x+h*0.5, y+h, 0 )
+         x = x + 30
 
          # Pause/play button
          if self.playing:
