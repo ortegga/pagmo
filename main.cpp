@@ -36,7 +36,7 @@ using namespace kep_toolbox;
 
 int main()
 {
-/*
+
 	problem::gtoc_2 prob(815,300,110,47,10);
 
 	population pop(prob,1);
@@ -56,6 +56,6 @@ int main()
 	isl.evolve();isl.join();
 
 	std::cout << prob.pretty(isl.get_population().champion().x) << std::endl;
-*/
+
 	return 0;
 }

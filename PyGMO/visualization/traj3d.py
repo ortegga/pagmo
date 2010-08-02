@@ -451,6 +451,7 @@ class Trajectory(Object):
 
       # Check click
       w = self.control_size
+      print(self.playspeed)
       if x < w: # Rewind
          self.pause()
          self.restart()
