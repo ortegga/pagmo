@@ -65,8 +65,6 @@ class Path(Object):
       self.__colour = colour
 
       # Make sure data matches
-      if type( data ).__name__ != 'tuple':
-         raise TypeError
       for v in data:
          if type( v ).__name__ != 'float':
             raise TypeError

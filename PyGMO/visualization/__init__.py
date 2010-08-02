@@ -28,6 +28,7 @@ __version__ = "0.1"
 
 import traj3d
 import traj3d_traj
+import traj3d_planet
 
 
 """
@@ -63,6 +64,12 @@ class Trajectory3D:
       Resizes the window.
       """
       self.engine.reshape( width, height )
+
+   def addPlanets( self, mjd2000, planets ):
+      """
+      Adds planets.
+      """
+      self.traj.addPlanets( mjd2000, planets )
 
    def vectors( self, enable ):
       self.traj.showVectors( enable )
@@ -128,10 +135,13 @@ if __name__ == "__main__":
                0.,
                   0.,
                   0. )
+   mjd2000 = (8273.26728762578, 8623.26728762578)
+   planets = { 3 : (1.,0.,0.), 4: (0.,1.,0.) }
 
    # Create the engine
    traj = Trajectory3D( data, 640, 480,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
+   traj.addPlanets( mjd2000, planets )
 
    # Create some stuff
    traj.origin( True )

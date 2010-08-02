@@ -54,6 +54,7 @@ except ImportError:
 from frange import *
 from traj3d_object import *
 from traj3d_path import *
+from traj3d_planet import *
 
 # Misc PaGMO imports
 from PyGMO import keplerian_toolbox, astro_toolbox
@@ -80,6 +81,7 @@ class Trajectory(Object):
       self.__path = Path( data, conv_t, conv_r, conv_v, conv_dv, mu )
       self.__t = self.__path.interval()
       self.__curt = self.__t[0]
+      self.__planets = []
       self.duration( 30. )
       self.update( 0. )
 
@@ -104,6 +106,8 @@ class Trajectory(Object):
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
       self.__path.setScale( zoom )
+      for pnt in self.__planets:
+         pnt.setScale( zoom )
 
    def center( self ):
       "Gets the center of the object."
@@ -113,10 +117,16 @@ class Trajectory(Object):
       "Gets the size of the object."
       return self.__path.size()
 
-
+   def addPlanets( self, mjd2000, planets ):
+      "Adds some planets."
+      self.__planetsColour = planets
+      for key, value in planets.items():
+         self.__planets.append( Planet( mjd2000, key, value ) )
 
    def display( self ):
       "Displays the trajectory."
+      for pnt in self.__planets:
+         pnt.display()
       self.__path.display()
 
       # Get data
@@ -126,8 +136,8 @@ class Trajectory(Object):
       origin = gluProject( 0., 0., 0. )
       pos    = gluProject( r[0], r[1], r[2] ) # Save screen position
       if self.__axes:
-         self.__axes.refresh( origin, self.__zoom,
-               [ { "colour" : (1.,0.,0.),"pos" : pos } ] )
+         axes = [ { "colour" : (1.,0.,0.),"pos" : pos } ]
+         self.__axes.refresh( origin, self.__zoom, axes )
 
    def faster( self, factor=1.1 ):
       "Speeds up the animation."
@@ -145,9 +155,15 @@ class Trajectory(Object):
       "Sets the animation total duration in seconds."
       self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / duration
 
+   def setPosition( self, t ):
+      "Sets the current position."
+      self.__path.setPosition( t )
+      for pnt in self.__planets:
+         pnt.setPosition( t )
+
    def restart( self ):
       "Restarts the playback."
-      self.__path.setPosition( self.__t[0] )
+      self.setPosition( self.__t[0] )
 
    def repeat( self, enable=True ):
       "Sets animation repetition."
@@ -178,7 +194,7 @@ class Trajectory(Object):
          w = self.control_len - 6*(w+10)
          p = x / w
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
-         self.__path.setPosition( self.__curt )
+         self.setPosition( self.__curt )
          return True
       return False
 
@@ -216,7 +232,7 @@ class Trajectory(Object):
          return True
       elif x >= self.control_len-w: # End
          self.pause()
-         self.__path.setPosition( self.__t[ -1 ] )
+         self.setPosition( self.__t[ -1 ] )
          return True
       elif x >= self.control_len-(w+10)-w and x < self.control_len-(10+w): # Play
          self.pause( not self.ispaused() )
@@ -237,7 +253,7 @@ class Trajectory(Object):
          w = self.control_len - 6*(w+10)
          p = x / w
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
-         self.__path.setPosition( self.__curt )
+         self.setPosition( self.__curt )
 
    def update( self, dt ):
       "Updates the animation of the trajectory."
@@ -252,7 +268,7 @@ class Trajectory(Object):
             else:
                self.__curt = self.__t[-1]
                self.playing = False
-         self.__path.setPosition( self.__curt )
+         self.setPosition( self.__curt )
       r, v, dv = self.__path.position( self.__curt )
       self.__curr  = r
       self.__curv  = v
