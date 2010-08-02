@@ -142,6 +142,8 @@ class Trajectory(Object):
       self.__vbo = None
       self.__zoom = 1.
       self.__axes = None
+      self.__controls = False
+      self.control_size = 20
       self.fontsize( 16 )
 
       # Make sure data matches
@@ -447,6 +449,93 @@ class Trajectory(Object):
       self.font.Render( sv )
 
       glDisable(GL_BLEND)
+
+      # Render controls
+      glBegin( GL_TRIANGLES )
+
+      glColor3d( 1., 1., 1. )
+
+      # Backwards button
+      x = 50
+      y = 50
+      h = self.control_size
+      glVertex3d( x,       y+h/2, 0 )
+      glVertex3d( x+h*0.7, y, 0 )
+      glVertex3d( x+h*0.7, y+h, 0 )
+
+      glVertex3d( x+h*0.9, y, 0 )
+      glVertex3d( x+h*0.9, y+h, 0 )
+      glVertex3d( x+h,     y, 0 )
+      glVertex3d( x+h*0.9, y+h, 0 )
+      glVertex3d( x+h,     y, 0 )
+      glVertex3d( x+h,     y+h, 0 )
+      x = x + 30
+
+      # Stop button
+      glVertex3d( x,       y, 0 )
+      glVertex3d( x,       y+h, 0 )
+      glVertex3d( x+h,     y, 0 )
+      glVertex3d( x,       y+h, 0 )
+      glVertex3d( x+h,     y, 0 )
+      glVertex3d( x+h,     y+h, 0 )
+      x = x + 30
+
+      # Position Bar
+      w = width - 10 - 30*2 - 10 - w - x
+      glColor3d( 0.8, 0.8, 0.8 )
+      glVertex3d( x,       y+h*0.2, 0 )
+      glVertex3d( x,       y+h*0.8, 0 )
+      glVertex3d( x+w,     y+h*0.2, 0 )
+      glVertex3d( x,       y+h*0.8, 0 )
+      glVertex3d( x+w,     y+h*0.2, 0 )
+      glVertex3d( x+w,     y+h*0.8, 0 )
+
+      p = (self.__curt - self.__t[0]) / (self.__t[-1] - self.__t[0])
+      glColor3d( 1.0, 1.0, 1.0 )
+      glVertex3d( x+w*p-2, y+h*0.0, 0 )
+      glVertex3d( x+w*p-2, y+h*1.0, 0 )
+      glVertex3d( x+w*p+2, y+h*0.0, 0 )
+      glVertex3d( x+w*p-2, y+h*1.0, 0 )
+      glVertex3d( x+w*p+2, y+h*0.0, 0 )
+      glVertex3d( x+w*p+2, y+h*1.0, 0 )
+      x = x + w + 10
+
+      # Pause/play button
+      if self.playing:
+         # pause button
+         glVertex3d( x+h*0.0, y, 0 )
+         glVertex3d( x+h*0.0, y+h, 0 )
+         glVertex3d( x+h*0.4, y, 0 )
+         glVertex3d( x+h*0.0, y+h, 0 )
+         glVertex3d( x+h*0.4, y, 0 )
+         glVertex3d( x+h*0.4, y+h, 0 )
+         
+         glVertex3d( x+h*1.0, y, 0 )
+         glVertex3d( x+h*1.0, y+h, 0 )
+         glVertex3d( x+h*0.6, y, 0 )
+         glVertex3d( x+h*1.0, y+h, 0 )
+         glVertex3d( x+h*0.6, y, 0 )
+         glVertex3d( x+h*0.6, y+h, 0 )
+      else:
+         # Play button
+         glVertex3d( x+h*1.0, y+h/2, 0 )
+         glVertex3d( x+h*0.0, y, 0 )
+         glVertex3d( x+h*0.0, y+h, 0 )
+      x = x + 30
+
+      # Forward button
+      glVertex3d( x+h*0.0, y, 0 )
+      glVertex3d( x+h*0.0, y+h, 0 )
+      glVertex3d( x+h*0.1, y, 0 )
+      glVertex3d( x+h*0.0, y+h, 0 )
+      glVertex3d( x+h*0.1, y, 0 )
+      glVertex3d( x+h*0.1, y+h, 0 )
+
+      glVertex3d( x+h*0.3, y, 0 )
+      glVertex3d( x+h*0.3, y+h, 0 )
+      glVertex3d( x+h*1.0, y+h/2, 0 )
+
+      glEnd() # GL_TRIANGLES
 
       # Display axes if set
       if self.__axes:
