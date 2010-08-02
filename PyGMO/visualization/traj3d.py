@@ -89,6 +89,17 @@ class Object:
       if self.__class__ is Object:
          raise NotImplementedError
 
+   def mouseUp( self, button, x, y ):
+      "Handles mouse up events."
+      if self.__class__ is Object:
+         raise NotImplementedError
+      return False
+
+   def mouseMove( self, x, y ):
+      "Handles mouse movement events."
+      if self.__class__ is Object:
+         raise NotImplementedError
+
    def display( self ):
       "Draws the object on the window."
       if self.__class__ is Object:
@@ -1134,6 +1145,8 @@ class traj3d:
             self.__wheel( 0, -1, x, y )
          elif button == 4:
             self.__wheel( 0, +1, x, y )
+         for obj in self.objects:
+            obj.mouseUp( button, x, y )
 
    def __wheel( self, wheel, direction, x, y ):
       if direction > 0:
@@ -1162,6 +1175,8 @@ class traj3d:
             self.__camera.rotate( yaw, pitch, 0. )
          self.__posx = x
          self.__posy = y
+         for obj in self.objects:
+            obj.mouseMove( x, y )
          self.redisplay()
 
    def __moveCam( self, x, y ):
