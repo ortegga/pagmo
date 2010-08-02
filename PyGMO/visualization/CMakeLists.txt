@@ -14,4 +14,4 @@
 #ENDIF(FTGL_IMPORT_OUPTUT)
 
 # Install
-INSTALL(FILES __init__.py frange.py traj3d.py Vera.ttf DESTINATION ${PYGMO_INSTALL_PATH}/visualization)
+INSTALL(FILES __init__.py frange.py traj3d.py traj3d_object.py traj3d_traj.py Vera.ttf DESTINATION ${PYGMO_INSTALL_PATH}/visualization)

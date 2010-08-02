@@ -27,6 +27,7 @@ __version__ = "0.1"
 
 
 import traj3d
+import traj3d_traj
 
 
 """
