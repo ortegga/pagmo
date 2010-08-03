@@ -38,7 +38,7 @@ class Trajectory3D:
 
    def __init__( self, data, width=800, height=600, conv_t=1., conv_r=1., conv_v=1., conv_dv=1. ):
       """
-      Constructor for the TrajectoryVisualizer
+      Constructor for the TrajectoryVisualizer.
       """
       self.__axes    = None
       self.__origin  = None
@@ -56,33 +56,53 @@ class Trajectory3D:
    def start( self ):
       """
       Starts the engine.
+
+      When you start the engine it will block until the window is closed.
       """
       self.engine.start()
 
-   def resize( self, width, height ):
+   def resize( self, width=800, height=600 ):
       """
       Resizes the window.
+
+      Allows you to define the size of the window in pixels.
       """
       self.engine.reshape( width, height )
 
    def addPlanets( self, mjd2000, planets ):
       """
       Adds planets.
+
+      The mjd2000 should be a two element list indicating when the planets start
+       and when they end.
+
+      Planets should be in the format of a dictionary where the keys are the
+       planet id and the values are a 3 element list or tuple indicating the
+       colour to use for displaying the planet with the 3 RGB components.
       """
       self.traj.addPlanets( mjd2000, planets )
 
    def vectors( self, enable ):
+      """
+      Enables visualization of vectors.
+
+      These vectors are represent position from origin and velocity.
+      """
       self.traj.showVectors( enable )
 
    def axes( self, enable ):
       """
       Shows axes.
+
+      These axes help calculate distances visually.
       """
       self.traj.axes( enable )
 
    def origin( self, enable ):
       """
       Sets visual indicator of the origin.
+
+      Displays a large line at each of the axes.
       """
       if enable and self.__origin is None:
          self.__origin = traj3d_traj.Origin( self.traj.size() )
@@ -105,12 +125,20 @@ class Trajectory3D:
       if key is 's' and pressed:
          self.traj.slower()
 
-   def duration( self, duration ):
-      "Sets the duration of the animation."
+   def duration( self, duration=30. ):
+      """
+      Sets the duration of the animation.
+
+      The duration is in seconds and represents how long the total animation should last.
+      """
       self.traj.duration = duration
 
    def repeat( self, enable ):
-      "Sets animation repetition."
+      """
+      Sets animation repetition.
+
+      This just makes the animation loop all the time.
+      """
       self.traj.repeat( enable )
 
 # Run some tests
