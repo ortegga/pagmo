@@ -532,14 +532,14 @@ class traj3d:
       mod = glutGetModifiers()
       if GLUT_MIDDLE_BUTTON in self.__buttons:
          sensitivity = 0.005
-         delta    =  x - self.__posx, y - self.__posy
+         delta    =  -(x - self.__posx), y - self.__posy
          if (mod & GLUT_ACTIVE_CTRL) == GLUT_ACTIVE_CTRL:
             self.__moveCam( delta[0], delta[1] )
          else:
             yaw   = delta[0] * sensitivity
             pitch = delta[1] * sensitivity
             roll  = 0.
-            self.__camera.rotate( -yaw, pitch, 0. )
+            self.__camera.rotate( yaw, pitch, 0. )
          self.__posx = x
          self.__posy = y
          self.redisplay()
