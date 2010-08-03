@@ -90,6 +90,7 @@ class Trajectory(Object):
    def axes( self, enable ):
       if enable:
          self.__axes = Axes( self.font )
+         self.__axes.setUnits( self.__pos_val, self.__pos_sym )
       else:
          self.__axes = None
 
@@ -280,6 +281,8 @@ class Trajectory(Object):
       self.__tim_sym = time
       self.__vel_sym = "%s/%s" % (self.__pos_sym, self.__tim_sym)
       self.__vel_val = self.__pos_val / self.__tim_val
+      if self.__axes:
+         self.__axes.setUnits( self.__pos_val, self.__pos_sym )
 
 
    def update( self, dt ):
@@ -580,7 +583,7 @@ class Axes(Object):
       if x < margin:
          x += step
       while x < width-margin:
-         s = "%.0f" % ((x - self.__origin[0]) / (step * self.__pos_val))
+         s = "%.0f" % ((x - self.__origin[0]) / step)
          glRasterPos( x-self.__font.Advance(s)/2., 2. )
          self.__font.Render( s )
          x += step
@@ -588,12 +591,12 @@ class Axes(Object):
       if y < margin:
          y += step
       while y < height-margin:
-         s = "%.0f" % ((y - self.__origin[1]) / (step * self.__pos_val))
+         s = "%.0f" % ((y - self.__origin[1]) / step)
          glRasterPos( (margin-self.__font.Advance(s))/2., y )
          self.__font.Render( s )
          y += step
 
       # Display scale
       glRasterPos( 5., height - margin*0.75 )
-      self.__font.Render( "%.0E %s" % (vstep * self.__pos_val, self.__pos_sym) )
+      self.__font.Render( "%.0E %s" % (vstep / self.__pos_val, self.__pos_sym) )
 
