@@ -258,7 +258,7 @@ class Trajectory(Object):
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
          self.setPosition( self.__curt )
 
-   def setUnits( self, pos="m", time="s" ):
+   def setUnits( self, pos="m", time="s", vel="m/s" ):
       if pos=="m":
          self.__pos_val = 1.
       elif pos=="km":
@@ -280,7 +280,13 @@ class Trajectory(Object):
          raise ValueError
       self.__tim_sym = time
       self.__vel_sym = "%s/%s" % (self.__pos_sym, self.__tim_sym)
-      self.__vel_val = self.__pos_val / self.__tim_val
+      if vel=="m/s":
+         self.__vel_val = 1.
+      elif vel=="km/s":
+         self.__vel_val = 1000.
+      elif vel=="km/h":
+         self.__vel_val = 1000./3600.
+      self.__vel_sym = vel
       if self.__axes:
          self.__axes.setUnits( self.__pos_val, self.__pos_sym )
 

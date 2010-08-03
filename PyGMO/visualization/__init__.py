@@ -53,11 +53,11 @@ class Trajectory3D:
       # Bind keyboard input
       self.engine.inputKeyboard( self.__keyboard )
 
-   def setUnits( self, distance, time ):
+   def setUnits( self, distance, time, velocity ):
       """
       Sets the units to display.
       """
-      self.traj.setUnits( distance, time )
+      self.traj.setUnits( distance, time, velocity )
 
    def start( self ):
       """
@@ -176,7 +176,7 @@ if __name__ == "__main__":
    traj = Trajectory3D( data, 640, 480,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
    traj.addPlanets( mjd2000, planets )
-   traj.setUnits( "km", "d" )
+   traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
    traj.origin( True )
