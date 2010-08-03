@@ -451,15 +451,11 @@ class Origin(Object):
       glColor3d( *self.xColor )
       glVertex3d( 0, 0, 0 )
       glVertex3d( self.expanse, 0, 0 )
-      glEnd()
 
-      glBegin(GL_LINES)
       glColor3d( *self.yColor )
       glVertex3d( 0, 0, 0 )
       glVertex3d( 0., self.expanse, 0 )
-      glEnd()
 
-      glBegin(GL_LINES)
       glColor3d( *self.zColor )
       glVertex3d( 0, 0, 0 )
       glVertex3d( 0., 0., self.expanse )
