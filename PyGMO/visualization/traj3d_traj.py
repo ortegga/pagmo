@@ -82,6 +82,7 @@ class Trajectory(Object):
       self.__t = self.__path.interval()
       self.__curt = self.__t[0]
       self.__planets = []
+      self.setUnits()
       self.duration( 30. )
       self.update( 0. )
 
@@ -256,6 +257,31 @@ class Trajectory(Object):
          self.__curt = (self.__t[-1] - self.__t[0])*p + self.__t[0]
          self.setPosition( self.__curt )
 
+   def setUnits( self, pos="m", time="s" ):
+      if pos=="m":
+         self.__pos_val = 1.
+      elif pos=="km":
+         self.__pos_val = 1000.
+      else:
+         raise ValueError
+      self.__pos_sym = pos
+      if time=="s":
+         self.__tim_val = 1.
+      elif time=="min":
+         self.__tim_val = 60.
+      elif time=="h":
+         self.__tim_val = 60.*60.
+      elif time=="d":
+         self.__tim_val = 24.*60.*60.
+      elif time=="y":
+         self.__tim_val = 365*24.*60.*60.
+      else:
+         raise ValueError
+      self.__tim_sym = time
+      self.__vel_sym = "%s/%s" % (self.__pos_sym, self.__tim_sym)
+      self.__vel_val = self.__pos_val / self.__tim_val
+
+
    def update( self, dt ):
       "Updates the animation of the trajectory."
       # must be playing
@@ -290,9 +316,9 @@ class Trajectory(Object):
       y  = 20. + 3.*( 1.5 *  self.fontsize )
 
       # Text to render
-      st = "Time: %.2E s" % linalg.norm( t )
-      sr = "Dist: %.2E m" % linalg.norm( r )
-      sv = "Vel: %.2E m" % linalg.norm( v )
+      st = "Time: %.2E %s" % (linalg.norm( t ) / self.__tim_val, self.__tim_sym )
+      sr = "Dist: %.2E %s" % (linalg.norm( r ) / self.__pos_val, self.__pos_sym )
+      sv = "Vel: %.2E %s" % (linalg.norm( v ) / self.__vel_val, self.__vel_sym )
 
       # Calculate width
       w  = max( self.font.Advance( sr ),
@@ -470,6 +496,7 @@ class Axes(Object):
 
    def __init__( self, font = None, origin = (0., 0., 0.), scale=1., track=[] ):
       self.__font = font
+      self.setUnits()
       self.refresh( origin, scale, track )
 
    def refresh( self, origin, scale, track ):
@@ -479,6 +506,10 @@ class Axes(Object):
 
    def setFont( self, font ):
       self.__font = font
+
+   def setUnits( self, pos_val=1., pos_sym="m" ):
+      self.__pos_val = pos_val
+      self.__pos_sym = pos_sym
 
    def displayOver( self, width, height ):
       empty    = 20.
@@ -549,7 +580,7 @@ class Axes(Object):
       if x < margin:
          x += step
       while x < width-margin:
-         s = "%.0f" % ((x - self.__origin[0]) / step)
+         s = "%.0f" % ((x - self.__origin[0]) / (step * self.__pos_val))
          glRasterPos( x-self.__font.Advance(s)/2., 2. )
          self.__font.Render( s )
          x += step
@@ -557,12 +588,12 @@ class Axes(Object):
       if y < margin:
          y += step
       while y < height-margin:
-         s = "%.0f" % ((y - self.__origin[1]) / step)
+         s = "%.0f" % ((y - self.__origin[1]) / (step * self.__pos_val))
          glRasterPos( (margin-self.__font.Advance(s))/2., y )
          self.__font.Render( s )
          y += step
 
       # Display scale
       glRasterPos( 5., height - margin*0.75 )
-      self.__font.Render( "%.0E m" % vstep )
+      self.__font.Render( "%.0E %s" % (vstep * self.__pos_val, self.__pos_sym) )
 

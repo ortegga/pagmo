@@ -31,14 +31,14 @@ import traj3d_traj
 import traj3d_planet
 
 
-"""
-Class:
-"""
 class Trajectory3D:
+   """
+   Class that allows easy 3D visualization of interplanetary trajectories.
+   """
 
    def __init__( self, data, width=800, height=600, conv_t=1., conv_r=1., conv_v=1., conv_dv=1. ):
       """
-      Constructor for the TrajectoryVisualizer.
+      Constructor for the Trajectory3D.
       """
       self.__axes    = None
       self.__origin  = None
