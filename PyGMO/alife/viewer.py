@@ -226,7 +226,6 @@ class ALifeViewer(object):
                 gluDisk(quad, 0, radius, 32, 1)    
                 
         else:
-            # no body found, then it must be a plane or triangular mesh
             if type(geom) == ode.GeomPlane:
                 # set color of plane
                 glColor3f(0.53, 0.44, 0.35)
@@ -264,6 +263,14 @@ class ALifeViewer(object):
                     glVertex3fv(triangle[1])
                     glVertex3fv(triangle[2])
                 glEnd()
+                glPopMatrix()
+                
+            elif type(geom) == ode.GeomSphere:
+                glColor3f(0.53, 0.44, 0.35)
+                quad = gluNewQuadric()
+                gluQuadricTexture(quad, GL_TRUE)
+                glPushMatrix()
+                gluSphere(quad, geom.getRadius(), 32, 32);
                 glPopMatrix()
         glPopMatrix()
         

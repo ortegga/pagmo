@@ -134,3 +134,29 @@ class Asteroid(object):
                                 trimesh_vertices.appendChild(v)
                         break
         self.xode_string = root.toxml()
+        
+
+## SphericalAsteroid class
+#
+#  Creates an ODE geometry object called 'asteroid' in an XODE string.
+#  By default, the geometry is a sphere of radius 100.
+#
+#  @author John Glover
+class SphericalAsteroid(Asteroid):
+    ## Constructor. Initialises the XODE string for this object to a sphere
+    #  of radius 100
+    def __init__(self):
+        self.xode_string = """
+        <xode name="alife" version="1.0r23" 
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+              xsi:noNamespaceSchemaLocation="http://tanksoftware.com/xode/1.0r23/xode.xsd">
+              
+            <world>
+                <space>
+                    <geom name="Asteroid">
+                        <sphere radius="100" />
+                    </geom>
+                </space>
+            </world>
+        </xode>
+        """

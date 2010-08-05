@@ -127,7 +127,7 @@ class ALifeEnvironment(object):
         ## @var max_distance_from_asteroid The maximum distance that a body can be from
         #  the asteroid. An exception is raised by the step() function if this value is
         #  exceeded.
-        self.max_distance_from_asteroid = 150
+        self.max_distance_from_asteroid = 200
         ## @var max_force The maximum force of gravity that can be applied to a body.
         #  There seems to be a problem with ODE collision detection if the gravitational
         #  force is too large. This value is just based on trial and error.
@@ -290,7 +290,7 @@ class ALifeEnvironment(object):
         world, contactgroup = args
         for c in contacts:
             p = c.getContactGeomParams()
-            # parameters from Niko Wolf
+            # parameters from Niko Wolf (taken from PyBrain code)
             c.setBounce(0.2)
             c.setBounceVel(0.05) #Set the minimum incoming velocity necessary for bounce
             c.setSoftERP(0.6) #Set the contact normal "softness" parameter
@@ -374,7 +374,7 @@ class ALifeEnvironment(object):
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
     #  @return The current step count
-    def step(self, dt=0.04):       
+    def step(self, dt=0.04):    
         # update gravity
         for (body, geom) in self.body_geom:
             if body:
@@ -428,19 +428,15 @@ class ALifeEnvironment(object):
 #
 #  @author John Glover
 class ALifePlane(ALifeEnvironment):
-    def __init__(self):
-        super(ALifePlane, self).__init__()
-        # todo: Robot should not be hardcoded in
-        from robot import Robot
-        self.robot = Robot("Robot", [0, 20, 0])
-        
     ## Loads the robot XODE data (xml format) and parses it.
-    #  @param data The XODE data for the robot.
-    def load_robot(self, data):
-        super(ALifePlane, self).load_robot(data)
+    #  @param robot_xode The XODE data for the robot.
+    def load_robot(self, robot_xode):
+        super(ALifePlane, self).load_robot(robot_xode)
+        # Add a 2D plane as the ground
         p = ode.GeomPlane(self.space, (0,1,0), 0)
         p.name = "ground"
         self.body_geom.append((None, p))
+        # Use standard ODE gravity
         self.world.setGravity((0.0, -4.9, 0.0))
         
     ## Calculate the next step in the ODE environment.

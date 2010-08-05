@@ -60,7 +60,7 @@ class ALifeExperiment(Experiment):
         ## @var step_size The amount by which the ODE environment moves forward
         #  at each step.
         self.step_size = 0.04
-        self.task._stable_distance = self.step_size / 40000
+        self.task._stable_distance = self.step_size / 4000
         ## @var _env The ODE Environment
         self._env = env
             
@@ -253,7 +253,7 @@ class ALifeTask(EpisodicTask):
         self._distance_moved = 0.0
         ## @var _stable_distance The robot is said to be stable if it moves less than this distance
         #  between successive calls to performAction
-        self._stable_distance = 0.000001
+        self._stable_distance = 0.00001
         ## @var _sensors The Robot's joint sensors
         self._sensors = sensors.JointSensor()
         
