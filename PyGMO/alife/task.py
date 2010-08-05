@@ -91,6 +91,7 @@ class ALifeExperiment(Experiment):
         self.agent.giveReward(result)
         return result
     
+    ## @return The ALifeEnvironment used by this experiment
     def get_environment(self):
         return self._env
 
@@ -255,6 +256,7 @@ class ALifeTask(EpisodicTask):
         self._stable_distance = 0.000001
         ## @var _sensors The Robot's joint sensors
         self._sensors = sensors.JointSensor()
+        
         for j in env.get_robot_joints():
             self._sensors._joints.append(j)
         self._sensors._update()
@@ -332,22 +334,22 @@ class ALifeTask(EpisodicTask):
 if __name__ == "__main__":  
     from environment import ALifeEnvironment
     from robot import Robot
+    from asteroid import Asteroid
     from viewer import ALifeViewer
     # environment
-    e = ALifeEnvironment()
-    r = Robot("Robot", [0, 110, 0])
-    e.load_robot(r.get_xode())
-    e.load_asteroid("models/asteroid.x3d")
+    robot = Robot("Robot", [0, 110, 0])
+    asteroid = Asteroid("models/asteroid.x3d")
+    env = ALifeEnvironment(robot, asteroid)
     # viewer
-    v = ALifeViewer()
-    v.print_controls()
+    viewer = ALifeViewer()
+    viewer.print_controls()
     # task, agent, experiment
-    t = ALifeTask(e)
-    a = ALifeAgent(len(t.getObservation()))
-    exp = ALifeExperiment(t, a, e)
-    v.set_experiment(exp)
+    task = ALifeTask(env)
+    agent = ALifeAgent(len(task.getObservation()))
+    exp = ALifeExperiment(task, agent, env)
+    viewer.set_experiment(exp)
     print
     print "Distance moved after stabilisation:", 
     print exp.perform()
     # view end of experiment
-    v.start()
+    viewer.start()

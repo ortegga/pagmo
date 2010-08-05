@@ -403,12 +403,13 @@ class ALifeViewer(object):
 if __name__ == "__main__":  
     from environment import ALifeEnvironment
     from robot import Robot
-    e = ALifeEnvironment()
+    from asteroid import Asteroid
+    
     robot_position = [0, 150, 0]
-    r = Robot("Robot", robot_position)
-    e.load_robot(r.get_xode())
-    e.load_asteroid("models/asteroid.x3d")
-    v = ALifeViewer()
-    v.set_environment(e)
-    v.print_controls()
-    v.start()
+    robot = Robot("Robot", robot_position)
+    asteroid = Asteroid("models/asteroid.x3d")
+    env = ALifeEnvironment(robot, asteroid)
+    viewer = ALifeViewer()
+    viewer.set_environment(env)
+    viewer.print_controls()
+    viewer.start()

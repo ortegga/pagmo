@@ -27,12 +27,9 @@
 #  The ODE world handles all physics simulation.
 #  Code is based on the ode.environment module from PyBrain
 from pybrain.rl.environments.ode import sensors, actuators
-from pybrain.rl.environments.ode.tools.xodetools import XODEfile
 import ode
 import xode.parser
-import xml.dom.minidom as md
 import numpy as np
-from robot import Robot
         
 ## ConfigGrabber class
 #
@@ -92,7 +89,7 @@ class ConfigGrabber:
 #  @author John Glover
 class ALifeEnvironment(object):
     ## Constructor
-    def __init__(self):
+    def __init__(self, robot=None, asteroid=None):
         ## @var root XODE root node, defined in load_xode
         self.root = None
         ## @var world XODE world node, defined in load_xode
@@ -101,12 +98,20 @@ class ALifeEnvironment(object):
         self.space = None  
         ## @var body_geom A list with (body, geom) tuples
         self.body_geom = []
-        ## @var asteroid The asteroid geometry
-        self.asteroid = None
         ## @var robot_body The robot body object, defined in _parseBodies
         self.robot_body = None
         ## @var joints The robot's joints
         self.joints = []
+        ## @var robot The robot object
+        self.robot = robot
+        if self.robot:
+            self.load_robot(robot.get_xode())
+        ## @var asteroid_geom The asteroid geometry
+        self.asteroid_geom = None
+        ## @var asteroid The asteroid object
+        self.asteroid = asteroid
+        if self.asteroid:
+            self.load_asteroid(asteroid.get_xode())
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
@@ -133,11 +138,10 @@ class ALifeEnvironment(object):
         self.step_count = 0
     
     ## Loads the robot XODE data (xml format) and parses it.
-    #  @param data The XODE data for the robot.
-    #  @param reload Whether or not to reload sensor data .
-    def load_robot(self, data, reload=False):
+    #  @param robot_xode The XODE data for the robot.
+    def load_robot(self, robot_xode):
         p = xode.parser.Parser()
-        self.root = p.parseString(data)
+        self.root = p.parseString(robot_xode)
         try:
             # filter all xode "world" objects from root, take only the first one
             world = filter(lambda x: isinstance(x, xode.parser.World), self.root.getChildren())[0]
@@ -159,113 +163,32 @@ class ALifeEnvironment(object):
         self._parseBodies(self.root)
         
         # now parse the additional parameters at the end of the xode file
-        self._loadConfig(data, reload)
+        self._loadConfig(robot_xode)
         
-    ## Loads the asteroid X3D file (XML) and parses it. The resulting
-    #  geometry is a xode trimesh object, stored in the variable self.asteroid.
-    #  The asteroid is then added to the ALife ODE space.
-    #
-    #  Note: this file must be called after load_xode, so that the member variable
-    #        'space' already exists. An exception is raised if space does not exist.
-    #
-    #  Other X3D file restraints:
-    #  - The file must contain at least 1 object called 'Asteroid'. If not,
-    #    an exception is raised
-    #  - If more than 1 object called 'Asteroid' exists, only the first one
-    #    is processed, the rest are ignored.
-    #  - The file must consist of faces stored as triangles. If the file 
-    #    cannot be read or it does not contain any triangles an exception
-    #    is raised.
-    #     
-    #  @param file_name The file path to the .x3d file for the asteroid.
-    def load_asteroid(self, file_name):
+    ## Adds an asteroid geometry to the environment
+    #  @param asteroid_xode XODE string containing the asteroid geometry
+    def load_asteroid(self, asteroid_xode):
         # check for existing ODE space
         if not self.space:
             # todo: more detail on this exception
             raise Exception("NoSpace")
-        dom = md.parse(file_name)
-        root = dom.createElement('xode')
-        root.attributes['version'] = '1.0r23'
-        root.attributes['name'] = 'alife'
-        root.attributes['xmlns:xsi'] = 'http://www.w3.org/2001/XMLSchema-instance'
-        root.attributes['xsi:noNamespaceSchemaLocation'] = 'http://tanksoftware.com/xode/1.0r23/xode.xsd'
-        world = dom.createElement('world')
-        root.appendChild(world)
-        space = dom.createElement('space')
-        world.appendChild(space)
         
-        geom = dom.createElement('geom')
-        geom.attributes['name'] = 'Asteroid'
-        trimesh = dom.createElement('trimesh')
-        geom.appendChild(trimesh)
-        trimesh_triangles = dom.createElement('triangles')
-        trimesh.appendChild(trimesh_triangles)
-        trimesh_vertices = dom.createElement('vertices')
-        trimesh.appendChild(trimesh_vertices)
-        space.appendChild(geom)
-        
-        for node in dom.getElementsByTagName('Transform'):
-            if 'DEF' in node.attributes.keys():
-                # take the first transform node defined as 'Asteroid'
-                if node.attributes['DEF'].value == 'Asteroid':
-                    # get scale information from the model
-                    if 'scale' in node.attributes.keys():
-                        scale_string = node.attributes['scale'].value
-                        scale = scale_string.split()
-                        scale = [float(s) for s in scale]
-                    else:
-                        scale = (1, 1, 1)
-                        
-                    # todo: get translation information from the model
-                    # todo: get rotation information from the model
-                    
-                    if node.getElementsByTagName('IndexedFaceSet'):
-                        ifs = node.getElementsByTagName('IndexedFaceSet')[0]
-                        # form triangles from the coordIndex
-                        coord_index = ifs.attributes['coordIndex'].value
-                        for face in coord_index.split(','):
-                            # make sure that the given faces are triangles
-                            # there should 4 indicies, the last one equal to -1
-                            indicies = face.split()
-                            if len(indicies) == 4 and int(indicies[3]) == -1:
-                                # x3d indices count from zero but xode indices
-                                # count form one, so add one to each index value
-                                t = dom.createElement('t')
-                                t.attributes['ia'] = str(int(indicies[0])+1)
-                                t.attributes['ib'] = str(int(indicies[1])+1)
-                                t.attributes['ic'] = str(int(indicies[2])+1)
-                                trimesh_triangles.appendChild(t)
-                        # form vertices from the Coordinate point attribute
-                        coordinate = ifs.getElementsByTagName('Coordinate')[0]
-                        coord_points = coordinate.attributes['point'].value
-                        for points in coord_points.split(','):
-                            # each vertex should have 3 points
-                            points = points.split()
-                            if len(points) == 3:
-                                v = dom.createElement('v')
-                                v.attributes['x'] = str(float(points[0]) * scale[0])
-                                v.attributes['y'] = str(float(points[1]) * scale[1])
-                                v.attributes['z'] = str(float(points[2]) * scale[2])
-                                trimesh_vertices.appendChild(v)
-                        break
-    
-        # parse, adding to environment
+        # parse asteroid xode, adding to environment
         parser = xode.parser.Parser()
-        self._parseBodies(parser.parseString(root.toxml()))
+        self._parseBodies(parser.parseString(asteroid_xode))
         
         # check that asteroid geometry was created successfully
-        # todo: check triangle count: self.asteroid.getTriangleCount()
+        # todo: check triangle count: self.asteroid_geom.getTriangleCount()
         # todo: give more detail in exception
-        if not self.asteroid:
+        if not self.asteroid_geom:
             raise Exception("NoAsteroid")
         # add asteroid to current space
-        self.asteroid.getSpace().remove(self.asteroid)
-        self.space.add(self.asteroid)
+        self.asteroid_geom.getSpace().remove(self.asteroid_geom)
+        self.space.add(self.asteroid_geom)
     
     ## Load the XODE config.
     #  @param data The XODE data string
-    #  @param reload Whether or not to reload sensor data.  
-    def _loadConfig(self, data, reload=False):
+    def _loadConfig(self, data):
         # parameters are given in (our own brand of) config-file syntax
         self.config = ConfigGrabber(data, sectionId="<!--odeenvironment parameters", delim=("<", ">"))
 
@@ -293,33 +216,12 @@ class ALifeEnvironment(object):
 
         # <colors>
         for coldefstring in self.config.getValue("colors")[:]:
-            # ('name', (0.3,0.4,0.5))
             objname, coldef = eval(coldefstring)
             for (body, _) in self.body_geom:
                 if hasattr(body, 'name'):
                     if objname == body.name:
                         body.color = coldef
                         break
-                
-        if not reload:
-            self.sensors = [] 
-            ## self.addSensor(self._jointSensor)
-            
-            # <sensors>
-            # expects a list of strings, each of which is the executable command to create a sensor object
-            # example: DistToPointSensor('legSensor', (0.0, 0.0, 5.0))
-            sens = self.config.getValue("sensors")[:]
-            for s in sens:
-                try:
-                    self.addSensor(eval('sensors.' + s))
-                except AttributeError:
-                    print dir(sensors)
-                    warnings.warn("Sensor name with name " + s + " not found. skipped.")
-        else:
-            for s in self.sensors:
-                s._connect(self)
-            for a in self.actuators:
-                a._connect(self)
 
     ## Parse the given xode node and all children (recursively), creating ODE body and geometry objects.
     #  @param node The XODE node.
@@ -351,7 +253,7 @@ class ALifeEnvironment(object):
                 geom.name = node.getName()
                 self.body_geom.append((body, geom))
                 if geom.name == "Asteroid":
-                    self.asteroid = geom
+                    self.asteroid_geom = geom
         
         # special cases for joints: universal, fixed, amotor
         elif isinstance(node, xode.joint.Joint):
@@ -403,7 +305,7 @@ class ALifeEnvironment(object):
     #  @param body the body
     #  @return distance between the given body and the centre of the asteroid (float)
     def _distance_to_asteroid(self, body):
-        a = self.asteroid.getPosition()
+        a = self.asteroid_geom.getPosition()
         b = body.getPosition()
         # change the body position, keeping it the same relative to the asteroid, 
         # but with the asteroid centred at the origin
@@ -417,7 +319,7 @@ class ALifeEnvironment(object):
     #  @return direction from the given body to the centre of the asteroid,
     #          represented as a unit vector (float x, float y, float z)
     def _direction_of_asteroid(self, body):
-        a = self.asteroid.getPosition()
+        a = self.asteroid_geom.getPosition()
         b = body.getPosition()
         # update the asteroid position, keeping its position the same relative to
         # the body, but with the body centred at the origin
@@ -450,9 +352,24 @@ class ALifeEnvironment(object):
     def get_robot_joints(self):
         return self.joints
     
+    ## Set the robot used in this environment
+    #  @param robot The robot
+    def set_robot(self, robot):
+        self.robot = robot
+        
+    ## Set the asteroid used in this environment
+    #  @param asteroid The asteroid
+    def set_asteroid(self, asteroid):
+        self.asteroid = asteroid
+    
     ## Resets the environment
     def reset(self):
         self.step_count = 0
+        self.body_geom = []
+        if self.robot:
+            self.load_robot(self.robot.get_xode())
+        if self.asteroid:
+            self.load_asteroid(self.asteroid.get_xode())
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
@@ -492,38 +409,39 @@ class ALifeEnvironment(object):
                 
         # Detect collisions and create contact joints
         self.space.collide((self.world, self.contactgroup), self._near_callback)
-        
         # Simulation step
         self.world.step(dt)
-        
         # Remove all contact joints
         self.contactgroup.empty()
-        
         # increase step counter
         self.step_count += 1
         return self.step_count
 
 
+## APlane class
+#
+#  A simplification of the ALifeEnvironment that uses an infinitely flat 2D plane
+#  instead of an asteroid for the ground. 
+# 
+#  It also uses standard ODE gravity instead of the custom gravity calculation
+#  performed in ALifeEnvironment.
+#
+#  @author John Glover
 class ALifePlane(ALifeEnvironment):
     def __init__(self):
         super(ALifePlane, self).__init__()
         # todo: Robot should not be hardcoded in
-        self.r = Robot("Robot", [0, 20, 0])
-        self.load_robot(self.r.get_xode())
+        from robot import Robot
+        self.robot = Robot("Robot", [0, 20, 0])
         
     ## Loads the robot XODE data (xml format) and parses it.
     #  @param data The XODE data for the robot.
-    #  @param reload Whether or not to reload sensor data .
-    def load_robot(self, data, reload=False):
-        super(ALifePlane, self).load_robot(data, reload)
+    def load_robot(self, data):
+        super(ALifePlane, self).load_robot(data)
         p = ode.GeomPlane(self.space, (0,1,0), 0)
         p.name = "ground"
         self.body_geom.append((None, p))
         self.world.setGravity((0.0, -4.9, 0.0))
-        
-    def reset(self):
-        super(ALifePlane, self).reset()
-        self.load_robot(self.r.get_xode())
         
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
