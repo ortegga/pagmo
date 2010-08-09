@@ -63,21 +63,23 @@ class Planet(Object):
    Represents a planet.
    """
 
-   def __init__( self, mjd2000, planet, colour=(1.,1.,1.), mu=1.32712428e20 ):
+   def __init__( self, mjd2000, planet, info, mu=1.32712428e20 ):
       Object.__init__( self )
-      self.mjd2000   = mjd2000
-      self.planet    = planet
-      self.mu        = mu
+      mjd2000  = [ mjd2000, mjd2000 + info['period'] ]
+      self.__mjd2000 = mjd2000
+      self.__planet  = planet
+      self.__info    = info
+      self.__mu      = mu
 
       # Generate data
-      start = mjd2000[0]
-      data = []
+      start    = mjd2000[0]
+      data     = []
       for mjd in mjd2000:
          r, v = astro_toolbox.Planet_Ephemerides_Analytical( mjd, planet )
          data.extend( [ mjd-start, r[0], r[1], r[2], v[0], v[1], v[2], 0., 0., 0. ] )
 
       # Create path
-      self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, colour )
+      self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, info['colour'] )
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )

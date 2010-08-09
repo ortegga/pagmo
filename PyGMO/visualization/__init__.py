@@ -49,7 +49,7 @@ class Trajectory3D:
          for row in data_csv:
             data.extend( row )
          data     = map( lambda x: float(x), data )
-         fp       = None
+         data_csv = None
 
       # Defaults
       self.__axes    = None
@@ -87,17 +87,53 @@ class Trajectory3D:
       """
       self.engine.reshape( width, height )
 
-   def addPlanets( self, mjd2000, planets ):
+   def addPlanets( self, mjd2000, planets_data=None ):
       """
       Adds planets.
 
-      The mjd2000 should be a two element list indicating when the planets start
-       and when they end.
+      The mjd2000 should be the take off date for the mission.
 
-      Planets should be in the format of a dictionary where the keys are the
-       planet id and the values are a 3 element list or tuple indicating the
-       colour to use for displaying the planet with the 3 RGB components.
+      Planets should be a list of planet names like:
+       [ 'mercury', 'earth' ]
+
+      Alternatively if you pass a filename as mjd2000 it will load the csv
+       file and use that.
       """
+      if type(mjd2000).__name__ == 'str':
+         data        = mjd2000
+         data_csv    = csv.reader( open(data, 'r') )
+         planets_data = []
+         mjd2000_min = float('inf')
+         for row in data_csv:
+            name  = row[0]
+            planets_data.append( name )
+            date  = dateutil.parser.parse( row[1] )
+            mjd2000 = convert_date( date.year, date.month, date.day )
+            dv    = float(row[2])
+            if mjd2000 < mjd2000_min:
+               mjd2000_min =mjd2000
+         mjd2000     = mjd2000_min
+         data_csv    = None
+
+      planets     = {}
+      for planet in planets_data:
+         if "mercury" == planet.lower():
+            planets[1] = { 'colour' : (1.0,0.8,0.0), 'period' : 87.96 }
+         elif "venus" == planet.lower():
+            planets[2] = { 'colour' : (0.1,0.1,0.9), 'period' : 224.68 }
+         elif "earth" == planet.lower():
+            planets[3] = { 'colour' : (0.1,0.9,0.1), 'period' : 365.26 }
+         elif "mars" == planet.lower():
+            planets[4] = { 'colour' : (0.9,0.1,0.1), 'period' : 686.98 }
+         elif "jupiter" == planet.lower():
+            planets[5] = { 'colour' : (1.0,0.5,0.1), 'period' : 11.862*365.26 }
+         elif "saturn" == planet.lower():
+            planets[6] = { 'colour' : (1.0,0.8,0.6), 'period' : 29.456*365.26 }
+         elif "uranus" == planet.lower():
+            planets[7] = { 'colour' : (0.0,0.8,0.6), 'period' : 84.07*365.26 }
+         elif "neptune" == planet.lower():
+            planets[8] = { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26 }
+
       self.traj.addPlanets( mjd2000, planets )
 
    def vectors( self, enable ):
@@ -159,15 +195,24 @@ class Trajectory3D:
       """
       self.traj.repeat( enable )
 
+
+def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
+   JDN      = (1461. * (Y + 4800. + (M - 14.)/12.))/4. +(367. * (M - 2. - 12. * ((M - 14.)/12.)))/12. - (3. * ((Y + 4900. + (M - 14.)/12.)/100.))/4. + D - 32075.
+   JD       = JDN + (HR-12.)/24. + MIN/1440. + SEC/86400.
+   MJD      = JD - 2400000.5
+   MJD2000  = MJD - 51544.5
+   return MJD2000
+
+
+import dateutil.parser
+
 # Run some tests
 if __name__ == "__main__":
-   #mjd2000 = (8273.26728762578, 8623.26728762578)
-   #planets = { 3 : (1.,0.,0.), 4: (0.,1.,0.) }
 
    # Create the engine
    traj = Trajectory3D( "CassiniMGA.txt", 640, 480,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
-   #traj.addPlanets( mjd2000, planets )
+   traj.addPlanets( "CassiniMGA_flybyinfo.txt" )
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
