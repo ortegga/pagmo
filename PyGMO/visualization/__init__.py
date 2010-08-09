@@ -89,21 +89,21 @@ class Trajectory3D:
 
    def __planetFromName( self, name ):
       if "mercury" == name.lower():
-         return { 'colour' : (1.0,0.8,0.0), 'period' : 87.96, 'num' : 1 }
+         return { 'colour' : (1.0,0.8,0.0), 'period' : 87.96, 'num' : 1, 'name' : 'Mercury' }
       elif "venus" == name.lower():
-         return { 'colour' : (0.1,0.1,0.9), 'period' : 224.68, 'num' : 2 }
+         return { 'colour' : (0.1,0.1,0.9), 'period' : 224.68, 'num' : 2, 'name' : 'Venus' }
       elif "earth" == name.lower():
-         return { 'colour' : (0.1,0.9,0.1), 'period' : 365.26, 'num' : 3 }
+         return { 'colour' : (0.1,0.9,0.1), 'period' : 365.26, 'num' : 3, 'name' : 'Earth' }
       elif "mars" == name.lower():
-         return { 'colour' : (0.9,0.1,0.1), 'period' : 686.98, 'num' : 4 }
+         return { 'colour' : (0.9,0.1,0.1), 'period' : 686.98, 'num' : 4, 'name' : 'Mars' }
       elif "jupiter" == name.lower():
-         return { 'colour' : (1.0,0.5,0.1), 'period' : 11.862*365.26, 'num' : 5 }
+         return { 'colour' : (1.0,0.5,0.1), 'period' : 11.862*365.26, 'num' : 5, 'name' : 'Jupiter' }
       elif "saturn" == name.lower():
-         return { 'colour' : (1.0,0.8,0.6), 'period' : 29.456*365.26, 'num' : 6 }
+         return { 'colour' : (1.0,0.8,0.6), 'period' : 29.456*365.26, 'num' : 6, 'name' : 'Saturn' }
       elif "uranus" == name.lower():
-         return { 'colour' : (0.0,0.8,0.6), 'period' : 84.07*365.26, 'num' : 7 }
+         return { 'colour' : (0.0,0.8,0.6), 'period' : 84.07*365.26, 'num' : 7, 'name' : 'Uranus' }
       elif "neptune" == name.lower():
-         return { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26, 'num' : 8 }
+         return { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26, 'num' : 8, 'name' : 'Neptune' }
 
    def addPlanets( self, mjd2000, planets_data=None ):
       """

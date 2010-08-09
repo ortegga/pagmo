@@ -77,7 +77,6 @@ class Trajectory(Object):
       self.playing = True
       self.control_size = 20
       self.control_pos = array( (50., 50.) )
-      self.fontsize( 16 )
       self.__path = Path( data, conv_t, conv_r, conv_v, conv_dv, mu )
       self.__t = self.__path.interval()
       self.__curt = self.__t[0]
@@ -85,6 +84,7 @@ class Trajectory(Object):
       self.setUnits()
       self.duration( 30. )
       self.update( 0. )
+      self.fontsize( 16 )
 
 
    def axes( self, enable ):
@@ -101,6 +101,8 @@ class Trajectory(Object):
       self.fontsize = size
       if self.__axes != None:
          self.__axes.setFont( self.font )
+      for pnt in self.__planets:
+         pnt.setFont( self.font )
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -126,6 +128,8 @@ class Trajectory(Object):
       self.__planetsColour = planets
       for key, value in planets.items():
          self.__planets.append( Planet( mjd2000, key, value ) )
+      for pnt in self.__planets:
+         pnt.setFont( self.font )
 
    def display( self ):
       "Displays the trajectory."
@@ -314,6 +318,10 @@ class Trajectory(Object):
 
    def displayOver( self, width, height):
       "Displays the trajectory overlay."
+
+      for pnt in self.__planets:
+         pnt.displayOver( width, height )
+      self.__path.displayOver( width, height )
 
       glEnable(GL_BLEND)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)

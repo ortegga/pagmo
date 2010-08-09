@@ -70,6 +70,8 @@ class Planet(Object):
       self.__planet  = planet
       self.__info    = info
       self.__mu      = mu
+      self.__pos     = (0., 0., 0.)
+      self.__font    = None
 
       # Generate data
       start    = mjd2000[0]
@@ -80,6 +82,9 @@ class Planet(Object):
 
       # Create path
       self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, info['colour'] )
+
+   def setFont( self, font ):
+      self.__font = font
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -106,7 +111,16 @@ class Planet(Object):
 
    def display( self ):
       "Displays the trajectory."
+      p = self.position(self.__path.curt)[0]
+      self.__pos = gluProject( p[0], p[1], p[2] )
       self.__path.display()
+
+   def displayOver( self, width, height ):
+      "Displays additional information."
+      if self.__font != None:
+         glColor3d( *self.__info['colour'] )
+         glRasterPos( self.__pos[0]+5, self.__pos[1]-5 )
+         self.__font.Render( self.__info['name'] )
 
 
 
