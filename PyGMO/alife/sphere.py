@@ -121,7 +121,6 @@ if __name__ == "__main__":
     agent = ALifeAgent(len(task.getObservation()))
     agent.set_weights(best_weights)
     experiment = ALifeExperiment(task, agent, environment)
-    viewer = ALifeViewer()
-    viewer.set_experiment(experiment)
+    viewer = ALifeViewer(environment, experiment)
     viewer.print_controls()
     viewer.start()

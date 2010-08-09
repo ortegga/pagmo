@@ -338,16 +338,15 @@ if __name__ == "__main__":
     from viewer import ALifeViewer
     # environment
     robot = Robot("Robot", [0, 110, 0])
-    asteroid = Asteroid("models/asteroid.x3d")
+    asteroid = Asteroid("models/asteroid_textured.x3d")
     env = ALifeEnvironment(robot, asteroid)
-    # viewer
-    viewer = ALifeViewer()
-    viewer.print_controls()
     # task, agent, experiment
     task = ALifeTask(env)
     agent = ALifeAgent(len(task.getObservation()))
     exp = ALifeExperiment(task, agent, env)
-    viewer.set_experiment(exp)
+    # viewer
+    viewer = ALifeViewer(env, exp)
+    viewer.print_controls()
     print
     print "Distance moved after stabilisation:", 
     print exp.perform()
