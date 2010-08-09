@@ -122,6 +122,9 @@ class Trajectory(Object):
 
    def addPlanets( self, mjd2000, planets ):
       "Adds some planets."
+      if type(mjd2000).__name__ == 'float':
+         mjd2000 = [ mjd2000, mjd2000 + (self.__t[-1]-self.__t[0])/(24.*3600.) ]
+      self.__planetsStart = mjd2000[0]
       self.__planetsColour = planets
       for key, value in planets.items():
          self.__planets.append( Planet( mjd2000, key, value ) )
@@ -162,7 +165,7 @@ class Trajectory(Object):
       "Sets the current position."
       self.__path.setPosition( t )
       for pnt in self.__planets:
-         pnt.setPosition( t )
+         pnt.setPosition( t - self.__t[0] + self.__planetsStart )
 
    def restart( self ):
       "Restarts the playback."
