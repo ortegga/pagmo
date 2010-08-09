@@ -106,3 +106,5 @@ class Planet(Object):
       "Displays the trajectory."
       self.__path.display()
 
+
+
