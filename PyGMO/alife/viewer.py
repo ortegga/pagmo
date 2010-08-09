@@ -346,11 +346,8 @@ class ALifeViewer(object):
     #  @param key The key that was pressed
     def _key_pressed(self, key, x, y):
         if key == 's':
-            if image_found:
-                self._capture_screen = not self._capture_screen
-                print "Screen Capture: " + (self._capture_screen and "on" or "off")
-            else:
-                print "Python imaging library not found, cannot capture screen"
+            self._capture_screen = not self._capture_screen
+            print "Screen Capture: " + (self._capture_screen and "on" or "off")
         if key == 'c':        
             self._center_on_obj = not self._center_on_obj
             print "Centering camera: " + (self._center_on_obj and "on" or "off")
@@ -440,7 +437,7 @@ if __name__ == "__main__":
     
     robot_position = [0, 150, 0]
     robot = Robot("Robot", robot_position)
-    asteroid = Asteroid("models/asteroid.x3d")
+    asteroid = Asteroid("models/asteroid_textured.x3d")
     env = ALifeEnvironment(robot, asteroid)
     viewer = ALifeViewer(env)
     viewer.print_controls()
