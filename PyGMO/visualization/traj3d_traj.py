@@ -161,6 +161,7 @@ class Trajectory(Object):
 
    def setPosition( self, t ):
       "Sets the current position."
+      self.__curt = t
       self.__path.setPosition( t )
       for pnt in self.__planets:
          pnt.setPosition( t - self.__t[0] + self.__planetsStart )
