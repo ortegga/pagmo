@@ -140,19 +140,24 @@ class Path(Object):
       "Gets the size of the object."
       return self.__size
 
-   def __genTraj( self, subdivide = 50 ):
+   def subdivide( self, subdivide = 1000 ):
+      "Adjusts how many subdivisions to use."
+      self.__genTraj( subdivide )
+
+   def __genTraj( self, subdivide = 1000 ):
       """
       Generates the vertex trajectory from the data.
       """
       self.__vertex = []
       center = array( (0., 0., 0.) )
+      step = (self.__t[-1]-self.__t[0]) / subdivide
 
       # Create vertex
       for i in range( len( self.__t )-1 ):
 
          # Calculate how to chop up
          delta = self.__t[ i+1 ] - self.__t[ i+0 ]
-         step  = delta / subdivide
+         #step  = delta / subdivide
 
          # Add first point
          r = self.__r[ i+0 ]
