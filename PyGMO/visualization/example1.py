@@ -51,8 +51,8 @@ if __name__ == "__main__":
                0.,
                   0.,
                   0. )
-   mjd2000 = (8273.26728762578, 8623.26728762578)
-   planets = { 3 : (1.,0.,0.), 4: (0.,1.,0.) }
+   mjd2000 = 8273.26728762578
+   planets = [ 'earth', 'mars' ]
 
    # Create the engine
    traj = visualization.Trajectory3D( data, 640, 480,
