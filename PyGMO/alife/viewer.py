@@ -30,15 +30,10 @@ import ode
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+import Image
 from math import acos, pi, sqrt
 import time
 import os
-try:
-    import Image
-    image_found = True
-except:
-    image_found = False
-    print "Warning: Cannot capture screen, Python imaging library not found"
 
 
 ## ALifeViewer class
@@ -48,17 +43,17 @@ except:
 #
 #  @author John Glover
 class ALifeViewer(object):
-    def __init__(self):
-        ## @var exp ALifeExperiment object
-        self.exp = None
+    def __init__(self, env, exp=None):
         ## @var env ALifeEnvironment object
-        self.env = None
+        self.env = env
+        ## @var exp ALifeExperiment object
+        self.exp = exp
         ## @var width viewport width
         self.width = 800
         ## @var height viewport height
         self.height = 600  
         ## @var _center_obj The ode object to center the camera view on
-        self._center_obj = None
+        self._center_obj = env.get_robot_body()
         ## @var _center_on_obj Whether or not to center the camera view on self._center_obj
         self._center_on_obj = True
         ## @var _center_x x coordinate of the center of the current view point
@@ -77,6 +72,8 @@ class ALifeViewer(object):
         self._last_y = 1
         ## @var _last_z The last z coordinate of the camera
         self._last_z = -1
+        ## @var asteroid_tex_id Texture ID for the asteroid
+        self.asteroid_tex_id = None
         ## @var fps The number of frames to render per second 
         self._fps = 25
         ## @var _dt The increment by which to progress (step) the Environment
@@ -141,6 +138,18 @@ class ALifeViewer(object):
         glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE)
         glEnable(GL_NORMALIZE)
         
+        # load asteroid textures
+        if self.env.asteroid.get_texture_file():
+            img = Image.open(self.env.asteroid.get_texture_file())
+            raw_img = img.tostring()
+            self.asteroid_tex_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.asteroid_tex_id)
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, img.size[0], img.size[1], 0, 
+                         GL_LUMINANCE, GL_UNSIGNED_BYTE, raw_img)
+        
     ## Prepare drawing. This function is called in every step. 
     #  It clears the screen and sets the new camera position
     def _prepare(self):
@@ -170,7 +179,6 @@ class ALifeViewer(object):
     #  @param body The body object.
     #  @param geom The body geometry object.
     def _draw_object(self, body, geom):
-        glDisable(GL_TEXTURE_2D)
         glPushMatrix()
         
         if body != None:
@@ -250,21 +258,6 @@ class ALifeViewer(object):
                 gluDisk(quad, 0, 200, 200, 1)
                 glPopMatrix()
                 
-            elif type(geom) == ode.GeomTriMesh:
-                # note: geom.getTriangleCount seems to be undocumented, can't find
-                #       it in the API anywhere, just stumbled across it on the 
-                #       pyode-user mailing list
-                glPushMatrix()
-                glColor3f(0.53, 0.44, 0.35)
-                glBegin(GL_TRIANGLES)
-                for i in range(geom.getTriangleCount()):
-                    triangle = geom.getTriangle(i)
-                    glVertex3fv(triangle[0])
-                    glVertex3fv(triangle[1])
-                    glVertex3fv(triangle[2])
-                glEnd()
-                glPopMatrix()
-                
             elif type(geom) == ode.GeomSphere:
                 glColor3f(0.53, 0.44, 0.35)
                 quad = gluNewQuadric()
@@ -274,22 +267,67 @@ class ALifeViewer(object):
                 glPopMatrix()
         glPopMatrix()
         
+    ## Draw the Asteroid object.
+    #  The asteroid is drawn separately for now so that it can be textured
+    #  @param asteroid_geom The geometry to draw (should be of type ode.GeomTriMesh)
+    #  @param asteroid An object of type Asteroid
+    def _draw_asteroid(self, asteroid_geom, asteroid):
+        # assume asteroid_geom is of type ode.GeomTriMesh
+        # note: geom.getTriangleCount seems to be undocumented, can't find
+        #       it in the API anywhere, just stumbled across it on the 
+        #       pyode-user mailing list
+        if self.asteroid_tex_id:
+            # setup the texture if one exists
+            glEnable(GL_BLEND)
+            glColor(1, 1, 1)
+            #glColor3f(0.53, 0.44, 0.35)
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, self.asteroid_tex_id)
+            # draw with texture coordinates
+            glPushMatrix()
+            glBegin(GL_TRIANGLES)
+            for i in range(asteroid_geom.getTriangleCount()):
+                triangle = asteroid_geom.getTriangle(i)
+                texture = asteroid.get_texture_coords(i)
+                glTexCoord2fv(texture[0])
+                glVertex3fv(triangle[0])
+                glTexCoord2fv(texture[1])
+                glVertex3fv(triangle[1])
+                glTexCoord2fv(texture[2])
+                glVertex3fv(triangle[2])
+            glEnd()
+            glPopMatrix()
+            glDisable(GL_TEXTURE_2D)
+            glDisable(GL_BLEND)
+            
+        # if no texture, just draw the mesh
+        glPushMatrix()
+        glColor3f(0.53, 0.44, 0.35)
+        glBegin(GL_TRIANGLES)
+        for i in range(asteroid_geom.getTriangleCount()):
+            triangle = asteroid_geom.getTriangle(i)
+            glVertex3fv(triangle[0])
+            glVertex3fv(triangle[1])
+            glVertex3fv(triangle[2])
+        glEnd()
+        glPopMatrix()
+        
     ## The drawing callback function.
     #  Prepares the screen for drawing, then goes through every ODE object
     #  and renders it.
     def _draw(self):
-        """ draw callback function """
-        # Draw the scene
         self._prepare()
-        
-        if self.env:
-            if self.exp:
-                self.exp.step()
-            else:
-                self.env.step(self._dt)
-            for (body, geom) in self.env.get_objects():
-                self._draw_object(body, geom)
-        
+        # Call step on the experiment first if one exists. This will perform
+        # its own calculations then step the environment for us.
+        if self.exp:
+            self.exp.step()
+        # If no experiment exists, step the environment directly
+        else:
+            self.env.step(self._dt)
+        # Draw all objects in the environment
+        for (body, geom) in self.env.get_objects():
+            self._draw_object(body, geom)
+        self._draw_asteroid(self.env.asteroid_geom, self.env.asteroid)
         glutSwapBuffers()
         if self._capture_screen:
             self.screenshot()
@@ -360,18 +398,6 @@ class ALifeViewer(object):
         self._last_x = x1
         self._last_z = z1
         
-    ## Sets the ALifeExperiment that is being viewed
-    #  @param exp The ALifeExperiment object
-    def set_experiment(self, exp):
-        self.exp = exp
-        self.set_environment(exp.get_environment())
-
-    ## Sets the ODE environment to be rendered
-    #  @param env The ALifeEnvironment object
-    def set_environment(self, env):
-        self.env = env
-        self._center_obj = env.get_robot_body()
-        
     ## Start the main GLUT rendering loop
     def start(self):
         glutMainLoop()
@@ -416,7 +442,6 @@ if __name__ == "__main__":
     robot = Robot("Robot", robot_position)
     asteroid = Asteroid("models/asteroid.x3d")
     env = ALifeEnvironment(robot, asteroid)
-    viewer = ALifeViewer()
-    viewer.set_environment(env)
+    viewer = ALifeViewer(env)
     viewer.print_controls()
     viewer.start()

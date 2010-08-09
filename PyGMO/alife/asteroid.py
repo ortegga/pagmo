@@ -32,6 +32,7 @@
 #  If the XODE string contains more than one node called 'asteroid', only
 #  the first one is used.
 import xml.dom.minidom as md
+import os.path
 
 ## Asteroid class
 #
@@ -44,6 +45,12 @@ class Asteroid(object):
     def __init__(self, x3d_file=None):
         ## @var xode_string The XODE data for this Asteroid
         self.xode_string = ""
+        ## @var _texture_coords Texture Coordinates. For each triangle in the mesh, there should
+        #  be a 3-tuple of texture coordinates (s, t), so there is one (s, t) tuple for each vertex.
+        self._texture_coords = []
+        ## @var texture_file The path to the texture file, relative to the X3D file.
+        #  This is automatically extracted from the X3D file if load_x3d is called.
+        self._texture_file = ""
         ## @var x3d_file The path to a X3D file that contains a model called 'Asteroid'
         self.x3d_file = x3d_file
         if self.x3d_file:
@@ -52,6 +59,19 @@ class Asteroid(object):
     ## @return The XODE data for this Asteroid
     def get_xode(self):
         return self.xode_string
+    
+    ## @return The texture coordinates for the given face (triangle) number
+    def get_texture_coords(self, face_number):
+        return self._texture_coords[face_number]
+    
+    ## @return The path to the texture file
+    def get_texture_file(self):
+        return self._texture_file
+    
+    ## Sets the path to the texture used by this asteroid
+    # @param file The path to the texture file
+    def set_texture_file(self, file):
+        self._texture_file = file
     
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a XODE trimesh object. The geometry is encoded in a valid
@@ -65,6 +85,9 @@ class Asteroid(object):
     #  - The file must consist of faces stored as triangles. If the file 
     #    cannot be read or it does not contain any triangles an exception
     #    is raised.
+    #  - For textures, there must be one TextureCoordinate point for each vertex
+    #    of each face, and they must be in the same order as the faces (given in
+    #    the IndexedFaceSet coordIndex. The texCoordIndex field is currently ignored.
     #     
     #  @param file_name The file path to the .x3d file containing the asteroid model.
     def load_x3d(self, file_name):
@@ -100,10 +123,21 @@ class Asteroid(object):
                         scale = [float(s) for s in scale]
                     else:
                         scale = (1, 1, 1)
-                        
                     # todo: get translation information from the model
                     # todo: get rotation information from the model
                     
+                    # get the path to the texture file
+                    try:
+                        shape_node = node.getElementsByTagName('Shape')[0]
+                        app_node = shape_node.getElementsByTagName('Appearance')[0]
+                        tex_node = app_node.getElementsByTagName('ImageTexture')[0]
+                        tex_path = tex_node.attributes['url'].value
+                        self._texture_file = os.path.join(os.path.dirname(file_name), tex_path)
+                    except:
+                        # no texture data found
+                        pass
+                                
+                    # load trimesh data
                     if node.getElementsByTagName('IndexedFaceSet'):
                         ifs = node.getElementsByTagName('IndexedFaceSet')[0]
                         # form triangles from the coordIndex
@@ -132,6 +166,23 @@ class Asteroid(object):
                                 v.attributes['y'] = str(float(points[1]) * scale[1])
                                 v.attributes['z'] = str(float(points[2]) * scale[2])
                                 trimesh_vertices.appendChild(v)
+                        # get texture coordinate points
+                        if ifs.getElementsByTagName('TextureCoordinate'):
+                            tex_coordinate = ifs.getElementsByTagName('TextureCoordinate')[0]
+                            tex_coord_points = tex_coordinate.attributes['point'].value
+                            points = tex_coord_points.split(',')
+                            self._texture_coords = []
+                            for i in range(len(points)/3):
+                                # there should be 1 coordinate for each vertex of each face
+                                # each coordinate should have 2 values (s,t)
+                                point1 = points[i*3].split()
+                                point2 = points[(i*3)+1].split()
+                                point3 = points[(i*3)+2].split()
+                                if len(point1) == len(point2) == len(point3) == 2:
+                                    tex_coords = ((float(point1[0]), float(point1[1])), 
+                                                  (float(point2[0]), float(point2[1])),
+                                                  (float(point3[0]), float(point3[1])))
+                                    self._texture_coords.append(tex_coords)
                         break
         self.xode_string = root.toxml()
         
@@ -150,7 +201,6 @@ class SphericalAsteroid(Asteroid):
         <xode name="alife" version="1.0r23" 
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
               xsi:noNamespaceSchemaLocation="http://tanksoftware.com/xode/1.0r23/xode.xsd">
-              
             <world>
                 <space>
                     <geom name="Asteroid">

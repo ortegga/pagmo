@@ -352,16 +352,6 @@ class ALifeEnvironment(object):
     def get_robot_joints(self):
         return self.joints
     
-    ## Set the robot used in this environment
-    #  @param robot The robot
-    def set_robot(self, robot):
-        self.robot = robot
-        
-    ## Set the asteroid used in this environment
-    #  @param asteroid The asteroid
-    def set_asteroid(self, asteroid):
-        self.asteroid = asteroid
-    
     ## Resets the environment
     def reset(self):
         self.step_count = 0
