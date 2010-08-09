@@ -87,6 +87,24 @@ class Trajectory3D:
       """
       self.engine.reshape( width, height )
 
+   def __planetFromName( self, name ):
+      if "mercury" == name.lower():
+         return { 'colour' : (1.0,0.8,0.0), 'period' : 87.96, 'num' : 1 }
+      elif "venus" == name.lower():
+         return { 'colour' : (0.1,0.1,0.9), 'period' : 224.68, 'num' : 2 }
+      elif "earth" == name.lower():
+         return { 'colour' : (0.1,0.9,0.1), 'period' : 365.26, 'num' : 3 }
+      elif "mars" == name.lower():
+         return { 'colour' : (0.9,0.1,0.1), 'period' : 686.98, 'num' : 4 }
+      elif "jupiter" == name.lower():
+         return { 'colour' : (1.0,0.5,0.1), 'period' : 11.862*365.26, 'num' : 5 }
+      elif "saturn" == name.lower():
+         return { 'colour' : (1.0,0.8,0.6), 'period' : 29.456*365.26, 'num' : 6 }
+      elif "uranus" == name.lower():
+         return { 'colour' : (0.0,0.8,0.6), 'period' : 84.07*365.26, 'num' : 7 }
+      elif "neptune" == name.lower():
+         return { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26, 'num' : 8 }
+
    def addPlanets( self, mjd2000, planets_data=None ):
       """
       Adds planets.
@@ -102,37 +120,36 @@ class Trajectory3D:
       if type(mjd2000).__name__ == 'str':
          data        = mjd2000
          data_csv    = csv.reader( open(data, 'r') )
-         planets_data = []
+         planets     = {}
          mjd2000_min = float('inf')
          for row in data_csv:
+
+            # Extract data
             name  = row[0]
-            planets_data.append( name )
             date  = dateutil.parser.parse( row[1] )
             mjd2000 = convert_date( date.year, date.month, date.day )
             dv    = float(row[2])
             if mjd2000 < mjd2000_min:
                mjd2000_min =mjd2000
+
+            # Process data
+            p     = self.__planetFromName( name )
+            num   = p['num']
+            if planets.has_key(num):
+               planets[num]['flyby'].append( mjd2000 )
+            else:
+               p['flyby']     = [ mjd2000 ]
+               planets[num]   = p
+         
+         # Final touches
          mjd2000     = mjd2000_min
          data_csv    = None
 
-      planets     = {}
-      for planet in planets_data:
-         if "mercury" == planet.lower():
-            planets[1] = { 'colour' : (1.0,0.8,0.0), 'period' : 87.96 }
-         elif "venus" == planet.lower():
-            planets[2] = { 'colour' : (0.1,0.1,0.9), 'period' : 224.68 }
-         elif "earth" == planet.lower():
-            planets[3] = { 'colour' : (0.1,0.9,0.1), 'period' : 365.26 }
-         elif "mars" == planet.lower():
-            planets[4] = { 'colour' : (0.9,0.1,0.1), 'period' : 686.98 }
-         elif "jupiter" == planet.lower():
-            planets[5] = { 'colour' : (1.0,0.5,0.1), 'period' : 11.862*365.26 }
-         elif "saturn" == planet.lower():
-            planets[6] = { 'colour' : (1.0,0.8,0.6), 'period' : 29.456*365.26 }
-         elif "uranus" == planet.lower():
-            planets[7] = { 'colour' : (0.0,0.8,0.6), 'period' : 84.07*365.26 }
-         elif "neptune" == planet.lower():
-            planets[8] = { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26 }
+      else:
+         planets     = {}
+         for planet in planets_data:
+            p  = self.__planetFromName( planet )
+            planets[ p['num'] ] = p
 
       self.traj.addPlanets( mjd2000, planets )
 
