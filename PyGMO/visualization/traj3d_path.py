@@ -65,9 +65,6 @@ class Path(Object):
       self.__colour = colour
 
       # Make sure data matches
-      for v in data:
-         if type( v ).__name__ != 'float':
-            raise TypeError
       if len( data ) % 10 != 0:
          raise AssertionError
 
