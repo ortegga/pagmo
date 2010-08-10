@@ -102,7 +102,7 @@ class Trajectory(Object):
       if self.__axes != None:
          self.__axes.setFont( self.font )
       for pnt in self.__planets:
-         pnt.setFont( self.font )
+         pnt.setFont( self.font, size )
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -129,7 +129,8 @@ class Trajectory(Object):
       for key, value in planets.items():
          self.__planets.append( Planet( mjd2000, key, value ) )
       for pnt in self.__planets:
-         pnt.setFont( self.font )
+         pnt.setFont( self.font, self.fontsize )
+         pnt.speed( self.playspeed )
 
    def display( self ):
       "Displays the trajectory."
@@ -149,26 +150,28 @@ class Trajectory(Object):
 
    def faster( self, factor=1.1 ):
       "Speeds up the animation."
-      self.playspeed *= factor
+      self.speed( self.playespeed * factor )
    
    def slower( self, factor=1.1 ):
       "Slows down the animation."
-      self.playspeed /= factor
+      self.speed( self.playespeed / factor )
 
    def speed( self, speed ):
       "Sets the animation speed."
       self.playspeed = speed
+      for pnt in self.__planets:
+         pnt.speed( speed )
 
    def duration( self, duration ):
       "Sets the animation total duration in seconds."
-      self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / duration
+      self.speed( (self.__t[ -1 ] - self.__t[ 0 ]) / duration )
 
    def setPosition( self, t ):
       "Sets the current position."
       self.__curt = t
       self.__path.setPosition( t )
       for pnt in self.__planets:
-         pnt.setPosition( t - self.__t[0] + self.__planetsStart )
+         pnt.setPosition( t - self.__t[0] + self.__planetsStart, self.__t[0] )
 
    def restart( self ):
       "Restarts the playback."
@@ -237,7 +240,7 @@ class Trajectory(Object):
          self.__controls = False
          return True
       elif x >= 2*(w+10) and x < 2*(w+10)+w: # Slow down
-         self.playspeed /= 1.1
+         self.speed( self.playspeed / 1.1 )
          return True
       elif x >= self.control_len-w: # End
          self.pause()
@@ -247,7 +250,7 @@ class Trajectory(Object):
          self.pause( not self.ispaused() )
          return True
       elif x >= self.control_len-2*(w+10)-w and x < self.control_len-2*(10+w): # Speed up
-         self.playspeed *= 1.1
+         self.speed( self.playspeed * 1.1 )
          return True
       return False
 

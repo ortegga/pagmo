@@ -130,15 +130,15 @@ class Trajectory3D:
             mjd2000 = convert_date( date.year, date.month, date.day )
             dv    = float(row[2])
             if mjd2000 < mjd2000_min:
-               mjd2000_min =mjd2000
+               mjd2000_min = mjd2000
 
             # Process data
             p     = self.__planetFromName( name )
             num   = p['num']
             if planets.has_key(num):
-               planets[num]['flyby'].append( mjd2000 )
+               planets[num]['flyby'].append( { 'mjd2000' : mjd2000*24.*3600., 'date' : row[1], 'dv' : dv } )
             else:
-               p['flyby']     = [ mjd2000 ]
+               p['flyby']     = [ { 'mjd2000' : mjd2000*24.*3600., 'date' : row[1], 'dv' : dv } ]
                planets[num]   = p
          
          # Final touches

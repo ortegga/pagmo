@@ -72,6 +72,9 @@ class Planet(Object):
       self.__mu      = mu
       self.__pos     = (0., 0., 0.)
       self.__font    = None
+      self.__flyby   = info['flyby']
+      self.__playspeed = 1.
+      self.__t0      = 0.
 
       # Generate data
       start    = mjd2000[0]
@@ -83,8 +86,9 @@ class Planet(Object):
       # Create path
       self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, info['colour'] )
 
-   def setFont( self, font ):
-      self.__font = font
+   def setFont( self, font, size ):
+      self.__font       = font
+      self.__fontsize   = size
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -101,9 +105,14 @@ class Planet(Object):
       "Gets the size of the object."
       return self.__path.size()
   
-   def setPosition( self, t ):
+   def speed( self, speed ):
+      "Sets the speed"
+      self.__playspeed = speed
+
+   def setPosition( self, t, t0 ):
       "Sets the position."
       self.__path.setPosition( t )
+      self.__t0 = t0
 
    def position( self, t ):
       "Gets the position and velocity vectors of the trajectory at a given instant."
@@ -119,8 +128,18 @@ class Planet(Object):
       "Displays additional information."
       if self.__font != None:
          glColor3d( *self.__info['colour'] )
-         glRasterPos( self.__pos[0]+5, self.__pos[1]-5 )
+         y = self.__pos[1]-5
+         glRasterPos( self.__pos[0]+5, y )
          self.__font.Render( self.__info['name'] )
+         for flyby in self.__flyby:
+            if abs( self.__path.curt-flyby['mjd2000']+self.__t0 ) < self.__playspeed*2.5:
+               y = y - self.__fontsize-5
+               glRasterPos( self.__pos[0]+5, y )
+               self.__font.Render( flyby['date'] )
+               if flyby['dv'] > 0.:
+                  y = y - self.__fontsize-5
+                  glRasterPos( self.__pos[0]+5, y )
+                  self.__font.Render( "DV: %.2E km/s" % flyby['dv'] )
 
 
 
