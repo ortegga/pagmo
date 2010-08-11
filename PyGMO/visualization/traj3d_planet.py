@@ -140,9 +140,14 @@ class Planet(Object):
                glRasterPos( self.__pos[0]+5, y )
                self.__font.Render( flyby['date'] )
                if flyby['dv'] > 0.:
-                  y = y - self.__fontsize-5
-                  glRasterPos( self.__pos[0]+5, y )
-                  self.__font.Render( "DV: %.2E km/s" % flyby['dv'] )
+                  dv = flyby['dv']
+                  if dv > 10**-6: 
+                     y = y - self.__fontsize-5
+                     glRasterPos( self.__pos[0]+5, y )
+                     if dv > 10**-3:
+                        self.__font.Render( "DV: %.2E km/s" % dv )
+                     else:
+                        self.__font.Render( "DV: %.2E m/s" % (dv*1000) )
 
 
 
