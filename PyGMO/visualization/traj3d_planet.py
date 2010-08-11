@@ -86,6 +86,9 @@ class Planet(Object):
       # Create path
       self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, info['colour'] )
 
+   def name( self ):
+      return self.__info['name']
+
    def setFont( self, font, size ):
       self.__font       = font
       self.__fontsize   = size
