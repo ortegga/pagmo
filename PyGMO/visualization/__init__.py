@@ -31,6 +31,7 @@ import traj3d_traj
 import traj3d_planet
 
 import csv
+import dateutil.parser
 
 
 class Trajectory3D:
@@ -225,8 +226,6 @@ def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
    MJD2000  = MJD - 51544.5
    return MJD2000
 
-
-import dateutil.parser
 
 # Run some tests
 if __name__ == "__main__":
