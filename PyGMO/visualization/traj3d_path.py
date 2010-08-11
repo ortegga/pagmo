@@ -61,6 +61,7 @@ class Path(Object):
       self.data = data # Store data
       self.mu   = mu # Store MU, defaults to ASTRO_MU_SUN from astro_constants.h
       self.__vbo = None
+      self.__vboDV = None
       self.__zoom = 1.
       self.__colour = colour
 
@@ -114,12 +115,15 @@ class Path(Object):
 
       # Generate VBO
       self.__genTraj()
+      self.__genDV()
 
    def __del__( self ):
       "Cleans up after the trajectory."
       # Delete the VBO
       if self.__vbo != None:
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
+      if self.__vboDV != None:
+         glDeleteBuffers( 1, GLuint( self.__vboDV ) )
 
    def showVectors( self, enable ):
       self.__showvec = enable
@@ -140,6 +144,25 @@ class Path(Object):
    def subdivide( self, subdivide = 1000 ):
       "Adjusts how many subdivisions to use."
       self.__genTraj( subdivide )
+
+   def __genDV( self ):
+      """
+      Generates the DV markers from the data.
+      """
+      self.__vertexDV = []
+      for i in range( len( self.__t ) ):
+         if linalg.norm( self.__dv[i] ) > 0.:
+            self.__vertexDV.append( self.__r[i] )
+            self.__vertexDV.append( self.__dv[i] )
+      if len(self.__vertexDV) == 0:
+         return
+      if self.__vboDV != None:
+         glDeleteBuffers( 1, GLuint( self.__vboDV ) )
+      self.__vboDV = glGenBuffers( 1 )
+      glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vboDV )
+      glBufferData( GL_ARRAY_BUFFER_ARB,
+            self.__vertexDV,
+            GL_STATIC_DRAW )
 
    def __genTraj( self, subdivide = 1000 ):
       """
@@ -242,6 +265,13 @@ class Path(Object):
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glVertexPointer( 3, GL_FLOAT, 0, None )
       glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
+
+      # Render DV for DSM
+      if self.__vboDV != None:
+         glColor3d( 0.8, 0.2, 0.2 )
+         glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vboDV )
+         glVertexPointer( 3, GL_FLOAT, 0, None )
+         glDrawArrays( GL_LINES, 0, len( self.__vertexDV ) )
       glDisableClientState( GL_VERTEX_ARRAY )
 
       r, v, dv = self.position( self.curt )
