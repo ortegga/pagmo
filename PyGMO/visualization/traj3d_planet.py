@@ -72,7 +72,7 @@ class Planet(Object):
       self.__mu      = mu
       self.__pos     = (0., 0., 0.)
       self.__font    = None
-      self.__flyby   = info['flyby']
+      self.__flyby   = info['flyby'] if info.has_key('flyby') else None
       self.__playspeed = 1.
       self.__t0      = 0.
 
@@ -134,6 +134,8 @@ class Planet(Object):
          y = self.__pos[1]-5
          glRasterPos( self.__pos[0]+5, y )
          self.__font.Render( self.__info['name'] )
+         if self.__flyby == None:
+            return
          for flyby in self.__flyby:
             if abs( self.__path.curt-flyby['mjd2000']+self.__t0 ) < self.__playspeed*2.5:
                y = y - self.__fontsize-5

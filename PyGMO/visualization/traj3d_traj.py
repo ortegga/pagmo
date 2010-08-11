@@ -128,8 +128,9 @@ class Trajectory(Object):
       "Gets the size of the object."
       return self.__path.size()
 
-   def addPlanets( self, mjd2000, planets ):
+   def addPlanets( self, planets ):
       "Adds some planets."
+      mjd2000 = self.__t[0]/(24.*3600)
       self.__planetsStart = mjd2000
       self.__planetsColour = planets
       for key, value in planets.items():

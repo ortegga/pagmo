@@ -105,7 +105,7 @@ class Trajectory3D:
       elif "neptune" == name.lower():
          return { 'colour' : (0.3,0.3,0.6), 'period' : 164.81*365.26, 'num' : 8, 'name' : 'Neptune' }
 
-   def addPlanets( self, mjd2000, planets_data=None ):
+   def addPlanets( self, planets_data=None ):
       """
       Adds planets.
 
@@ -117,11 +117,10 @@ class Trajectory3D:
       Alternatively if you pass a filename as mjd2000 it will load the csv
        file and use that.
       """
-      if type(mjd2000).__name__ == 'str':
-         data        = mjd2000
+      if type(planets_data).__name__ == 'str':
+         data        = planets_data
          data_csv    = csv.reader( open(data, 'r') )
          planets     = {}
-         mjd2000_min = float('inf')
          for row in data_csv:
 
             # Extract data
@@ -129,8 +128,6 @@ class Trajectory3D:
             date  = dateutil.parser.parse( row[1] )
             mjd2000 = convert_date( date.year, date.month, date.day )
             dv    = float(row[2])
-            if mjd2000 < mjd2000_min:
-               mjd2000_min = mjd2000
 
             # Process data
             p     = self.__planetFromName( name )
@@ -142,7 +139,6 @@ class Trajectory3D:
                planets[num]   = p
          
          # Final touches
-         mjd2000     = mjd2000_min
          data_csv    = None
 
       else:
@@ -151,7 +147,7 @@ class Trajectory3D:
             p  = self.__planetFromName( planet )
             planets[ p['num'] ] = p
 
-      self.traj.addPlanets( mjd2000, planets )
+      self.traj.addPlanets( planets )
 
    def vectors( self, enable ):
       """

@@ -22,16 +22,13 @@
 # Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-# Version information
-__version__ = "0.1"
-
 
 from PyGMO import visualization
 
 
 # Run some tests
 if __name__ == "__main__":
-   data = ( 0.,
+   data = ( 8273.267,
                135299631.153314,
                   -67433330.1118738,
                   0.,
@@ -41,7 +38,7 @@ if __name__ == "__main__":
                0.,
                   0.,
                   0.,
-            350.0,
+            8623.267,
                -242539545.423682,
                   -36777066.1865885,
                   5209166.99174208,
@@ -51,13 +48,12 @@ if __name__ == "__main__":
                0.,
                   0.,
                   0. )
-   mjd2000 = 8273.26728762578
    planets = [ 'earth', 'mars' ]
 
    # Create the engine
    traj = visualization.Trajectory3D( data, 640, 480,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
-   traj.addPlanets( mjd2000, planets )
+   traj.addPlanets( planets )
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
