@@ -232,9 +232,9 @@ import dateutil.parser
 if __name__ == "__main__":
 
    # Create the engine
-   traj = Trajectory3D( "CassiniMGA.txt", 640, 480,
+   traj = Trajectory3D( "EarthMarsDSM.txt", 640, 480,
          24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
-   traj.addPlanets( "CassiniMGA_flybyinfo.txt" )
+   traj.addPlanets( "EarthMarsDSM_flybyinfo.txt" )
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff

@@ -454,6 +454,7 @@ class traj3d:
       # Update camera
       self.__camera.winSize( width, height )
       self.__camera.refresh()
+      self.__objScale()
       # Redraw
       self.redisplay()
 
@@ -560,10 +561,8 @@ class traj3d:
    def __visibility( self, vis ):
       self.__idle()
 
-
    def redisplay( self ):
       glutPostRedisplay()
-
 
    def reshape( self, width, height ):
       """

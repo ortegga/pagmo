@@ -132,6 +132,7 @@ class Path(Object):
       "Gives an indication of the current scale size."
       self.__zoom = zoom
       self.__rad  = 5. / zoom # 10 pixel diameter
+      self.__genDV()
 
    def center( self ):
       "Gets the center of the object."
@@ -155,13 +156,13 @@ class Path(Object):
       for i in range( len( self.__t ) ):
          cur_dv = linalg.norm( self.__dv[i] )
          if cur_dv > max_dv:
-            max_dev = cur_dv
+            max_dv = cur_dv
       self.__dvMax = max_dv
 
       # Figure out how to normalize
       if max_dv == 0.: # Must actually have dv
          return
-      norm_dv = 1./max_dv * 25 * self.__zoom
+      norm_dv = 1./max_dv * (25. / self.__zoom)
       
       # Second pass to set data
       self.__vertexDV = []
@@ -171,6 +172,9 @@ class Path(Object):
             dv = self.__dv[i]
             self.__vertexDV.append( r )
             self.__vertexDV.append( r + dv*norm_dv )
+
+      # Convert to numpy
+      self.__vertexDV = array( self.__vertexDV, dtype = float32 )
 
       # Create the vbo
       if self.__vboDV == None:
@@ -281,7 +285,7 @@ class Path(Object):
 
       # Render DV for DSM
       if self.__vboDV != None:
-         glColor3d( 0.8, 0.2, 0.2 )
+         glColor3d( 0.0, 0.8, 0.8 )
          glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vboDV )
          glVertexPointer( 3, GL_FLOAT, 0, None )
          glDrawArrays( GL_LINES, 0, len( self.__vertexDV ) )
