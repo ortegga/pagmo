@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
    # Create the engine
    traj = Trajectory3D( "EarthMarsDSM.txt", 640, 480,
-         24.*3600., 1000., 1000., 1. ) # Unit conversions: days->s, km->m
+         24.*3600., 1000., 1000., 1000. ) # Unit conversions: days->s, km->m
    traj.addPlanets( "EarthMarsDSM_flybyinfo.txt" )
    traj.setUnits( "km", "d", "km/s" )
 
