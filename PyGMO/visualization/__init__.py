@@ -161,6 +161,12 @@ class Trajectory3D:
       """
       self.traj.showVectors( enable )
 
+   def controls( self, enable ):
+      """
+      Hides or shows the playback controls.
+      """
+      self.traj.controls( enable )
+
    def axes( self, enable ):
       """
       Shows axes.
@@ -186,15 +192,18 @@ class Trajectory3D:
       """
       Handles keyboard input.
       """
-      if key is 'p' and pressed:
-         self.traj.pause( not self.traj.ispaused() )
-         self.__playing = not self.__playing
-      if key is 'r' and pressed:
-         self.traj.restart()
-      if key is 'f' and pressed:
-         self.traj.faster()
-      if key is 's' and pressed:
-         self.traj.slower()
+      if pressed:
+         if key is 'p':
+            self.traj.pause( not self.traj.ispaused() )
+            self.__playing = not self.__playing
+         elif key is 'r':
+            self.traj.restart()
+         elif key is 'f':
+            self.traj.faster()
+         elif key is 's':
+            self.traj.slower()
+         elif key is 'h':
+            self.traj.controls()
 
    def duration( self, duration=30. ):
       """

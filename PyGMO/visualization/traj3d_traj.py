@@ -107,6 +107,12 @@ class Trajectory(Object):
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
 
+   def controls( self, enable=None ):
+      if enable is None:
+         self.__controls = not self.__controls
+      else:
+         self.__controls = enable
+
    def setScale( self, zoom ):
       "Gives an indication of the current scale size."
       self.__zoom = zoom
@@ -131,6 +137,18 @@ class Trajectory(Object):
       for pnt in self.__planets:
          pnt.setFont( self.font, self.fontsize )
          pnt.speed( self.playspeed )
+      """
+      self.setPosition( self.__t[0] )
+      print("START")
+      print( self.__path.position( self.__path.curt )[0] )
+      for pnt in self.__planets:
+         print( pnt.name(), pnt.position( self.__path.curt )[0] )
+      self.setPosition( self.__t[-1] )
+      print("STOP")
+      print( self.__path.position( self.__path.curt )[0] )
+      for pnt in self.__planets:
+         print( pnt.name(), pnt.position( self.__path.curt )[0] )
+      """
 
    def display( self ):
       "Displays the trajectory."
