@@ -149,16 +149,32 @@ class Path(Object):
       """
       Generates the DV markers from the data.
       """
+
+      # First pass to get largest DV
+      max_dv = 0
+      for i in range( len( self.__t ) ):
+         cur_dv = linalg.norm( self.__dv[i] )
+         if cur_dv > max_dv:
+            max_dev = cur_dv
+      self.__dvMax = max_dv
+
+      # Figure out how to normalize
+      if max_dv == 0.: # Must actually have dv
+         return
+      norm_dv = 1./max_dv * 25 * self.__zoom
+      
+      # Second pass to set data
       self.__vertexDV = []
       for i in range( len( self.__t ) ):
          if linalg.norm( self.__dv[i] ) > 0.:
-            self.__vertexDV.append( self.__r[i] )
-            self.__vertexDV.append( self.__dv[i] )
-      if len(self.__vertexDV) == 0:
-         return
-      if self.__vboDV != None:
-         glDeleteBuffers( 1, GLuint( self.__vboDV ) )
-      self.__vboDV = glGenBuffers( 1 )
+            r  = self.__r[i]
+            dv = self.__dv[i]
+            self.__vertexDV.append( r )
+            self.__vertexDV.append( r + dv*norm_dv )
+
+      # Create the vbo
+      if self.__vboDV == None:
+         self.__vboDV = glGenBuffers( 1 )
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vboDV )
       glBufferData( GL_ARRAY_BUFFER_ARB,
             self.__vertexDV,
@@ -199,13 +215,10 @@ class Path(Object):
       self.__vertex = array( self.__vertex, dtype = float32 )
 
       # Create the VBO
-      if self.__vbo != None:
-         glDeleteBuffers( 1, GLuint( self.__vbo ) )
-      self.__vbo = glGenBuffers( 1 )
+      if self.__vbo == None:
+         self.__vbo = glGenBuffers( 1 )
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glBufferData( GL_ARRAY_BUFFER_ARB,
-            #ADT.arrayByteCount( self.__vertex ),
-            #ADT.voidDataPointer( self.__vertex ),
             self.__vertex,
             GL_STATIC_DRAW )
 
