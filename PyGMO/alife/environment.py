@@ -31,54 +31,6 @@ import ode
 import xode.parser
 import numpy as np
         
-## ConfigGrabber class
-#
-# A replacement for the pybrain.rl.environments.ode.tools.configgrab ConfigGrabber
-# class, that uses a string instead of a file.
-#
-# @author John Glover
-class ConfigGrabber:
-    ## Constructor
-    # @param data The XODE data
-    # @param sectionId start looking for parameters only after this string has
-    # been encountered in the file.
-    # @param delim tuple of delimiters to identify tags
-    def __init__(self, data, sectionId="", delim=("[", "]")):
-        ## @var data The XODE data
-        self._data = data
-        ## @var sectionId start looking for parameters only after this string
-        self._sectionId = sectionId.strip()
-        ## @var delim tuple of delimiters to identify tags
-        self._delim = delim
-    
-    ## Get the value for the named parameter
-    #  @param name The parameter name
-    #  @return: The value of the parameter 
-    def getValue(self, name):
-        output = []
-        start = 0
-        # find section if one is given
-        if self._sectionId:
-            start = self._data.find(self._sectionId)
-            if start < 0:
-                return output
-            start += len(self._sectionId)
-        
-        # find tag with given name
-        parameter_tag = self._data.find(self._delim[0]+name+self._delim[1]+"\n", start)
-        if parameter_tag == -1:
-            return output
-        start = parameter_tag + len(self._delim[0]+name+self._delim[1]+"\n")
-        # find the next delimiter
-        end = self._data.find(self._delim[0], start)
-        if end == -1:
-            end = len(self._data)
-        # get every line between start and end of delimiters
-        for line in self._data[start:end].split("\n"):
-            if line:
-                output.append(line.strip())
-        return output
-        
 
 ## ALifeEnvironment class
 #
@@ -89,36 +41,28 @@ class ConfigGrabber:
 #  @author John Glover
 class ALifeEnvironment(object):
     ## Constructor
-    def __init__(self, robot=None, asteroid=None):
-        ## @var root XODE root node, defined in load_xode
-        self.root = None
-        ## @var world XODE world node, defined in load_xode
-        self.world = None 
+    def __init__(self):
+        ## @var world XODE world node
+        self.world = ode.World() 
         ## @var space:  XODE space node, defined in load_xode
-        self.space = None  
+        self.space = ode.Space()  
         ## @var body_geom A list with (body, geom) tuples
         self.body_geom = []
-        ## @var robot_body The robot body object, defined in _parseBodies
-        self.robot_body = None
-        ## @var joints The robot's joints
-        self.joints = []
         ## @var robot The robot object
-        self.robot = robot
-        if self.robot:
-            self.load_robot(robot.get_xode())
+        self.robot = None
         ## @var asteroid_geom The asteroid geometry
         self.asteroid_geom = None
         ## @var asteroid The asteroid object
-        self.asteroid = asteroid
-        if self.asteroid:
-            self.load_asteroid(asteroid.get_xode())
+        self.asteroid = None
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
+        ##
+        self.passpairs = []
         ## @var asteroid_mass The mass of the asteroid.
         #  Used when calculating the force of gravity that the asteroid exerts
         #  on the bodies in the ODE space.
-        self.asteroid_mass = 100000.0
+        self.asteroid_mass = 10000.0
         ## @var grav_constant The Gravitational constant (G) used to calculate
         #  the force of gravity between bodies and the asteroid. Uses a simplified
         #  model of gravity based on Newton's law, but the forces are only applied
@@ -136,133 +80,23 @@ class ALifeEnvironment(object):
         self.friction = 8.0
         ## @var step_count The current step number
         self.step_count = 0
-    
-    ## Loads the robot XODE data (xml format) and parses it.
-    #  @param robot_xode The XODE data for the robot.
-    def load_robot(self, robot_xode):
-        p = xode.parser.Parser()
-        self.root = p.parseString(robot_xode)
-        try:
-            # filter all xode "world" objects from root, take only the first one
-            world = filter(lambda x: isinstance(x, xode.parser.World), self.root.getChildren())[0]
-        except IndexError:
-            # malicious format, no world tag found
-            raise Exception("No <world> tag found in XODE data")
-        self.world = world.getODEObject()
-        try:
-            # filter all xode "space" objects from world, take only the first one
-            space = filter(lambda x: isinstance(x, xode.parser.Space), world.getChildren())[0]
-        except IndexError:
-            # malicious format, no space tag found
-            raise Exception("no <space> tag found in XODE data")
-        self.space = space.getODEObject()
-                
-        # load bodies and geoms for painting
-        self.body_geom = [] 
-        self.joints = []
-        self._parseBodies(self.root)
         
-        # now parse the additional parameters at the end of the xode file
-        self._loadConfig(robot_xode)
+    ## Get the list of body and geometry objects.
+    #  @return list of (body, geometry) tuples.
+    def get_objects(self):
+        return self.body_geom
+        
+    def set_robot(self, robot):
+        self.robot = robot
+        for body_geom in robot.bodies_geoms:
+            self.body_geom.append(body_geom)
+        for passpair in robot.passpairs:
+            self.passpairs.append(passpair)
         
     ## Adds an asteroid geometry to the environment
-    #  @param asteroid_xode XODE string containing the asteroid geometry
-    def load_asteroid(self, asteroid_xode):
-        # check for existing ODE space
-        if not self.space:
-            # todo: more detail on this exception
-            raise Exception("NoSpace")
-        
-        # parse asteroid xode, adding to environment
-        parser = xode.parser.Parser()
-        self._parseBodies(parser.parseString(asteroid_xode))
-        
-        # check that asteroid geometry was created successfully
-        # todo: check triangle count: self.asteroid_geom.getTriangleCount()
-        # todo: give more detail in exception
-        if not self.asteroid_geom:
-            raise Exception("NoAsteroid")
-        # add asteroid to current space
-        self.asteroid_geom.getSpace().remove(self.asteroid_geom)
-        self.space.add(self.asteroid_geom)
-    
-    ## Load the XODE config.
-    #  @param data The XODE data string
-    def _loadConfig(self, data):
-        # parameters are given in (our own brand of) config-file syntax
-        self.config = ConfigGrabber(data, sectionId="<!--odeenvironment parameters", delim=("<", ">"))
-
-        # <passpairs>
-        self.passpairs = []
-        for passpairstring in self.config.getValue("passpairs")[:]:
-            self.passpairs.append(eval(passpairstring))
-
-        # <affixToEnvironment>
-        for jointName in self.config.getValue("affixToEnvironment")[:]:
-            try:
-                # find first object with that name
-                obj = self.root.namedChild(jointName).getODEObject()
-            except IndexError:
-                print "ERROR: Could not affix object '" + jointName + "' to environment!"
-                sys.exit(1)
-            if isinstance(obj, ode.Joint):
-                # if it is a joint, use this joint to fix to environment
-                obj.attach(obj.getBody(0), ode.environment)
-            elif isinstance(obj, ode.Body):
-                # if it is a body, create new joint and fix body to environment
-                j = ode.FixedJoint(self.world)
-                j.attach(obj, ode.environment)
-                j.setFixed()
-
-        # <colors>
-        for coldefstring in self.config.getValue("colors")[:]:
-            objname, coldef = eval(coldefstring)
-            for (body, _) in self.body_geom:
-                if hasattr(body, 'name'):
-                    if objname == body.name:
-                        body.color = coldef
-                        break
-
-    ## Parse the given xode node and all children (recursively), creating ODE body and geometry objects.
-    #  @param node The XODE node.
-    def _parseBodies(self, node):
-        # body (with nested geom)
-        if isinstance(node, xode.body.Body):
-            body = node.getODEObject()
-            body.name = node.getName()
-            if body.name == "robot_body":
-                self.robot_body = body
-            try:
-                # filter all xode geom objects and take the first one
-                xgeom = filter(lambda x: isinstance(x, xode.geom.Geom), node.getChildren())[0]
-            except IndexError:
-                return() # no geom object found, skip this node
-            # get the real ode object
-            geom = xgeom.getODEObject()
-            # if geom doesn't have own name, use the name of its body
-            geom.name = node.getName()
-            self.body_geom.append((body, geom))
-        
-        # geom on its own without body
-        elif isinstance(node, xode.geom.Geom):
-            try:
-                node.getFirstAncestor(ode.Body)
-            except xode.node.AncestorNotFoundError:
-                body = None
-                geom = node.getODEObject()
-                geom.name = node.getName()
-                self.body_geom.append((body, geom))
-                if geom.name == "Asteroid":
-                    self.asteroid_geom = geom
-        
-        # special cases for joints: universal, fixed, amotor
-        elif isinstance(node, xode.joint.Joint):
-            joint = node.getODEObject()
-            self.joints.append(joint)
-
-        # recursive call for all child nodes
-        for c in node.getChildren():
-            self._parseBodies(c)
+    #  @param asteroid
+    def set_asteroid(self, asteroid):
+        self.asteroid = asteroid
             
     ## Callback function for the space.collide() method.
     #  This function checks if the given geoms do collide and 
@@ -305,7 +139,7 @@ class ALifeEnvironment(object):
     #  @param body the body
     #  @return distance between the given body and the centre of the asteroid (float)
     def _distance_to_asteroid(self, body):
-        a = self.asteroid_geom.getPosition()
+        a = self.asteroid.geom.getPosition()
         b = body.getPosition()
         # change the body position, keeping it the same relative to the asteroid, 
         # but with the asteroid centred at the origin
@@ -319,7 +153,7 @@ class ALifeEnvironment(object):
     #  @return direction from the given body to the centre of the asteroid,
     #          represented as a unit vector (float x, float y, float z)
     def _direction_of_asteroid(self, body):
-        a = self.asteroid_geom.getPosition()
+        a = self.asteroid.geom.getPosition()
         b = body.getPosition()
         # update the asteroid position, keeping its position the same relative to
         # the body, but with the body centred at the origin
@@ -331,35 +165,12 @@ class ALifeEnvironment(object):
             return (a[0]/length, a[1]/length, a[2]/length)
         else:
             return (0, 0, 0)
-            
-    ## Get the list of body and geometry objects.
-    #  @return list of (body, geometry) tuples.
-    def get_objects(self):
-        return self.body_geom
-    
-    ## Get the robot body object
-    # @return robot body object
-    def get_robot_body(self):
-        return self.robot_body
-    
-    ## Get the position of the robot body
-    # @return position of the robot body
-    def get_robot_position(self):
-        return self.robot_body.getPosition()
-    
-    ## Get the robot's joints
-    #  @return list of robot's joints
-    def get_robot_joints(self):
-        return self.joints
     
     ## Resets the environment
     def reset(self):
         self.step_count = 0
-        self.body_geom = []
         if self.robot:
-            self.load_robot(self.robot.get_xode())
-        if self.asteroid:
-            self.load_asteroid(self.asteroid.get_xode())
+            self.robot.reset()
             
     ## Calculate the next step in the ODE environment.
     #  @param dt The step size. 
@@ -418,10 +229,9 @@ class ALifeEnvironment(object):
 #
 #  @author John Glover
 class ALifePlane(ALifeEnvironment):
-    ## Loads the robot XODE data (xml format) and parses it.
-    #  @param robot_xode The XODE data for the robot.
-    def load_robot(self, robot_xode):
-        super(ALifePlane, self).load_robot(robot_xode)
+    ## Constructor
+    def __init__(self):
+        super(ALifePlane, self).__init__()
         # Add a 2D plane as the ground
         p = ode.GeomPlane(self.space, (0,1,0), 0)
         p.name = "ground"

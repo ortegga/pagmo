@@ -53,7 +53,7 @@ class ALifeViewer(object):
         ## @var height viewport height
         self.height = 600  
         ## @var _center_obj The ode object to center the camera view on
-        self._center_obj = env.get_robot_body()
+        self._center_obj = env.robot.body
         ## @var _center_on_obj Whether or not to center the camera view on self._center_obj
         self._center_on_obj = True
         ## @var _center_x x coordinate of the center of the current view point
@@ -76,6 +76,8 @@ class ALifeViewer(object):
         self.asteroid_tex_id = None
         ## @var fps The number of frames to render per second 
         self._fps = 25
+        ## @var _steps_per_frame The number of Environment/Experiment steps per frame rendered
+        self._steps_per_frame = 2
         ## @var _dt The increment by which to progress (step) the Environment
         #  Only used for this if there is no self.experiment set, 
         #  otherwise experiment.update is called.
@@ -139,16 +141,17 @@ class ALifeViewer(object):
         glEnable(GL_NORMALIZE)
         
         # load asteroid textures
-        if self.env.asteroid.get_texture_file():
-            img = Image.open(self.env.asteroid.get_texture_file())
-            raw_img = img.tostring()
-            self.asteroid_tex_id = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, self.asteroid_tex_id)
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, img.size[0], img.size[1], 0, 
-                         GL_LUMINANCE, GL_UNSIGNED_BYTE, raw_img)
+        if self.env.asteroid:
+            if self.env.asteroid.texture_file:
+                img = Image.open(self.env.asteroid.texture_file)
+                raw_img = img.tostring()
+                self.asteroid_tex_id = glGenTextures(1)
+                glBindTexture(GL_TEXTURE_2D, self.asteroid_tex_id)
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, img.size[0], img.size[1], 0, 
+                             GL_LUMINANCE, GL_UNSIGNED_BYTE, raw_img)
         
     ## Prepare drawing. This function is called in every step. 
     #  It clears the screen and sets the new camera position
@@ -269,10 +272,9 @@ class ALifeViewer(object):
         
     ## Draw the Asteroid object.
     #  The asteroid is drawn separately for now so that it can be textured
-    #  @param asteroid_geom The geometry to draw (should be of type ode.GeomTriMesh)
     #  @param asteroid An object of type Asteroid
-    def _draw_asteroid(self, asteroid_geom, asteroid):
-        # assume asteroid_geom is of type ode.GeomTriMesh
+    def _draw_asteroid(self, asteroid):
+        # assume asteroid.geom is of type ode.GeomTriMesh
         # note: geom.getTriangleCount seems to be undocumented, can't find
         #       it in the API anywhere, just stumbled across it on the 
         #       pyode-user mailing list
@@ -286,8 +288,8 @@ class ALifeViewer(object):
             # draw with texture coordinates
             glPushMatrix()
             glBegin(GL_TRIANGLES)
-            for i in range(asteroid_geom.getTriangleCount()):
-                triangle = asteroid_geom.getTriangle(i)
+            for i in range(asteroid.geom.getTriangleCount()):
+                triangle = asteroid.geom.getTriangle(i)
                 texture = asteroid.get_texture_coords(i)
                 glTexCoord2fv(texture[0])
                 glVertex3fv(triangle[0])
@@ -304,8 +306,8 @@ class ALifeViewer(object):
         glPushMatrix()
         glColor3f(0.53, 0.44, 0.35)
         glBegin(GL_TRIANGLES)
-        for i in range(asteroid_geom.getTriangleCount()):
-            triangle = asteroid_geom.getTriangle(i)
+        for i in range(asteroid.geom.getTriangleCount()):
+            triangle = asteroid.geom.getTriangle(i)
             glVertex3fv(triangle[0])
             glVertex3fv(triangle[1])
             glVertex3fv(triangle[2])
@@ -320,14 +322,17 @@ class ALifeViewer(object):
         # Call step on the experiment first if one exists. This will perform
         # its own calculations then step the environment for us.
         if self.exp:
-            self.exp.step()
+            for i in range(self._steps_per_frame):
+                self.exp.step()
         # If no experiment exists, step the environment directly
         else:
-            self.env.step(self._dt)
+            for i in range(self._steps_per_frame):
+                self.env.step(self._dt)
         # Draw all objects in the environment
         for (body, geom) in self.env.get_objects():
             self._draw_object(body, geom)
-        self._draw_asteroid(self.env.asteroid_geom, self.env.asteroid)
+        if self.env.asteroid:
+            self._draw_asteroid(self.env.asteroid)
         glutSwapBuffers()
         if self._capture_screen:
             self.screenshot()
@@ -435,10 +440,12 @@ if __name__ == "__main__":
     from robot import Robot
     from asteroid import Asteroid
     
+    env = ALifeEnvironment()
     robot_position = [0, 150, 0]
-    robot = Robot("Robot", robot_position)
-    asteroid = Asteroid("models/asteroid_textured.x3d")
-    env = ALifeEnvironment(robot, asteroid)
+    robot = Robot(env.world, env.space, robot_position)
+    env.set_robot(robot)
+    asteroid = Asteroid(env.space, "models/asteroid_textured.x3d")
+    env.set_asteroid(asteroid)
     viewer = ALifeViewer(env)
     viewer.print_controls()
     viewer.start()

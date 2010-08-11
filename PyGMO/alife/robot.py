@@ -30,57 +30,6 @@ import ode
 import xode.parser
 import xml.dom.minidom as md
 import numpy as np
-
-
-## StringWriter class
-# 
-#  Utility class that is basically just a string with a write method.
-#  This means it can be passed to a function expecting a file object,
-#  and instead of writing to a file the function will write to the string.
-#
-#  @author John Glover
-class StringWriter(object):
-    ## Constructor
-    def __init__(self):
-        ## @var string The string being written to
-        self.string = ""
-        
-    ## Append text to this object's string
-    #  @param s The string to append to this object's string 
-    def write(self, s):
-        self.string += s
-        
-
-## XODEObject class
-#
-#  Extends XODEfile objects, adding the ability to return the XODE
-#  data as a string so that it does not need to be written to disc.
-#
-#  @author John Glover
-class XODEObject(XODEfile):
-    ## Constructor
-    def __init__(self, name):
-        XODEfile.__init__(self, name)
-        
-    ## Get the XODE (xml-formatted) data for this object as a string
-    #  @return XODE (xml-formatted) data for this object as a string
-    def get_xode(self):
-        # get main XML string containing body/geometry and joint information
-        xml = StringWriter()
-        self.write(xml)
-        # get custom parameters (passpairs, etc)
-        custom = StringWriter()
-        self.writeCustomParameters(custom)
-        # format xml
-        xode = '<?xml version="1.0" encoding="UTF-8"?>\n'
-        xode += '<xode version="1.0r23" name="' + self._xodename + '"\n'
-        xode += 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' 
-        xode += 'xsi:noNamespaceSchemaLocation='
-        xode += '"http://tanksoftware.com/xode/1.0r23/xode.xsd">\n\n'
-        xode += xml.string
-        xode += '</xode>\n'
-        xode += custom.string
-        return xode
         
         
 ## Robot class
@@ -98,20 +47,19 @@ class XODEObject(XODEfile):
 #  Code is based on the ode.tools.xodetools module from PyBrain
 #
 #  @author John Glover
-class Robot(XODEObject):
+class Robot(object):
     ## Constructor
     #  @param name The string containing the name of the robot
     #  @param position A 3-tuple giving the initial position of the
     #                  robot body
-    def __init__(self, name, position=[0.0, 150.0, 0.0]):
-        XODEObject.__init__(self, name)
+    def __init__(self, world, space, body_position=[0.0, 150.0, 0.0], name=""):
+        self.name = name
         # position of the body
         # position of legs is defined relative to this
-        body_position = position
         # mass of the body
         body_mass = 1.0
         # the density of the body
-        body_density = 3.0
+        body_density = 1.0
         # the size of the body
         body_size = [4.0, 3.0, 4.0]
         # radius of the legs
@@ -119,74 +67,145 @@ class Robot(XODEObject):
         # length of the legs
         leg_length = 3.8
         # density of the legs
-        leg_density = 3.0
+        leg_density = 1.0
         # mass of the legs
         leg_mass = 1.0
+        # rotation of the legs
+        leg_rotation = (1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
         # offset used to calculate leg y-axis coordinate
         # the last term makes the legs recede into the body slightly, looks
         # a bit better
         leg_y_offset = (leg_length/2) + (body_size[1]/2) - min(leg_radius*2, 1.0)
         
-        # add body objects
-        self.insertBody('robot_body', 'box', body_size, body_density, 
-                        pos=body_position, mass=body_mass, 
-                        passSet=["robot_body_leg1",
-                                 "robot_body_leg2",
-                                 "robot_body_leg3",
-                                 "robot_body_leg4"])
-        self.insertBody('robot_leg1', 'cappedCylinder', [leg_radius, leg_length], 
-                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
-                        passSet=["robot_body_leg1"],
-                        pos=[body_position[0]+1.2, 
-                             body_position[1]-leg_y_offset, 
-                             body_position[2]-1.2])
-        self.insertBody('robot_leg2', 'cappedCylinder', [leg_radius, leg_length],
-                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
-                        passSet=["robot_body_leg2"],
-                        pos=[body_position[0]-1.2, 
-                             body_position[1]-leg_y_offset, 
-                             body_position[2]-1.2])
-        self.insertBody('robot_leg3', 'cappedCylinder', [leg_radius, leg_length], 
-                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
-                        passSet=["robot_body_leg3"],
-                        pos=[body_position[0]+1.2, 
-                             body_position[1]-leg_y_offset, 
-                             body_position[2]+1.2])
-        self.insertBody('robot_leg4', 'cappedCylinder', [leg_radius, leg_length],
-                        leg_density, euler=[90, 0, 0], mass=leg_mass, 
-                        passSet=["robot_body_leg4"],
-                        pos=[body_position[0]-1.2, 
-                             body_position[1]-leg_y_offset, 
-                             body_position[2]+1.2])
+        self.bodies_geoms = []
+        self.joints = []
+        self.passpairs = [('robot_body', 'robot_leg1'),
+                          ('robot_body', 'robot_leg2'),
+                          ('robot_body', 'robot_leg3'),
+                          ('robot_body', 'robot_leg4')]
+        self.center_obj = "robot_body"
         
-        # add joints
-        self.insertJoint('robot_body', 'robot_leg1', 'hinge', 
-                         name="robot_body_leg1",
-                         anchor=(body_position[0]+1.2, 
-                                 body_position[1]-(body_size[1]/2), 
-                                 body_position[2]-1.2),
-                         axis={'x':-1, 'y':0, 'z':0,
-                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
-        self.insertJoint('robot_body', 'robot_leg2', 'hinge', 
-                         name="robot_body_leg2",
-                         anchor=(body_position[0]-1.2, 
-                                 body_position[1]-(body_size[1]/2), 
-                                 body_position[2]-1.2),
-                         axis={'x':-1, 'y':0, 'z':0,
-                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
-        self.insertJoint('robot_body', 'robot_leg3', 'hinge',
-                         name="robot_body_leg3", 
-                         anchor=(body_position[0]+1.2, 
-                                 body_position[1]-(body_size[1]/2), 
-                                 body_position[2]+1.2),
-                         axis={'x':-1, 'y':0, 'z':0,
-                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
-        self.insertJoint('robot_body', 'robot_leg4', 'hinge',
-                         name="robot_body_leg4", 
-                         anchor=(body_position[0]-1.2, 
-                                 body_position[1]-(body_size[1]/2), 
-                                 body_position[2]+1.2),
-                         axis={'x':-1, 'y':0, 'z':0,
-                               'HiStop':1.2, 'LowStop':-1.2, 'FMax': 10.0})
+        # Body
+        self.body = ode.Body(world)
+        self.body.name = "robot_body"
+        self.body.setPosition(body_position)
+        body_mass = ode.Mass()
+        body_mass.setBox(body_density, body_size[0], body_size[1], body_size[2])
+        self.body.setMass(body_mass)
+        body_geom = ode.GeomBox(space, lengths=body_size)
+        body_geom.name = "robot_body"
+        body_geom.setBody(self.body)
+        self.bodies_geoms.append((self.body, body_geom))
         
-        self.centerOn('robot_body')
+        # Leg 1
+        leg1 = ode.Body(world)
+        leg1.name = "robot_leg1"
+        leg1.setPosition((body_position[0]+1.2,
+                          body_position[1]-leg_y_offset,
+                          body_position[2]-1.2))
+        leg1_mass = ode.Mass()
+        leg1_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
+        leg1.setMass(leg1_mass)
+        leg1_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
+        leg1_geom.name = "robot_leg1"
+        leg1_geom.setBody(leg1)
+        self.bodies_geoms.append((leg1, leg1_geom))
+        leg1.setRotation(leg_rotation)
+        
+        # Leg 2
+        leg2 = ode.Body(world)
+        leg2.name = "robot_leg2"
+        leg2.setPosition((body_position[0]-1.2,
+                          body_position[1]-leg_y_offset,
+                          body_position[2]-1.2))
+        leg2_mass = ode.Mass()
+        leg2_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
+        leg2.setMass(leg2_mass)
+        leg2_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
+        leg2_geom.name = "robot_leg2"
+        leg2_geom.setBody(leg2)
+        self.bodies_geoms.append((leg2, leg2_geom))
+        leg2.setRotation(leg_rotation)
+
+        
+        # Leg 3
+        leg3 = ode.Body(world)
+        leg3.name = "robot_leg3"
+        leg3.setPosition((body_position[0]+1.2,
+                          body_position[1]-leg_y_offset,
+                          body_position[2]+1.2))
+        leg3_mass = ode.Mass()
+        leg3_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
+        leg3.setMass(leg3_mass)
+        leg3_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
+        leg3_geom.name = "robot_leg3"
+        leg3_geom.setBody(leg3)
+        self.bodies_geoms.append((leg3, leg3_geom))
+        leg3.setRotation(leg_rotation)
+        
+        # Leg 4
+        leg4 = ode.Body(world)
+        leg4.name = "robot_leg4"
+        leg4.setPosition((body_position[0]-1.2,
+                          body_position[1]-leg_y_offset,
+                          body_position[2]+1.2))
+        leg4_mass = ode.Mass()
+        leg4_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
+        leg4.setMass(leg4_mass)
+        leg4_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
+        leg4_geom.name = "robot_leg4"
+        leg4_geom.setBody(leg4)
+        self.bodies_geoms.append((leg4, leg4_geom))
+        leg4.setRotation(leg_rotation)
+        
+        # Joint 1
+        joint1 = ode.HingeJoint(world)
+        joint1.name="robot_body_leg1"
+        joint1.attach(self.body, leg1)
+        joint1.setAnchor((body_position[0]+1.2, 
+                          body_position[1]-(body_size[1]/2), 
+                          body_position[2]-1.2))
+        joint1.setAxis((1,0,0))
+        joint1.setParam(ode.ParamLoStop, -1.2)
+        joint1.setParam(ode.ParamHiStop, 1.2)
+        joint1.setParam(ode.ParamFMax, 10)
+        self.joints.append(joint1)
+        
+        # Joint 2
+        joint2 = ode.HingeJoint(world)
+        joint2.name="robot_body_leg2"
+        joint2.attach(self.body, leg2)
+        joint2.setAnchor((body_position[0]-1.2, 
+                          body_position[1]-(body_size[1]/2), 
+                          body_position[2]-1.2))
+        joint2.setAxis((1,0,0))
+        joint2.setParam(ode.ParamLoStop, -1.2)
+        joint2.setParam(ode.ParamHiStop, 1.2)
+        joint2.setParam(ode.ParamFMax, 10)
+        self.joints.append(joint2)
+        
+        # Joint 3
+        joint3 = ode.HingeJoint(world)
+        joint3.name="robot_body_leg3"
+        joint3.attach(self.body, leg3)
+        joint3.setAnchor((body_position[0]+1.2, 
+                          body_position[1]-(body_size[1]/2), 
+                          body_position[2]+1.2))
+        joint3.setAxis((1,0,0))
+        joint3.setParam(ode.ParamLoStop, -1.2)
+        joint3.setParam(ode.ParamHiStop, 1.2)
+        joint3.setParam(ode.ParamFMax, 10)
+        self.joints.append(joint3)
+        
+        # Joint 4
+        joint4 = ode.HingeJoint(world)
+        joint4.name="robot_body_leg4"
+        joint4.attach(self.body, leg4)
+        joint4.setAnchor((body_position[0]-1.2, 
+                          body_position[1]-(body_size[1]/2), 
+                          body_position[2]+1.2))
+        joint4.setAxis((1,0,0))
+        joint4.setParam(ode.ParamLoStop, -1.2)
+        joint4.setParam(ode.ParamHiStop, 1.2)
+        joint4.setParam(ode.ParamFMax, 10)
+        self.joints.append(joint4)

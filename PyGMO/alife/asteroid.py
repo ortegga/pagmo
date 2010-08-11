@@ -33,6 +33,7 @@
 #  the first one is used.
 import xml.dom.minidom as md
 import os.path
+import ode
 
 ## Asteroid class
 #
@@ -42,36 +43,27 @@ import os.path
 class Asteroid(object):
     ## Constructor
     #  @param x3d_file The path to a X3D file that contains a model called 'Asteroid' (optional) 
-    def __init__(self, x3d_file=None):
-        ## @var xode_string The XODE data for this Asteroid
-        self.xode_string = ""
+    def __init__(self, space, x3d_file=None):
+        ## @var space The ODE space that this asteroid will be added to
+        self.space = space
+        ## @var geom The asteroid ODE geometry object
+        self.geom = None
+        ## @var name The name of this object
+        self.name = "Asteroid"
         ## @var _texture_coords Texture Coordinates. For each triangle in the mesh, there should
         #  be a 3-tuple of texture coordinates (s, t), so there is one (s, t) tuple for each vertex.
         self._texture_coords = []
         ## @var texture_file The path to the texture file, relative to the X3D file.
         #  This is automatically extracted from the X3D file if load_x3d is called.
-        self._texture_file = ""
+        self.texture_file = ""
         ## @var x3d_file The path to a X3D file that contains a model called 'Asteroid'
         self.x3d_file = x3d_file
         if self.x3d_file:
             self.load_x3d(self.x3d_file)
-            
-    ## @return The XODE data for this Asteroid
-    def get_xode(self):
-        return self.xode_string
     
     ## @return The texture coordinates for the given face (triangle) number
     def get_texture_coords(self, face_number):
         return self._texture_coords[face_number]
-    
-    ## @return The path to the texture file
-    def get_texture_file(self):
-        return self._texture_file
-    
-    ## Sets the path to the texture used by this asteroid
-    # @param file The path to the texture file
-    def set_texture_file(self, file):
-        self._texture_file = file
     
     ## Loads the asteroid X3D file (XML) and parses it. The resulting
     #  geometry is a XODE trimesh object. The geometry is encoded in a valid
@@ -92,25 +84,8 @@ class Asteroid(object):
     #  @param file_name The file path to the .x3d file containing the asteroid model.
     def load_x3d(self, file_name):
         dom = md.parse(file_name)
-        root = dom.createElement('xode')
-        root.attributes['version'] = '1.0r23'
-        root.attributes['name'] = 'alife'
-        root.attributes['xmlns:xsi'] = 'http://www.w3.org/2001/XMLSchema-instance'
-        root.attributes['xsi:noNamespaceSchemaLocation'] = 'http://tanksoftware.com/xode/1.0r23/xode.xsd'
-        world = dom.createElement('world')
-        root.appendChild(world)
-        space = dom.createElement('space')
-        world.appendChild(space)
-        
-        geom = dom.createElement('geom')
-        geom.attributes['name'] = 'Asteroid'
-        trimesh = dom.createElement('trimesh')
-        geom.appendChild(trimesh)
-        trimesh_triangles = dom.createElement('triangles')
-        trimesh.appendChild(trimesh_triangles)
-        trimesh_vertices = dom.createElement('vertices')
-        trimesh.appendChild(trimesh_vertices)
-        space.appendChild(geom)
+        vertices = []
+        triangles = []
         
         for node in dom.getElementsByTagName('Transform'):
             if 'DEF' in node.attributes.keys():
@@ -132,7 +107,7 @@ class Asteroid(object):
                         app_node = shape_node.getElementsByTagName('Appearance')[0]
                         tex_node = app_node.getElementsByTagName('ImageTexture')[0]
                         tex_path = tex_node.attributes['url'].value
-                        self._texture_file = os.path.join(os.path.dirname(file_name), tex_path)
+                        self.texture_file = os.path.join(os.path.dirname(file_name), tex_path)
                     except:
                         # no texture data found
                         pass
@@ -147,13 +122,9 @@ class Asteroid(object):
                             # there should 4 indicies, the last one equal to -1
                             indicies = face.split()
                             if len(indicies) == 4 and int(indicies[3]) == -1:
-                                # x3d indices count from zero but xode indices
-                                # count form one, so add one to each index value
-                                t = dom.createElement('t')
-                                t.attributes['ia'] = str(int(indicies[0])+1)
-                                t.attributes['ib'] = str(int(indicies[1])+1)
-                                t.attributes['ic'] = str(int(indicies[2])+1)
-                                trimesh_triangles.appendChild(t)
+                                triangles.append((int(indicies[0]),
+                                                  int(indicies[1]),
+                                                  int(indicies[2])))                                
                         # form vertices from the Coordinate point attribute
                         coordinate = ifs.getElementsByTagName('Coordinate')[0]
                         coord_points = coordinate.attributes['point'].value
@@ -161,11 +132,10 @@ class Asteroid(object):
                             # each vertex should have 3 points
                             points = points.split()
                             if len(points) == 3:
-                                v = dom.createElement('v')
-                                v.attributes['x'] = str(float(points[0]) * scale[0])
-                                v.attributes['y'] = str(float(points[1]) * scale[1])
-                                v.attributes['z'] = str(float(points[2]) * scale[2])
-                                trimesh_vertices.appendChild(v)
+                                vertices.append((float(points[0]) * scale[0],
+                                                 float(points[1]) * scale[1],
+                                                 float(points[2]) * scale[2]))
+                                
                         # get texture coordinate points
                         if ifs.getElementsByTagName('TextureCoordinate'):
                             tex_coordinate = ifs.getElementsByTagName('TextureCoordinate')[0]
@@ -184,7 +154,12 @@ class Asteroid(object):
                                                   (float(point3[0]), float(point3[1])))
                                     self._texture_coords.append(tex_coords)
                         break
-        self.xode_string = root.toxml()
+                    
+        # make ODE TriMesh object
+        data = ode.TriMeshData()
+        data.build(vertices, triangles)
+        self.geom = ode.GeomTriMesh(data=data, space=self.space)
+        self.geom.name = self.name
         
 
 ## SphericalAsteroid class
@@ -193,20 +168,20 @@ class Asteroid(object):
 #  By default, the geometry is a sphere of radius 100.
 #
 #  @author John Glover
-class SphericalAsteroid(Asteroid):
-    ## Constructor. Initialises the XODE string for this object to a sphere
-    #  of radius 100
-    def __init__(self):
-        self.xode_string = """
-        <xode name="alife" version="1.0r23" 
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-              xsi:noNamespaceSchemaLocation="http://tanksoftware.com/xode/1.0r23/xode.xsd">
-            <world>
-                <space>
-                    <geom name="Asteroid">
-                        <sphere radius="100" />
-                    </geom>
-                </space>
-            </world>
-        </xode>
-        """
+#class SphericalAsteroid(Asteroid):
+#    ## Constructor. Initialises the XODE string for this object to a sphere
+#    #  of radius 100
+#    def __init__(self):
+#        self.xode_string = """
+#        <xode name="alife" version="1.0r23" 
+#              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+#              xsi:noNamespaceSchemaLocation="http://tanksoftware.com/xode/1.0r23/xode.xsd">
+#            <world>
+#                <space>
+#                    <geom name="Asteroid">
+#                        <sphere radius="100" />
+#                    </geom>
+#                </space>
+#            </world>
+#        </xode>
+#        """
