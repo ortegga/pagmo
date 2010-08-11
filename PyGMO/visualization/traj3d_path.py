@@ -166,12 +166,14 @@ class Path(Object):
       
       # Second pass to set data
       self.__vertexDV = []
+      self.__valueDV  = []
       for i in range( len( self.__t ) ):
          if linalg.norm( self.__dv[i] ) > 0.:
             r  = self.__r[i]
             dv = self.__dv[i]
             self.__vertexDV.append( r )
             self.__vertexDV.append( r + dv*norm_dv )
+            self.__valueDV.append( linalg.norm(dv) )
 
       # Convert to numpy
       self.__vertexDV = array( self.__vertexDV, dtype = float32 )
@@ -204,9 +206,13 @@ class Path(Object):
          self.__vertex.append( [ r[0], r[1], r[2] ] )
          center += r
 
+         # Take into account dv
+         _r = self.__r[ i ]
+         _v = self.__v[ i ] + self.__dv[ i ]
+
          # Add interpolated points
          for j in frange( 0., delta, step ):
-            r, v = keplerian_toolbox.propagate_kep( self.__r[ i+0 ], self.__v[ i+0 ], j, self.mu )
+            r, v = keplerian_toolbox.propagate_kep( _r, _v, j, self.mu )
             self.__vertex.append( [ r[0], r[1], r[2] ] )
             center += r
 
@@ -261,7 +267,7 @@ class Path(Object):
       r  = self.__r[i]
       v  = self.__v[i]
       dv = self.__dv[i]
-      r, v = keplerian_toolbox.propagate_kep( r, v, t, self.mu )
+      r, v = keplerian_toolbox.propagate_kep( r, v+dv, t, self.mu )
 
       return array(r), array(v), dv
 
@@ -282,14 +288,16 @@ class Path(Object):
       glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vbo )
       glVertexPointer( 3, GL_FLOAT, 0, None )
       glDrawArrays( GL_LINE_STRIP, 0, len( self.__vertex ) )
+      glDisableClientState( GL_VERTEX_ARRAY )
 
       # Render DV for DSM
       if self.__vboDV != None:
+         glEnableClientState(GL_VERTEX_ARRAY)
          glColor3d( 0.0, 0.8, 0.8 )
          glBindBuffer( GL_ARRAY_BUFFER_ARB, self.__vboDV )
          glVertexPointer( 3, GL_FLOAT, 0, None )
          glDrawArrays( GL_LINES, 0, len( self.__vertexDV ) )
-      glDisableClientState( GL_VERTEX_ARRAY )
+         glDisableClientState( GL_VERTEX_ARRAY )
 
       r, v, dv = self.position( self.curt )
 
