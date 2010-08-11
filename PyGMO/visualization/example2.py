@@ -26,6 +26,11 @@
 from PyGMO import visualization
 
 
+"""
+Example of using more complex data files with multiple gravity assists.
+"""
+
+
 # Run some tests
 if __name__ == "__main__":
 

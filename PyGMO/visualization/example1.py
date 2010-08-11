@@ -26,6 +26,11 @@
 from PyGMO import visualization
 
 
+"""
+Example of the simplest possible trajectory with 2 points and some planets.
+"""
+
+
 # Run some tests
 if __name__ == "__main__":
    data = ( 8273.267,
