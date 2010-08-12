@@ -74,14 +74,14 @@ class Planet(Object):
       self.__font    = None
       self.__flyby   = info['flyby'] if info.has_key('flyby') else None
       self.__playspeed = 1.
-      self.__t0      = 0.
+      self.__start   = mjd2000[0]*24.*3600.
 
       # Generate data
       start    = mjd2000[0]
       data     = []
       for mjd in mjd2000:
          r, v = astro_toolbox.Planet_Ephemerides_Analytical( mjd, planet )
-         data.extend( [ mjd-start, r[0], r[1], r[2], v[0], v[1], v[2], 0., 0., 0. ] )
+         data.extend( [ mjd, r[0], r[1], r[2], v[0], v[1], v[2], 0., 0., 0. ] )
 
       # Create path
       self.__path    = Path( data, 24.*3600., 1000., 1000., 1., mu, info['colour'] )
@@ -112,10 +112,9 @@ class Planet(Object):
       "Sets the speed"
       self.__playspeed = speed
 
-   def setPosition( self, t, t0 ):
+   def setPosition( self, t ):
       "Sets the position."
       self.__path.setPosition( t )
-      self.__t0 = t0
 
    def position( self, t ):
       "Gets the position and velocity vectors of the trajectory at a given instant."
@@ -137,7 +136,7 @@ class Planet(Object):
          if self.__flyby == None:
             return
          for flyby in self.__flyby:
-            if abs( self.__path.curt-flyby['mjd2000']+self.__t0 ) < self.__playspeed*2.5:
+            if abs( self.__path.curt-flyby['mjd2000'] ) < self.__playspeed*2.5:
                y = y - self.__fontsize-5
                glRasterPos( self.__pos[0]+5, y )
                self.__font.Render( flyby['date'] )

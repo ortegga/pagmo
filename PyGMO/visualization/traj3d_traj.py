@@ -190,7 +190,7 @@ class Trajectory(Object):
       self.__curt = t
       self.__path.setPosition( t )
       for pnt in self.__planets:
-         pnt.setPosition( t - self.__t[0] + self.__planetsStart, self.__t[0] )
+         pnt.setPosition( t )
 
    def restart( self ):
       "Restarts the playback."

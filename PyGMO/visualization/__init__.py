@@ -128,20 +128,21 @@ class Trajectory3D:
             # Extract data
             name  = row[0]
             if is_float_re(row[1]):
-               date = row[1]
                mjd2000 = float(row[1])
+               mjd2000_date = "%.2f" % mjd2000
             else:
                date  = dateutil.parser.parse( row[1] )
                mjd2000 = convert_date( date.year, date.month, date.day )
+               mjd2000_date = row[1]
             dv    = float(row[2])
 
             # Process data
             p     = self.__planetFromName( name )
             num   = p['num']
             if planets.has_key(num):
-               planets[num]['flyby'].append( { 'mjd2000' : mjd2000*24.*3600., 'date' : row[1], 'dv' : dv } )
+               planets[num]['flyby'].append( { 'mjd2000' : mjd2000*24.*3600., 'date' : mjd2000_date, 'dv' : dv } )
             else:
-               p['flyby']     = [ { 'mjd2000' : mjd2000*24.*3600., 'date' : row[1], 'dv' : dv } ]
+               p['flyby']     = [ { 'mjd2000' : mjd2000*24.*3600., 'date' : mjd2000_date, 'dv' : dv } ]
                planets[num]   = p
          
          # Final touches
