@@ -353,14 +353,20 @@ class ALifeViewer(object):
         if key == 's':
             self._capture_screen = not self._capture_screen
             print "Screen Capture: " + (self._capture_screen and "on" or "off")
-        if key == 'c':        
+        elif key == 'c':        
             self._center_on_obj = not self._center_on_obj
             print "Centering camera: " + (self._center_on_obj and "on" or "off")
-        if key in ['x', 'q']:
+        elif key in ['x', 'q']:
             sys.exit()
-        if key == 'v':
+        elif key == 'v':
             self._mouse_view = not self._mouse_view
-            print "Mouse view:" + (self._mouse_view and "on" or "off")
+            print "Mouse view: " + (self._mouse_view and "on" or "off")
+        elif key == 'r':
+            print "Reset"
+            if self.exp:
+                self.exp.reset()
+            else:
+                self.env.reset()
             
     ## Callback function for 'special' keys
     #  Up and down arrow keys are used for zooming in and out respectively
@@ -430,6 +436,7 @@ class ALifeViewer(object):
         print "Press 'c' to toggle camera centering on the robot on/off"
         print "Press 's' to toggle screen capturing on/off"
         print "Press 'v' to toggle mouse view on/off"
+        print "Press 'r' to reset the current Experiment/Environment"
         print "Press the up arrow to zoom in"
         print "Press the down arrow to zoom out"
         print "Move the mouse to move the camera around the robot"
@@ -441,8 +448,7 @@ if __name__ == "__main__":
     from asteroid import Asteroid
     
     env = ALifeEnvironment()
-    robot_position = [0, 150, 0]
-    robot = Robot(env.world, env.space, robot_position)
+    robot = Robot(env.world, env.space, [0, 150, 0])
     env.set_robot(robot)
     asteroid = Asteroid(env.space, "models/asteroid_textured.x3d")
     env.set_asteroid(asteroid)

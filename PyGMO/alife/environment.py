@@ -36,7 +36,6 @@ import numpy as np
 #
 #  Handles all Physics simulation. 
 #  It loads the robot and asteroid models and puts them into an ODE world. 
-#  Code is based on the ode.environment module from PyBrain
 #
 #  @author John Glover
 class ALifeEnvironment(object):
