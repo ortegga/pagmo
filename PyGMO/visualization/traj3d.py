@@ -143,7 +143,8 @@ class Camera:
    def absolute( self, yaw, pitch, roll ):
       self.theta  = yaw
       self.phi    = pitch
-      self.phi    = math.fmod( self.phi, math.pi/2. )
+      if abs(self.phi > math.pi/2.):
+         self.phi    = math.fmod( self.phi, math.pi/2. )
       #self.roll   = roll
       self.__calc()
 
@@ -242,6 +243,11 @@ class traj3d:
       self.keymap[ 'c' ]      = self.__key_autoZoom
       self.keymap[ 'z' ]      = self.__key_zoomIn
       self.keymap[ 'Z' ]      = self.__key_zoomOut
+      self.keymap[ '2' ]      = self.__key_face2
+      self.keymap[ '4' ]      = self.__key_face4
+      self.keymap[ '5' ]      = self.__key_face5
+      self.keymap[ '6' ]      = self.__key_face6
+      self.keymap[ '8' ]      = self.__key_face8
 
       # Special keymap
       self.specialkeymap = {}
@@ -271,6 +277,21 @@ class traj3d:
    def __key_autoZoom( self, p, x, y ):
       if p:
          self.autozoom()
+         self.__objScale()
+         self.redisplay()
+   def __key_face2( self, p, x, y ):
+      self.__key_face( p, 0., -math.pi/2. )
+   def __key_face8( self, p, x, y ):
+      self.__key_face( p, 0., +math.pi/2. )
+   def __key_face4( self, p, x, y ):
+      self.__key_face( p, -math.pi/2., 0. )
+   def __key_face6( self, p, x, y ):
+      self.__key_face( p, +math.pi/2., 0. )
+   def __key_face5( self, p, x, y ):
+      self.__key_face( p, 0., 0. )
+   def __key_face( self, p, roll, pitch, yaw=0. ):
+      if p:
+         self.__camera.absolute( roll, pitch, yaw )
          self.__objScale()
          self.redisplay()
 
