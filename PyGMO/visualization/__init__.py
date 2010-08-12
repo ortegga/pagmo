@@ -30,6 +30,7 @@ import traj3d
 import traj3d_traj
 import traj3d_planet
 
+import re
 import csv
 import dateutil.parser
 
@@ -126,8 +127,12 @@ class Trajectory3D:
 
             # Extract data
             name  = row[0]
-            date  = dateutil.parser.parse( row[1] )
-            mjd2000 = convert_date( date.year, date.month, date.day )
+            if is_float_re(row[1]):
+               date = row[1]
+               mjd2000 = float(row[1])
+            else:
+               date  = dateutil.parser.parse( row[1] )
+               mjd2000 = convert_date( date.year, date.month, date.day )
             dv    = float(row[2])
 
             # Process data
@@ -219,6 +224,11 @@ class Trajectory3D:
       self.traj.repeat( enable )
 
 
+_float_regexp = re.compile(r"^[-+]?(?:\b[0-9]+(?:\.[0-9]*)?|\.[0-9]+\b)(?:[eE][-+]?[0-9]+\b)?$")
+def is_float_re(str):
+   return re.match(_float_regexp, str)!=None
+
+
 def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
    JDN      = (1461. * (Y + 4800. + (M - 14.)/12.))/4. +(367. * (M - 2. - 12. * ((M - 14.)/12.)))/12. - (3. * ((Y + 4900. + (M - 14.)/12.)/100.))/4. + D - 32075.
    JD       = JDN + (HR-12.)/24. + MIN/1440. + SEC/86400.
@@ -231,9 +241,10 @@ def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
 if __name__ == "__main__":
 
    # Create the engine
-   traj = Trajectory3D( "EarthMarsDSM.txt", 640, 480,
+   traj = Trajectory3D( "EarthEarth_LEG1.csv",
+         640, 480,
          24.*3600., 1000., 1000., 1000. ) # Unit conversions: days->s, km->m
-   traj.addPlanets( "EarthMarsDSM_flybyinfo.txt" )
+   traj.addPlanets( "EarthEarth_LEG1_flybyinfo.txt" )
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
