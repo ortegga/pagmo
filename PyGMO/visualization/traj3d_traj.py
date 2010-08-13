@@ -103,6 +103,7 @@ class Trajectory(Object):
          self.__axes.setFont( self.font )
       for pnt in self.__planets:
          pnt.setFont( self.font, size )
+      self.__path.setFont( self.font, size )
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -128,6 +129,10 @@ class Trajectory(Object):
       "Gets the size of the object."
       return self.__path.size()
 
+   def dvLength( self, dvlen ):
+      "Sets the length of the DV arrows."
+      self.__path.dvLength( dvlen )
+
    def addPlanets( self, planets ):
       "Adds some planets."
       mjd2000 = self.__t[0]/(24.*3600)
@@ -138,6 +143,7 @@ class Trajectory(Object):
       for pnt in self.__planets:
          pnt.setFont( self.font, self.fontsize )
          pnt.speed( self.playspeed )
+      self.__path.speed( self.playspeed )
       """
       self.setPosition( self.__t[0] )
       print("START")

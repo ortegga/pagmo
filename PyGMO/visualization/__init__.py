@@ -156,6 +156,12 @@ class Trajectory3D:
 
       self.traj.addPlanets( planets )
 
+   def dvLength( self, dvlen ):
+      """
+      Sets the length of the delta-velocity arrows. Units of dvlen are pixels.
+      """
+      self.traj.dvLength( dvlen )
+
    def vectors( self, enable ):
       """
       Enables visualization of vectors.

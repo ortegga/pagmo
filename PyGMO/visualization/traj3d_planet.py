@@ -92,6 +92,7 @@ class Planet(Object):
    def setFont( self, font, size ):
       self.__font       = font
       self.__fontsize   = size
+      self.__path.setFont( font, size )
 
    def showVectors( self, enable ):
       self.__path.showVectors( enable )
@@ -146,9 +147,9 @@ class Planet(Object):
                      y = y - self.__fontsize-5
                      glRasterPos( self.__pos[0]+5, y )
                      if dv > 10**-3:
-                        self.__font.Render( "DV: %.2E km/s" % dv )
+                        self.__font.Render( "ΔV: %.2E km/s" % dv )
                      else:
-                        self.__font.Render( "DV: %.2E m/s" % (dv*1000) )
+                        self.__font.Render( "ΔV: %.2E m/s" % (dv*1000) )
 
 
 

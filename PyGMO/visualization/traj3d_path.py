@@ -64,6 +64,8 @@ class Path(Object):
       self.__vboDV = None
       self.__zoom = 1.
       self.__colour = colour
+      self.__font = None
+      self.__dv_len = 50
 
       # Make sure data matches
       if len( data ) % 10 != 0:
@@ -106,7 +108,6 @@ class Path(Object):
 
       # Animation stuff
       self.playing   = True
-      self.playspeed = (self.__t[ -1 ] - self.__t[ 0 ]) / 10.
       self.curt    = self.__t[ 0 ]
       self.__rad     = dmax / 100.
       self.__showvec = False
@@ -124,6 +125,13 @@ class Path(Object):
          glDeleteBuffers( 1, GLuint( self.__vbo ) )
       if self.__vboDV != None:
          glDeleteBuffers( 1, GLuint( self.__vboDV ) )
+
+   def setFont( self, font, fontsize ):
+      self.__font = font
+      self.__fontSize = fontsize
+
+   def speed( self, playspeed ):
+      self.__playspeed = playspeed
 
    def showVectors( self, enable ):
       self.__showvec = enable
@@ -146,6 +154,12 @@ class Path(Object):
       "Adjusts how many subdivisions to use."
       self.__genTraj( subdivide )
 
+   def dvLength( self, dvlen ):
+      """
+      Sets the length of the largets DV arrow.
+      """
+      self.__dv_len = dvlen
+
    def __genDV( self ):
       """
       Generates the DV markers from the data.
@@ -162,18 +176,25 @@ class Path(Object):
       # Figure out how to normalize
       if max_dv == 0.: # Must actually have dv
          return
-      norm_dv = 1./max_dv * (25. / self.__zoom)
+      norm_dv = 1./max_dv * (self.__dv_len / self.__zoom)
       
       # Second pass to set data
       self.__vertexDV = []
       self.__valueDV  = []
+      self.__timeDV   = []
+      self.__posDV    = []
+      self.__renderDV = []
       for i in range( len( self.__t ) ):
          if linalg.norm( self.__dv[i] ) > 0.:
             r  = self.__r[i]
             dv = self.__dv[i]
+            n  = linalg.norm(dv)
             self.__vertexDV.append( r )
             self.__vertexDV.append( r + dv*norm_dv )
-            self.__valueDV.append( linalg.norm(dv) )
+            self.__valueDV.append( n )
+            self.__timeDV.append( self.__t[i] )
+            self.__posDV.append( None )
+            self.__renderDV.append( "ΔV: %0.2E km/s" % n )
 
       # Convert to numpy
       self.__vertexDV = array( self.__vertexDV, dtype = float32 )
@@ -299,6 +320,13 @@ class Path(Object):
          glDrawArrays( GL_LINES, 0, len( self.__vertexDV ) )
          glDisableClientState( GL_VERTEX_ARRAY )
 
+         for i in range(len(self.__timeDV)):
+            if abs( self.curt - self.__timeDV[i] ) < self.__playspeed*2.5:
+               v   = self.__vertexDV[i*2+1]
+               self.__posDV[i] = gluProject( v[0], v[1], v[2] )
+            else:
+               self.__posDV[i] = None
+
       r, v, dv = self.position( self.curt )
 
       if self.__showvec:
@@ -323,5 +351,21 @@ class Path(Object):
       glTranslatef( r[0], r[1], r[2] )
       glutSolidSphere( self.__rad, 10, 10 )
       glPopMatrix()
+
+
+   def displayOver( self, width, height ):
+      if self.__vboDV == None:
+         return
+
+      glColor3d( 0.0, 0.8, 0.8 )
+      for i in range(len(self.__posDV)):
+         if self.__posDV[i] == None:
+            continue
+
+         pos = self.__posDV[i]
+         x   = pos[0]+5
+         y   = pos[1]-5
+         glRasterPos( x, y )
+         self.__font.Render( self.__renderDV[i] )
 
 
