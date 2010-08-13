@@ -248,10 +248,10 @@ def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
 if __name__ == "__main__":
 
    # Create the engine
-   traj = Trajectory3D( "EarthEarth_LEG1.csv",
+   traj = Trajectory3D( "EarthEarthJupiter.csv",
          640, 480,
          24.*3600., 1000., 1000., 1000. ) # Unit conversions: days->s, km->m
-   traj.addPlanets( "EarthEarth_LEG1_flybyinfo.txt" )
+   traj.addPlanets( "EarthEarthJupiter_flybyinfo.txt" )
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
