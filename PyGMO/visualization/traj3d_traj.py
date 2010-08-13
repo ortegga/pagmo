@@ -175,11 +175,11 @@ class Trajectory(Object):
 
    def faster( self, factor=1.1 ):
       "Speeds up the animation."
-      self.speed( self.playespeed * factor )
+      self.speed( self.playspeed * factor )
    
    def slower( self, factor=1.1 ):
       "Slows down the animation."
-      self.speed( self.playespeed / factor )
+      self.speed( self.playspeed / factor )
 
    def speed( self, speed ):
       "Sets the animation speed."
