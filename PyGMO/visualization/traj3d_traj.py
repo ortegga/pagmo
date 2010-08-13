@@ -94,9 +94,11 @@ class Trajectory(Object):
       else:
          self.__axes = None
 
-   def fontsize( self, size ):
+   def fontsize( self, size, font=None ):
       "Sets the font size."
-      self.font = FTGL.PixmapFont( os.path.join( os.path.dirname(__file__), "Vera.ttf" ) )
+      if font==None:
+         font = os.path.join( os.path.dirname(__file__), "FreeSans.ttf" )
+      self.font = FTGL.PixmapFont( font )
       self.font.FaceSize( size )
       self.fontsize = size
       if self.__axes != None:

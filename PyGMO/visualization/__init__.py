@@ -160,6 +160,12 @@ class Trajectory3D:
 
       self.traj.addPlanets( planets )
 
+   def setFont( self, size, font=None ):
+      """
+      Sets the font and it's size. If font is not defined it uses the packaged font.
+      """
+      self.traj.fontsize( size, font )
+
    def dvLength( self, dvlen ):
       """
       Sets the length of the delta-velocity arrows. Units of dvlen are pixels.
