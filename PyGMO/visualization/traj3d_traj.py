@@ -644,3 +644,4 @@ class Axes(Object):
       glRasterPos( 5., height - margin*0.75 )
       self.__font.Render( "%.0E %s" % (vstep / self.__pos_val, self.__pos_sym) )
 
+

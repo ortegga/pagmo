@@ -194,7 +194,7 @@ class Path(Object):
             self.__valueDV.append( n )
             self.__timeDV.append( self.__t[i] )
             self.__posDV.append( None )
-            self.__renderDV.append( "ΔV: %0.2E km/s" % n )
+            self.__renderDV.append( "ΔV: %0.2E km/s" % (n/1000.) )
 
       # Convert to numpy
       self.__vertexDV = array( self.__vertexDV, dtype = float32 )
