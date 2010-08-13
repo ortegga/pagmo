@@ -39,7 +39,7 @@ from pybrain.rl.experiments import Experiment
 from pybrain.rl.environments import EpisodicTask
 from pybrain.rl.environments.ode import sensors
 from pybrain.rl.agents.agent import Agent
-from pybrain.structure import RecurrentNetwork, LinearLayer, FullConnection
+from pybrain.structure import RecurrentNetwork, LinearLayer, SigmoidLayer, FullConnection
 import ode
 import numpy as np
 import random
@@ -61,14 +61,14 @@ class ALifeExperiment(Experiment):
         #  at each step.
         self.step_size = 0.04
         self.task._stable_distance = self.step_size / 400
-        ## @var _env The ODE Environment
-        self._env = env
+        ## @var env The ODE Environment
+        self.env = env
             
-    ## Change the default behaviour of _oneInteraction so that the reward
-    #  is only given to the agent after each task evaluation. 
+    ## Change the default behaviour of _oneInteraction as we don't need to 
+    #  directly reward the agent. PaGMO will assess the Agent's actions.
     def _oneInteraction(self):
         self.stepid += 1
-        self._env.step(self.step_size)
+        self.env.step(self.step_size)
         self.agent.integrateObservation(self.task.getObservation())
         self.task.performAction(self.agent.getAction())
         
@@ -84,7 +84,6 @@ class ALifeExperiment(Experiment):
                 self._oneInteraction()
             except Exception as e:
                 print "Warning: Error in experiment:", e
-                self.agent.giveReward(0)
                 return 0
         result = self.task.getReward()
         self.agent.giveReward(result)
@@ -92,11 +91,12 @@ class ALifeExperiment(Experiment):
     
     ## @return The ALifeEnvironment used by this experiment
     def get_environment(self):
-        return self._env
+        return self.env
     
     ## Reset this Experiment. Automatically called when perform() is called.
     def reset(self):
-        self._env.reset()
+        self.env.reset()
+        self.agent.reset()
         self.task.reset()
 
 
@@ -115,11 +115,9 @@ class ALifeAgent(Agent):
     #  neural network. 
     def __init__(self, num_observations=4):
         ## @var _last_action The last action that the Agent produced 
-        self._last_action = None
+        self._last_action = np.zeros(num_observations)
         ## @var _last_observation The last observation that the Agent received
-        self._last_observation = None
-        ## @var _last_reward The last reward that the Agent received
-        self._last_reward = None
+        self._last_observation = np.zeros(num_observations)
         ## @var _num_observations The number of observations that will be returned
         #  from the Task sensors, and the number of action parameters that the Agent
         #  will produce. Determines the number of inputs and outputs to the Agent's
@@ -138,14 +136,13 @@ class ALifeAgent(Agent):
         # create and add the output layer
         output_layer = LinearLayer(self._num_observations)
         self._network.addOutputModule(output_layer)
-        # hidden layer has a random number of neurons
-        hidden_layer = LinearLayer(10)
+        # hidden layer has 10 neurons
+        hidden_layer = SigmoidLayer(10)
         self._network.addModule(hidden_layer)
         # add connections
-        input_connection = FullConnection(input_layer, hidden_layer)
-        self._network.addConnection(input_connection)
-        output_connection = FullConnection(hidden_layer, output_layer)
-        self._network.addConnection(output_connection)
+        self._network.addConnection(FullConnection(input_layer, hidden_layer))
+        self._network.addConnection(FullConnection(hidden_layer, output_layer))
+        self._network.addRecurrentConnection(FullConnection(output_layer, hidden_layer))
         # initialise modules
         self._network.sortModules()
     
@@ -158,13 +155,8 @@ class ALifeAgent(Agent):
     def getAction(self):
         self._last_action = self._network.activate(self._last_observation)
         return self._last_action
-    
-    ## Update the reward received by the Agent
-    #  @var reward The last reward received by the Agent
-    def giveReward(self, reward):
-        self._last_reward = reward
         
-    ##  @return The Agent's neural network weights
+    ## @return The Agent's neural network weights
     def get_weights(self):
         return self._network.params
         
@@ -177,9 +169,14 @@ class ALifeAgent(Agent):
         for i in range(len(weights)):
             self._network.params[i] = weights[i]
              
-    ##  @return The number of weights in the Agent's neural network
+    ## @return The number of weights in the Agent's neural network
     def num_weights(self):
         return len(self._network.params)
+    
+    ## Resets the Agent.
+    #  Just resets the history of the Agent's neural network
+    def reset(self):
+        self._network.reset()
     
     
 ## JointActuator class
@@ -190,7 +187,7 @@ class ALifeAgent(Agent):
 #  The main difference is that the update method applies forces to
 #  each joint using joint motors instead of directly applying torque
 #  to the joints. It was found that this greatly improved the stability
-#  of the simuations.
+#  of the simulations.
 #
 #  The connect method also takes a list of joints as input, rather than
 #  getting this information directly from an Environment object.

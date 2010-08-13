@@ -92,15 +92,15 @@ if __name__ == "__main__":
     # behaviour in our robot
     prob = ALifeProblem()
     # define the algorithm used to optimise the problem's objective function
-    algo = algorithm.de(50)
+    algo = algorithm.de(75)
     #algo = algorithm.ihs(50)
     # define the archipelago
     topo = topology.ring()
     num_islands = 3
-    num_individuals = 5
+    num_individuals = 10
     a = archipelago(prob, algo, num_islands, num_individuals, topo)
     # allow to evolve
-    a.evolve(2)
+    a.evolve(1)
     a.join()
     # get the weights from the winning robot
     max_distance_moved = 0
