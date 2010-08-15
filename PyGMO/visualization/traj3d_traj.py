@@ -149,14 +149,14 @@ class Trajectory(Object):
       """
       self.setPosition( self.__t[0] )
       print("START")
-      print( self.__path.position( self.__path.curt )[0] )
+      p = self.__path.position( self.__path.curt )[0]
       for pnt in self.__planets:
-         print( pnt.name(), pnt.position( self.__path.curt )[0] )
+         print( "%s: err = %.6E km" % (pnt.name(), linalg.norm( pnt.position( self.__path.curt )[0] - p )/1000) )
       self.setPosition( self.__t[-1] )
       print("STOP")
-      print( self.__path.position( self.__path.curt )[0] )
+      p = self.__path.position( self.__path.curt )[0]
       for pnt in self.__planets:
-         print( pnt.name(), pnt.position( self.__path.curt )[0] )
+         print( "%s: err = %.6E km" % (pnt.name(), linalg.norm( pnt.position( self.__path.curt )[0] - p )/1000) )
       """
 
    def display( self ):

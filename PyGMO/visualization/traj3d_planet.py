@@ -80,6 +80,8 @@ class Planet(Object):
       start    = mjd2000[0]
       data     = []
       for mjd in mjd2000:
+         #r_2000, v_2000 = astro_toolbox.Planet_Ephemerides_Analytical( 0, planet )
+         #r, v = keplerian_toolbox.propagate_kep( r_2000, v_2000, mjd*24.*3600., 1.32712440018e+11 )
          r, v = astro_toolbox.Planet_Ephemerides_Analytical( mjd, planet )
          data.extend( [ mjd, r[0], r[1], r[2], v[0], v[1], v[2], 0., 0., 0. ] )
 
@@ -124,7 +126,10 @@ class Planet(Object):
    def display( self ):
       "Displays the trajectory."
       p = self.position(self.__path.curt)[0]
-      self.__pos = gluProject( p[0], p[1], p[2] )
+      try:
+         self.__pos = gluProject( p[0], p[1], p[2] )
+      except ValueError:
+         self.__pos = (0.,0.,0.)
       self.__path.display()
 
    def displayOver( self, width, height ):
