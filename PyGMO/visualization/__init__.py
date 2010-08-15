@@ -43,6 +43,47 @@ class Trajectory3D:
    def __init__( self, data, width=800, height=600, conv_t=1., conv_r=1., conv_v=1., conv_dv=1. ):
       """
       Constructor for the Trajectory3D.
+
+      data can either be a path name or can be a list of data in the following format:
+
+      t, r, v, dv
+
+      Where t is the time, r is position (with 3 components), v is velocity
+       (with 3 components) and dv is delta velocity (with 3 components). An
+       example would be:
+       [ 0, 100, 100, 0, 50, 50, 0, 0, 0, 0 ]
+       The length of the data must me a multiple of 10. If the data is read
+       from a file in must be a csv file with each row containing the same
+       format as when passed from a list.
+
+      To convert units to SI use the conv_t, conv_r, conv_v and conv_dv
+       parameters. These will be multiplied by the proper parts of the data
+       to convert the unit to SI. Internally all the data is SI.
+
+      By default a trajectory does not have axes, does not display the origin
+       and does not repeat.
+
+      Example usage:
+
+      # Load data from a file in SI units
+      traj1 = Trajectory3D( 'EarthEarthJupiter.csv' )
+
+      # Load data from preprocessed data with units in days, km, km/s and km/s
+      #  respectively.
+      traj2 = Trajectory3D( some_data, 1024, 768, 24.*3600., 1000., 1000., 1000. )
+
+      # Add planets
+      traj1.addPlanets( 'EarthEarthJuptire_flyby.csv' ) # Load planets from file
+      traj2.addPlanets( [ 'Earth', 'Mars' ] ) # Add them by name
+
+      # Change some defaults
+      traj1.axes( True )
+      traj1.repeat( True )
+      traj2.setUnits( 'km', 'd', 'km/s' )
+
+      # Display them both (one after the other)
+      traj1.start()
+      traj2.start()
       """
       # Handle data
       if type(data).__name__ == 'str':
@@ -70,6 +111,24 @@ class Trajectory3D:
    def setUnits( self, distance, time, velocity ):
       """
       Sets the units to display.
+
+      Valid units are:
+
+      * Distance
+         - 'm' : meters
+         - 'km' : kilometers
+      * Time
+         - 's' : seconds
+         - 'min' : minutes
+         - 'h' : hours
+         - 'd' : days
+         - 'y' : years
+      * Velocity
+         - 'm/s' : meters/second
+         - 'km/s' : kilometers/second
+         - 'km/h' : kilometers/hour
+      
+      Example: setUnits( 'km', 'd', 'km/s' )
       """
       self.traj.setUnits( distance, time, velocity )
 
@@ -86,6 +145,8 @@ class Trajectory3D:
       Resizes the window.
 
       Allows you to define the size of the window in pixels.
+
+      Example: resize( 800, 600 )
       """
       self.engine.reshape( width, height )
 
@@ -118,6 +179,18 @@ class Trajectory3D:
 
       Alternatively if you pass a filename as mjd2000 it will load the csv
        file and use that.
+
+      Valid planets are:
+      * Mercury
+      * Venus
+      * Earth
+      * Mars
+      * Jupiter
+      * Saturn
+      * Uranus
+      * Neptune
+
+      Example: addPlanets( [ 'earth', 'mercury' ] )
       """
       if type(planets_data).__name__ == 'str':
          data        = planets_data
@@ -163,30 +236,38 @@ class Trajectory3D:
    def setFont( self, size, font=None ):
       """
       Sets the font and it's size. If font is not defined it uses the packaged font.
+
+      Example: setFont( 16, '/usr/share/fonts/TTF/FreeSans.ttf' )
       """
       self.traj.fontsize( size, font )
 
-   def dvLength( self, dvlen ):
+   def dvLength( self, dvlen=50 ):
       """
       Sets the length of the delta-velocity arrows. Units of dvlen are pixels.
+
+      Example: dvLength( 100 ) # 100 Pixel long for the largest arrow
       """
       self.traj.dvLength( dvlen )
 
-   def vectors( self, enable ):
+   def vectors( self, enable=False ):
       """
       Enables visualization of vectors.
 
-      These vectors are represent position from origin and velocity.
+      These vectors are represent position from origin and velocity. All
+       objects including planets and main trajectory have velocity vector.
+       Only the main object has the position vector.
       """
       self.traj.showVectors( enable )
 
-   def controls( self, enable ):
+   def controls( self, enable=True ):
       """
       Hides or shows the playback controls.
+
+      These controls can also be toggled with 'h' manually.
       """
       self.traj.controls( enable )
 
-   def axes( self, enable ):
+   def axes( self, enable=False ):
       """
       Shows axes.
 
@@ -194,7 +275,7 @@ class Trajectory3D:
       """
       self.traj.axes( enable )
 
-   def origin( self, enable ):
+   def origin( self, enable=False ):
       """
       Sets visual indicator of the origin.
 
@@ -229,14 +310,16 @@ class Trajectory3D:
       Sets the duration of the animation.
 
       The duration is in seconds and represents how long the total animation should last.
+
+      Example: duration( 60 ) # Last for 60 seconds
       """
       self.traj.duration = duration
 
-   def repeat( self, enable ):
+   def repeat( self, enable=False ):
       """
       Sets animation repetition.
 
-      This just makes the animation loop all the time.
+      This just makes the animation loop all the time. By default it does not repeat.
       """
       self.traj.repeat( enable )
 
