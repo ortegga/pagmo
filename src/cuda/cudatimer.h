@@ -10,49 +10,53 @@
 #include "boost/shared_ptr.hpp"
 
 
-class CudaTimer;
-
-class CudaTimesKeeper 
+namespace cuda
 {
- public:
-  ~CudaTimesKeeper();
-  static CudaTimesKeeper & GetInstance();
-  bool AddTime(CudaTimer & t);
- private:
-  CudaTimesKeeper(std::ostream & os);
-  CudaTimesKeeper(CudaTimesKeeper & ); // no copy
-  //  friend std::ostream & operator <<(std::ostream & os, const CudaTimesKeeper & tk );
-  std::ostream & m_ostream;
-  static boost::shared_ptr<CudaTimesKeeper> m_instancePtr;
-};
+  class timer;
 
-class CudaTimer
-{
- public: 
-  CudaTimer(const std::string & description, cudaStream_t st = 0);
-  virtual bool Start();
-  virtual bool Stop();
-  virtual bool Started() { return m_started;} 
-  virtual float GetElapsed() { return m_elapsed;} 
-  virtual ~CudaTimer();
-  friend std::ostream & operator <<(std::ostream & os, const CudaTimer & t);
- protected:
-  bool m_started;
-  std::string m_description;
-  cudaEvent_t m_start, m_stop;
-  cudaStream_t m_stream;
-  float m_elapsed;
-};
-
-class ScopedCudaTimer : public CudaTimer
-{
- public:
- ScopedCudaTimer(const std::string & description, cudaStream_t st = 0) 
-   : CudaTimer(description, st)
+  class times_keeper 
   {
-    Start();
-  }
-  ~ScopedCudaTimer();
-};
+  public:
+    ~times_keeper();
+    static times_keeper & get_instance();
+    bool add_time(timer & t);
+  private:
+    times_keeper(std::ostream & os);
+    times_keeper(times_keeper & ); // no copy
+    std::ostream & m_ostream;
+    static boost::shared_ptr<times_keeper> m_ptr;
+  };
 
+  class timer
+  {
+  public: 
+    timer(const std::string & description, cudaStream_t st = 0);
+    virtual bool start();
+    virtual bool stop();
+    virtual bool started() { return m_started;} 
+    virtual float get_elapsed() { return m_elapsed;} 
+    virtual ~timer();
+    friend std::ostream & operator <<(std::ostream & os, const timer & t);
+  protected:
+
+    cudaEvent_t m_start;
+    cudaEvent_t  m_stop;
+    bool m_started;
+    std::string m_description;
+    float m_elapsed;
+    cudaStream_t m_stream;
+
+  };
+
+  class scoped_timer : public timer
+  {
+  public:
+  scoped_timer(const std::string & description, cudaStream_t st = 0) 
+    : timer(description, st)
+      {
+	start();
+      }
+    ~scoped_timer();
+  };
+}
 #endif

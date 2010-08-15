@@ -3,15 +3,28 @@
 #ifndef __PAGMO_CUDA_LOGGER__
 #define __PAGMO_CUDA_LOGGER__
 
-#define LOG_CUDA_INFO
-#define LOG_CUDA_ERROR
+using namespace std;
 
-#ifdef LOG_CUDA_INFO
-#define LOG_INFO(X) printf(X)
-#endif 
+class Logger : public ostream
+{
+ public:
+  Logger ()
+    {
+      m_bActivated = true;
+    }
+  bool m_bActivated;
+};
 
-#ifdef LOG_CUDA_ERROR
-#define LOG_WARN(X) printf(X)
-#endif
+template <class T>
+ostream & operator << (Logger & logger, const T & t)
+{
+  if (m_bActivated)
+    {
+      std::cout << t;
+    }
+  return logger;
+}
+
+Logger logger;
 
 #endif

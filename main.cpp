@@ -6,43 +6,56 @@
 #include "src/cuda/cudainfo.h"
 #include "src/cuda/cudatimer.h"
 #include "src/cuda/cudatask.h"
-#include "src/cuda/cudaty.h"
-
+#include "src/cuda/layer.h"
+//#include "src/odeint/runge_kutta_4.h"
 #include "src/ann_toolbox/multilayer_perceptron.h"
 
 
-int load_subtask( int taskid, ann_toolbox::neural_network * pNet);
-int print_subtask( int taskid, ann_toolbox::neural_network * pNet);
+using namespace cuda;
+
+#define CUDA_TY float
+
+int load_subtask( int taskid, ann_toolbox::neural_network<CUDA_TY> * pNet);
+int print_subtask( int taskid, ann_toolbox::neural_network<CUDA_TY> * pNet);
 
 int main( int argc, char **argv )
 {
-  CudaInfo info;
-  std::cout << info << std::endl;
 
-  int taskCount = 200;
-  MultilayerPerceptronTask task (info, taskCount);
-  int I = 4, H = 4, O = 4;
-  ann_toolbox::multilayer_perceptron perc(I, H, & task, O);
+  using namespace cuda;
+
+  info inf;
+  std::cout << inf << std::endl;
+
+  unsigned int taskCount = 200;
+
+  //task might need to know the complete type of the subtasks.
+
+  unsigned int I = 4, H = 4, O = 4;
+  ann_toolbox::multilayer_perceptron<CUDA_TY, sigmoid>::task  task_(inf, taskCount);
+  ann_toolbox::multilayer_perceptron<CUDA_TY, sigmoid> perc(I, H, &task_, O);
   //Timer scope
   {
-    ScopedCudaTimer timer("multilayer nnet cumulative timer");
-    for (int i=0; i < taskCount; i++)
+    scoped_timer tim("multilayer nnet cumulative timer");
+    for (unsigned int i=0; i < taskCount; i++)
       {
 	load_subtask(i, & perc);
       }
     //Timer scope
     {
-      ScopedCudaTimer launchTimer("nnet launch timer");
-      task.Launch();
+      scoped_timer launchTimer("nnet launch timer");
+      if(!task_.launch())
+	{
+	  std::cout<<"launch fail"<<std::endl;
+	}
     }
   }
 
-  for (int i=0; i < taskCount; i++)
+  for (unsigned int i=0; i < taskCount; i++)
   {
     print_subtask(i, & perc);
   }
 }
-int load_subtask(int taskid, ann_toolbox::neural_network * pNet)
+int load_subtask(int taskid, ann_toolbox::neural_network<CUDA_TY> * pNet)
 {
 
   CUDA_TY x = 1.0f + taskid;
@@ -51,7 +64,7 @@ int load_subtask(int taskid, ann_toolbox::neural_network * pNet)
   std::vector<CUDA_TY> W;
 
   std::cout<<"weight count"<<pNet->get_number_of_weights()<<std::endl;
-  for (int j=0; j< pNet->get_number_of_weights(); j++)
+  for (unsigned int j=0; j< pNet->get_number_of_weights(); j++)
     {
       W.push_back(j + 1 + taskid);
     }
@@ -69,12 +82,16 @@ int load_subtask(int taskid, ann_toolbox::neural_network * pNet)
 };
 
 
-int print_subtask(int taskid, ann_toolbox::neural_network * pNet)
+int print_subtask(int taskid, ann_toolbox::neural_network<CUDA_TY> * pNet)
 {
 
   std::vector<CUDA_TY> O;
   pNet->set_task(taskid);
-  pNet->get_outputs(O);
+  if(!pNet->get_outputs(O))
+  {
+    std::cout<<" Error: could not get data"<<std::endl;
+    return 0;
+  }
 
   for(std::vector<CUDA_TY>::iterator iter = O.begin(); iter != O.end(); ++iter)
   {

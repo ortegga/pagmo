@@ -133,12 +133,14 @@ ENDIF(ENABLE_IPOPT)
 
 # ANN Toolbox
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/")
+# ODE Toolbox
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/odeint/")
 SET(ANN_FILES 
 #  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
 #  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
 )
 
 IF(ENABLE_CUDA)
@@ -146,8 +148,6 @@ IF(ENABLE_CUDA)
   SET(ANN_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudainfo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatimer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatask.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/dataset.cpp
     "${ANN_FILES}" )
 
   SET(ANN_FILES

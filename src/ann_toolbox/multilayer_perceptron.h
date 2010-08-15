@@ -28,7 +28,6 @@
 
 #define ANN_TB_MULTILAYER_PERCEPTRON_H
 
-#include "../cuda/cudaty.h"
 #include "../cuda/cudatask.h"
 
 #include "neural_network.h"
@@ -40,36 +39,41 @@ namespace ann_toolbox {
    * feedforward neural network, with one hidden layer. 
    * More info: http://en.wikipedia.org/wiki/Mulitlayer_perceptron
    */	
-  class multilayer_perceptron : public neural_network {
+  template <typename ty , int activ_type>
+  class multilayer_perceptron : public neural_network<ty> {
   public:
-    /// Constructor
-    /**
-     * Creates a new multilayer_perceptron object, which is derived from the 
-     * neural_network class and using one hidden layer of nodes. It calls the
-     * set_weights function to initalize the weights of the neural network.
-     * \param input_nodes	the number of input nodes
-     * \param hidden_nodes	the number of nodes in the hidden layer
-     * \param output_nodes	the number of output nodes (default = 1)
-     * \param w				the weights, with which the neural network is initiated (empty by default)
-     * \return a perceptron object
-     */
-    multilayer_perceptron(unsigned int input_nodes_, unsigned int hidden_nodes_, 
-			  CudaTask * pTask, unsigned int output_nodes_ = 1);
+
+    typedef typename cuda::multilayer_perceptron_task<ty, activ_type> task;
+
+  multilayer_perceptron(unsigned int input_nodes_, unsigned int hidden_nodes_, 
+			cuda::task<ty> * pTask, unsigned int output_nodes_ = 1) : 
+    neural_network<ty>::neural_network(input_nodes_, output_nodes_, pTask),
+      m_hidden(hidden_nodes_)
+      {
+	// the number of weights is equal to all the inputs (and a bias)
+	// for every hidden node, plus the connections from every hidden
+	// node to every output, i.e. it is fully connected
+	
+	this->m_weights = (this->m_inputs + 1) * this->m_hidden + (this->m_hidden + 1) * this->m_outputs;
+
+      }
 
     /// Destructor
-    ~multilayer_perceptron();
-
-    /// Compute Outputs
-    const std::vector<CUDA_TY> compute_outputs(std::vector<CUDA_TY> &inputs);
+    ~multilayer_perceptron() {}
 	
     /// Stream output operator.
-    friend std::ostream &operator<<(std::ostream &, const multilayer_perceptron &);	
+    /*friend std::ostream &operator<<(std::ostream &, const multilayer_perceptron<ty> &)
+      {}*/
 
-    virtual bool prepare_outputs();
+    virtual bool prepare_outputs()
+    {
+      std::cout<<" multilayer_perceptron::prepare_outputs"<<std::endl;
+	 return neural_network<ty>::prepare_outputs() &&  
+	   this->prepare_dataset(cuda::task<ty>::hiddens, m_hidden);
+    }
 	
   protected:
-    // number of hidden nodes
-    unsigned int	m_hidden;
+    unsigned int m_hidden;
   };
 
 

@@ -7,47 +7,48 @@
 #include <iostream>
 
 
-class CudaDeviceInfo;
-typedef std::vector<CudaDeviceInfo*> CudaDeviceInfoVector;
-
-
-
-class CudaInfo
+namespace cuda
 {
- public:
-  CudaInfo();
-  ~CudaInfo();
-  bool Load();
-  int GetCount() {return m_devices.size();}
-  CudaDeviceInfo* GetAt(int index) 
-  { 
-    if (index && index < GetCount()) 
-      return m_devices[index];
-  }
-  int GetMaxThreadCount();
-  int GetWarpSize();
-  bool SetCudaDevice(int index);
-  CudaDeviceInfo * GetAciveDevice();
-  int GetAciveDeviceIndex() { return m_activeDev;}
-  friend std::ostream &operator<<(std::ostream &, const CudaInfo &);
- private:
-  CudaDeviceInfoVector m_devices;
-  int m_activeDev; //Enforces one device only for now?
-};
 
-class CudaDeviceInfo 
-{
- public:
-  CudaDeviceInfo(int deviceId);
-  bool Load(int devId);
-  int GetMaxThreadCount();
-  int GetWarpSize();
-  friend std::ostream &operator<<(std::ostream &, const CudaDeviceInfo &);	
-  //Aux functions to check for various capabilities for the device
- private:
-  struct cudaDeviceProp m_prop;
-  int m_id;
-};
+  class deviceinfo 
+  {
+  public:
+    deviceinfo(unsigned int deviceid);
+    bool load(unsigned int devid);
+    unsigned int get_maxthreadcount();
+    unsigned int get_warpsize();
+    friend std::ostream &operator<<(std::ostream &, const deviceinfo &);	
+    //Aux functions to check for various capabilities for the device
+  private:
+    struct cudaDeviceProp m_prop;
+    unsigned int m_id;
+  };
+
+  class info
+  {
+  public:
+    info();
+    ~info();
+    bool load();
+    unsigned int get_count() {return m_devices.size();}
+    deviceinfo* get_at(unsigned int index) 
+    { 
+      if (index && index < get_count()) 
+	return m_devices[index];
+      return NULL;
+    }
+    unsigned int get_maxthreadcount();
+    unsigned int get_warpsize();
+    bool set_device(unsigned int index);
+    deviceinfo * get_device();
+    int get_deviceindex() { return m_activedev;}
+    friend std::ostream &operator<<(std::ostream &, const info &);
+  private:
+    typedef  std::vector<deviceinfo *> deviceinfo_vector;
+    deviceinfo_vector m_devices;
+    unsigned int m_activedev; //Enforces one device only for now?
+  };
+}
 
 
 #endif

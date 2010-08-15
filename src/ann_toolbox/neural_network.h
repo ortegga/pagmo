@@ -30,46 +30,67 @@
 #include <vector>
 #include <iostream>
 #include <string>
-#include "../cuda/cudaty.h"
 #include "../cuda/cudatask.h"
+#include "../cuda/tasklet.h"
+
+using namespace cuda;
 
 namespace ann_toolbox {
 
-  class neural_network {
+  template <typename ty>
+    class neural_network : public tasklet<ty>
+  {
   public:
-    neural_network(unsigned int input_nodes_, unsigned int output_nodes_, 
-		   CudaTask * pTask);
-    virtual ~neural_network();
+  neural_network(unsigned int input_nodes_, unsigned int output_nodes_, 
+		 task<ty> * pTask): 
+    tasklet<ty> ( pTask ) , 
+      m_inputs(input_nodes_), m_outputs(output_nodes_),
+      m_weights(0)
+      {
 
-    virtual const std::vector<CUDA_TY> compute_outputs(std::vector<CUDA_TY> &inputs) = 0;
+      }
+    virtual ~neural_network(){}
 
     unsigned int get_number_of_input_nodes() const{ return get_number_of_inputs(); }
     unsigned int get_number_of_inputs() const	{ return m_inputs; }	
     unsigned int get_number_of_output_nodes() const	{ return get_number_of_outputs(); }
     unsigned int get_number_of_outputs() const	{ return m_outputs; }
     unsigned int get_number_of_weights() const	{ return m_weights; }
-    unsigned int get_id() const { return m_id;} 
 
-    virtual bool set_inputs(const std::vector<CUDA_TY> & inputs);
-    virtual bool set_weights(const std::vector<CUDA_TY> &chromosome); 
-    virtual bool get_outputs( std::vector<CUDA_TY> & outputs);
-    virtual bool prepare_outputs();
+    virtual bool set_inputs(const std::vector<ty> & inputs)
+    {
+        if (inputs.size() == get_number_of_inputs())
+	  {
+	    return tasklet<ty>::set_inputs (cuda::task<ty>::inputs, inputs);
+	  }
+	return false;
+    }
+    virtual bool set_weights(const std::vector<ty> &chromosome)
+    {
+        if (chromosome.size() == get_number_of_weights())
+	  {
+	    return tasklet<ty>::set_inputs (cuda::task<ty>::weights, chromosome);
+	  }
+	return false;
+    }
 
+    virtual bool get_outputs( std::vector<ty> & outputs)
+    {
+      return tasklet<ty>::get_outputs (cuda::task<ty>::outputs, outputs);
+    }
 
-    virtual void print();
-    virtual void print(const char * message, std::vector<CUDA_TY> & c);
-
-    void set_task(int id) { m_id = id;}
+    virtual bool prepare_outputs()
+      {
+	int size = get_number_of_output_nodes();
+	return tasklet<ty>::prepare_dataset(cuda::task<ty>::outputs, size);
+      }
 	
   protected:
 
-    virtual bool prepare_dataset(int parameter, int size);
-
-    const char*	m_name;
-    unsigned int	m_inputs, m_outputs;
-    unsigned int  m_id;
-    unsigned int	m_weights;
-    CudaTask * m_pTask;
+    const char*	  m_name;
+    unsigned int  m_inputs;
+    unsigned int  m_outputs;
+    unsigned int  m_weights;
 
   };
 
