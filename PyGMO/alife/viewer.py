@@ -25,6 +25,8 @@
 #  This module contains the ALifeViewer class. 
 #  It renders the scene created by its ALifeEnvironment object using OpenGL.
 #  Code is based on the ode.viewer module in PyBrain
+#
+#  @author John Glover
 from pybrain.rl.environments.ode.tools.mathhelpers import crossproduct, norm, dotproduct
 import ode
 from OpenGL.GL import *
@@ -39,9 +41,8 @@ import os
 ## ALifeViewer class
 #  
 #  It renders the scene created by its ALifeEnvironment object using OpenGL.
-#  Code is based on the ode.viewer module in PyBrain
-#
-#  @author John Glover
+#  It use GLUT to create a simple OpenGL window and respond to mouse and keyboard events.
+#  The code is based on the ode.viewer module in PyBrain.
 class ALifeViewer(object):
     def __init__(self, env, exp=None):
         ## @var env ALifeEnvironment object
@@ -94,7 +95,7 @@ class ALifeViewer(object):
         ## @var _screenshot_dir Directory to write image files to when taking screen shots
         self._screenshot_dir = "screenshots/"
         # initialise OpenGL
-        self._init()  
+        self._init_gl()  
         # set callback functions
         glutMotionFunc(self._motion)
         glutPassiveMotionFunc(self._passive_motion)
@@ -106,7 +107,7 @@ class ALifeViewer(object):
     ## Initialise OpenGL. This function has to be called only once before drawing.
     #  @param width The width of the GLUT window.
     #  @param height The height of the GLUT window.  
-    def _init(self, width=800, height=600):
+    def _init_gl(self, width=800, height=600):
         glutInit([])
 
         # Open a window
@@ -379,8 +380,9 @@ class ALifeViewer(object):
     
     ## Control the zoom factor
     def _motion(self, x, z):
-        if not self._mouse_view: return
-        zn = 2.75 * float(z) / self.height + 0.25   # [0.25,3]
+        if not self._mouse_view:
+            return
+        zn = 2.75 * float(z) / self.height + 0.25
         self._view_distance = 3.0 * zn * zn
         self._passive_motion(x, z)
     
@@ -390,7 +392,8 @@ class ALifeViewer(object):
     #  such that approaching the perimeter does not cause a huge change in the
     #  viewing direction. The limit for l is thus cos(arcsin(0.1)).
     def _passive_motion(self, x, z):
-        if not self._mouse_view: return
+        if not self._mouse_view:
+            return
         x1 = 3 * float(x) / self.width - 1.5
         z1 = -3 * float(z) / self.height + 1.5
         lsq = x1 * x1 + z1 * z1

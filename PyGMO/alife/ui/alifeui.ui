@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>830</width>
-    <height>877</height>
+    <width>831</width>
+    <height>786</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -30,19 +30,6 @@
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="restart">
-    <property name="geometry">
-     <rect>
-      <x>440</x>
-      <y>320</y>
-      <width>165</width>
-      <height>32</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Restart Simulation</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="start_pause">
     <property name="geometry">
      <rect>
@@ -55,7 +42,13 @@
     <property name="text">
      <string>Start Simulation</string>
     </property>
+    <property name="autoDefault">
+     <bool>false</bool>
+    </property>
     <property name="default">
+     <bool>false</bool>
+    </property>
+    <property name="flat">
      <bool>false</bool>
     </property>
    </widget>
@@ -103,7 +96,23 @@
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QComboBox" name="body_sections"/>
+      <widget class="QComboBox" name="body_sections">
+       <item>
+        <property name="text">
+         <string>1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>3</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="0" column="2" rowspan="9">
       <widget class="Line" name="line">
@@ -152,7 +161,31 @@
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QComboBox" name="legs"/>
+      <widget class="QComboBox" name="legs">
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>6</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>8</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="2" column="4">
       <widget class="QPushButton" name="evolve">
@@ -175,7 +208,31 @@
       </widget>
      </item>
      <item row="3" column="1">
-      <widget class="QComboBox" name="body_density"/>
+      <widget class="QComboBox" name="body_density">
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>0.25</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.5</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="4" column="0">
       <widget class="QLabel" name="leg_density_label">
@@ -198,6 +255,26 @@
          <height>26</height>
         </size>
        </property>
+       <item>
+        <property name="text">
+         <string>0.25</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>0.5</string>
+        </property>
+       </item>
       </widget>
      </item>
      <item row="4" column="3">
@@ -240,7 +317,36 @@
       </widget>
      </item>
      <item row="5" column="1">
-      <widget class="QComboBox" name="asteroid_mass"/>
+      <widget class="QComboBox" name="asteroid_mass">
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>5000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>10000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>15000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>20000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>30000</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="5" column="3">
       <widget class="QLabel" name="algorithm_label">
@@ -256,7 +362,13 @@
       </widget>
      </item>
      <item row="5" column="4">
-      <widget class="QComboBox" name="algorithm"/>
+      <widget class="QComboBox" name="algorithm">
+       <item>
+        <property name="text">
+         <string>Differential Evolution</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="6" column="3">
       <widget class="QLabel" name="generations_label">
@@ -272,7 +384,13 @@
       </widget>
      </item>
      <item row="6" column="4">
-      <widget class="QComboBox" name="generations"/>
+      <widget class="QComboBox" name="generations">
+       <item>
+        <property name="text">
+         <string>1</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="7" column="3">
       <widget class="QLabel" name="islands_label">
@@ -288,7 +406,33 @@
       </widget>
      </item>
      <item row="7" column="4">
-      <widget class="QComboBox" name="islands"/>
+      <widget class="QComboBox" name="islands">
+       <item>
+        <property name="text">
+         <string>1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>2</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>4</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>5</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="8" column="3">
       <widget class="QLabel" name="individuals_label">
@@ -304,7 +448,23 @@
       </widget>
      </item>
      <item row="8" column="4">
-      <widget class="QComboBox" name="individuals"/>
+      <widget class="QComboBox" name="individuals">
+       <item>
+        <property name="text">
+         <string>3</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>5</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>10</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item row="0" column="0" colspan="2">
       <widget class="QLabel" name="robot_environment_label">
@@ -359,7 +519,7 @@ p, li { white-space: pre-wrap; }
        <item row="0" column="0">
         <widget class="QPushButton" name="load">
          <property name="enabled">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
          <property name="text">
           <string>Load</string>
@@ -380,13 +540,26 @@ p, li { white-space: pre-wrap; }
      </item>
     </layout>
    </widget>
+   <widget class="QPushButton" name="restart">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>320</y>
+      <width>165</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Restart Simulation</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>830</width>
+     <width>831</width>
      <height>22</height>
     </rect>
    </property>
