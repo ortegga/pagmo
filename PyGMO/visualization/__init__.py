@@ -178,7 +178,15 @@ class Trajectory3D:
        [ 'mercury', 'earth' ]
 
       Alternatively if you pass a filename as mjd2000 it will load the csv
-       file and use that.
+       file and use that. In the case they are read from a file, that file
+       should have the following format:
+
+       name,date,dv,dist
+
+      Name is the name of the planet, date is the date (can be in any
+       format) of the flyby, dv is the delta velocity of the flyby and dist
+       is the distance of the flyby. In the case the planet is take off or
+       arrival dist should be NaN.
 
       Valid planets are:
       * Mercury
@@ -340,6 +348,9 @@ def convert_date( Y, M, D, HR=0., MIN=0., SEC=0. ):
 # Run some tests
 if __name__ == "__main__":
 
+   print("Do not run this module directly, import it and create a Trajectory3D object.")
+
+   """
    # Create the engine
    traj = Trajectory3D( "EarthEarthJupiter.csv",
          640, 480,
@@ -355,9 +366,6 @@ if __name__ == "__main__":
 
    # Start the engine
    traj.start()
-
-
-
-
+   """
 
 
