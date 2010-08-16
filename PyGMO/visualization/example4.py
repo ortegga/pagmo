@@ -48,8 +48,3 @@ if __name__ == "__main__":
    # Start the engine
    traj.start()
 
-
-
-
-
-
