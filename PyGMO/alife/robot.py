@@ -200,6 +200,7 @@ class Robot(object):
             raise Exception("OddLegNumber")
         self._legs = n
         self.bodies_geoms = []
+        self.joints = []
         self.bodies_geoms.append((self.main_body, self.main_geom))
         self._create_legs(self.main_body)
         

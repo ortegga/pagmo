@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'alifeui.ui'
 #
-# Created: Mon Aug 16 11:14:40 2010
+# Created: Mon Aug 16 14:20:37 2010
 #      by: PyQt4 UI code generator 4.7.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PyQt4 import QtCore, QtGui
 class Ui_ALife(object):
     def setupUi(self, ALife):
         ALife.setObjectName("ALife")
-        ALife.resize(831, 786)
+        ALife.resize(760, 800)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -21,21 +21,21 @@ class Ui_ALife(object):
         self.centralwidget = QtGui.QWidget(ALife)
         self.centralwidget.setObjectName("centralwidget")
         self.main_view = QtGui.QWidget(self.centralwidget)
-        self.main_view.setGeometry(QtCore.QRect(20, 10, 791, 311))
+        self.main_view.setGeometry(QtCore.QRect(20, 10, 721, 311))
         self.main_view.setObjectName("main_view")
         self.start_pause = QtGui.QPushButton(self.centralwidget)
-        self.start_pause.setGeometry(QtCore.QRect(210, 320, 165, 32))
+        self.start_pause.setGeometry(QtCore.QRect(180, 320, 165, 32))
         self.start_pause.setAutoDefault(False)
         self.start_pause.setDefault(False)
         self.start_pause.setFlat(False)
         self.start_pause.setObjectName("start_pause")
         self.line_2 = QtGui.QFrame(self.centralwidget)
-        self.line_2.setGeometry(QtCore.QRect(20, 350, 791, 20))
+        self.line_2.setGeometry(QtCore.QRect(20, 350, 711, 20))
         self.line_2.setFrameShape(QtGui.QFrame.HLine)
         self.line_2.setFrameShadow(QtGui.QFrame.Sunken)
         self.line_2.setObjectName("line_2")
         self.layoutWidget = QtGui.QWidget(self.centralwidget)
-        self.layoutWidget.setGeometry(QtCore.QRect(20, 380, 791, 361))
+        self.layoutWidget.setGeometry(QtCore.QRect(20, 380, 735, 361))
         self.layoutWidget.setObjectName("layoutWidget")
         self.gridLayout = QtGui.QGridLayout(self.layoutWidget)
         self.gridLayout.setObjectName("gridLayout")
@@ -235,11 +235,11 @@ class Ui_ALife(object):
         self.asteroid_mass.addItem("")
         self.gridLayout.addWidget(self.asteroid_mass, 1, 1, 1, 1)
         self.reset = QtGui.QPushButton(self.centralwidget)
-        self.reset.setGeometry(QtCore.QRect(440, 320, 165, 32))
+        self.reset.setGeometry(QtCore.QRect(410, 320, 165, 32))
         self.reset.setObjectName("reset")
         ALife.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(ALife)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 831, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 760, 22))
         self.menubar.setObjectName("menubar")
         ALife.setMenuBar(self.menubar)
         self.statusbar = QtGui.QStatusBar(ALife)
@@ -256,7 +256,7 @@ class Ui_ALife(object):
         ALife.setWindowTitle(QtGui.QApplication.translate("ALife", "ALife On An Asteroid", None, QtGui.QApplication.UnicodeUTF8))
         self.start_pause.setText(QtGui.QApplication.translate("ALife", "Start Simulation", None, QtGui.QApplication.UnicodeUTF8))
         self.weights_label.setText(QtGui.QApplication.translate("ALife", "Control weights:", None, QtGui.QApplication.UnicodeUTF8))
-        self.weights.setText(QtGui.QApplication.translate("ALife", "None loaded", None, QtGui.QApplication.UnicodeUTF8))
+        self.weights.setText(QtGui.QApplication.translate("ALife", "Evolve or load to create", None, QtGui.QApplication.UnicodeUTF8))
         self.legs_label.setText(QtGui.QApplication.translate("ALife", "No. Legs On The Robot:", None, QtGui.QApplication.UnicodeUTF8))
         self.legs.setItemText(0, QtGui.QApplication.translate("ALife", "2", None, QtGui.QApplication.UnicodeUTF8))
         self.legs.setItemText(1, QtGui.QApplication.translate("ALife", "4", None, QtGui.QApplication.UnicodeUTF8))
@@ -267,7 +267,7 @@ class Ui_ALife(object):
         self.body_density.setItemText(1, QtGui.QApplication.translate("ALife", "0.3", None, QtGui.QApplication.UnicodeUTF8))
         self.body_density.setItemText(2, QtGui.QApplication.translate("ALife", "0.4", None, QtGui.QApplication.UnicodeUTF8))
         self.body_density.setItemText(3, QtGui.QApplication.translate("ALife", "0.5", None, QtGui.QApplication.UnicodeUTF8))
-        self.leg_density_label.setText(QtGui.QApplication.translate("ALife", "Robot Leg Density:", None, QtGui.QApplication.UnicodeUTF8))
+        self.leg_density_label.setText(QtGui.QApplication.translate("ALife", "Robot Leg Density:             ", None, QtGui.QApplication.UnicodeUTF8))
         self.leg_density.setItemText(0, QtGui.QApplication.translate("ALife", "0.25", None, QtGui.QApplication.UnicodeUTF8))
         self.leg_density.setItemText(1, QtGui.QApplication.translate("ALife", "0.3", None, QtGui.QApplication.UnicodeUTF8))
         self.leg_density.setItemText(2, QtGui.QApplication.translate("ALife", "0.4", None, QtGui.QApplication.UnicodeUTF8))

@@ -25,11 +25,8 @@
 #  This module contains a simple GUI for the alife problem 
 #
 #  @author John Glover
-
-# todo:
-# - load/save data
-# - launch evolve in separate thread?
 from math import acos, pi, sqrt
+import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PyQt4 import QtGui, QtCore
@@ -228,15 +225,27 @@ class ALifeGUI(QtGui.QMainWindow):
                                               geometry,
                                               size_policy)
         self.ui.main_view.setObjectName("main_view")
+        # main controls
         self.connect(self.ui.start_pause, 
                      QtCore.SIGNAL("clicked()"), 
                      self.start_pause)
         self.connect(self.ui.reset, 
                      QtCore.SIGNAL("clicked()"), 
                      self.reset)
+        # robot controls
         self.connect(self.ui.legs, 
                      QtCore.SIGNAL("currentIndexChanged(int)"),
                      self.change_legs)
+        # evolution controls
+        self.connect(self.ui.evolve, 
+                     QtCore.SIGNAL("clicked()"), 
+                     self.evolve)
+        self.connect(self.ui.load, 
+                     QtCore.SIGNAL("clicked()"), 
+                     self.load)
+        self.connect(self.ui.save, 
+                     QtCore.SIGNAL("clicked()"), 
+                     self.save)
 
     def update_environment(self):
         # asteroid mass
@@ -252,6 +261,8 @@ class ALifeGUI(QtGui.QMainWindow):
             self.ui.main_view.environment.body_geom = []
             self.ui.main_view.robot.set_num_legs(legs)
             self.ui.main_view.environment.set_robot(self.ui.main_view.robot)
+            # must also reset the agent, task and experiment
+            self.update_experiment()
         # body density
         body_density = float(self.ui.body_density.currentText())
         if not self.ui.main_view.robot.get_body_density() == body_density:
@@ -260,7 +271,16 @@ class ALifeGUI(QtGui.QMainWindow):
         leg_density = float(self.ui.leg_density.currentText())
         if not self.ui.main_view.robot.get_leg_density() == leg_density:
             self.ui.main_view.robot.set_leg_density(leg_density)
+        # display
         self.ui.main_view.update()
+        
+    def update_experiment(self):
+        self.ui.main_view.task = ALifeTask(self.ui.main_view.environment)
+        num_observations = len(self.ui.main_view.task.getObservation())
+        self.ui.main_view.agent = ALifeAgent(num_observations)
+        self.ui.main_view.experiment = ALifeExperiment(self.ui.main_view.task, 
+                                                       self.ui.main_view.agent, 
+                                                       self.ui.main_view.environment) 
         
     ##
     def keyPressEvent(self, event):
@@ -315,6 +335,93 @@ class ALifeGUI(QtGui.QMainWindow):
         
     def change_legs(self, index):
         self.update_environment()
+        
+    def evolve(self):
+        print 'evolve'
+        
+    def load(self):
+        file_name = QtGui.QFileDialog.getOpenFileName(self, "Load Robot Control Data")
+        if file_name:
+            try:
+                f = open(file_name, 'r')
+                # read the weights
+                lines = f.readlines()
+                weights = lines[0].split(",")
+                # last element should be a line break so remove it
+                weights = np.array(weights[0:-1])
+                # load other robot parameters first as the number of weights that
+                # the agent will accept will depend on parameters such as the number
+                # of legs that the robot has
+                fitness = lines[1][0:-1]
+                self.ui.fitness.setText(fitness)
+                
+                algorithm = lines[2][0:-1]
+                if self.ui.algorithm.findText(algorithm) < 0:
+                    self.ui.algorithm.addItem(algorithm)
+                self.ui.algorithm.setCurrentIndex(self.ui.algorithm.findText(algorithm))
+                
+                generations = lines[3][0:-1]
+                if self.ui.generations.findText(generations) < 0:
+                    self.ui.generations.addItem(generations)
+                self.ui.generations.setCurrentIndex(self.ui.generations.findText(generations))
+                
+                islands = lines[4][0:-1]
+                if self.ui.islands.findText(islands) < 0:
+                    self.ui.islands.addItem(islands)
+                self.ui.islands.setCurrentIndex(self.ui.islands.findText(islands))
+                
+                individuals = lines[5][0:-1]
+                if self.ui.individuals.findText(individuals) < 0:
+                    self.ui.individuals.addItem(individuals)
+                self.ui.individuals.setCurrentIndex(self.ui.individuals.findText(individuals))
+                
+                asteroid_mass = lines[6][0:-1]
+                if self.ui.asteroid_mass.findText(asteroid_mass) < 0:
+                    self.ui.asteroid_mass.addItem(asteroid_mass)
+                self.ui.asteroid_mass.setCurrentIndex(self.ui.asteroid_mass.findText(asteroid_mass))
+                
+                legs = lines[7][0:-1]
+                if self.ui.legs.findText(legs) < 0:
+                    self.ui.legs.addItem(legs)
+                self.ui.legs.setCurrentIndex(self.ui.legs.findText(legs))
+                
+                body_density = lines[8][0:-1]
+                if self.ui.body_density.findText(body_density) < 0:
+                    self.ui.body_density.addItem(body_density)
+                self.ui.body_density.setCurrentIndex(self.ui.body_density.findText(body_density))
+                
+                leg_density = lines[9][0:-1]
+                if self.ui.leg_density.findText(leg_density) < 0:
+                    self.ui.leg_density.addItem(leg_density)
+                self.ui.leg_density.setCurrentIndex(self.ui.leg_density.findText(leg_density))
+                
+                # update environment and experiment
+                self.update_environment()
+                self.update_experiment()
+                f.close()
+            except Exception as e:
+                QtGui.QMessageBox.information(self, 'Error: Could not load file', str(e))
+    
+    def save(self):
+        file_name = QtGui.QFileDialog.getSaveFileName(self, "Save Robot Control Data")
+        if file_name:
+            try:
+                f = open(file_name, 'w')
+                for weight in self.ui.main_view.agent.get_weights():
+                    f.write(str(weight) + ",")
+                f.write("\n")
+                f.write(str(self.ui.fitness.text()) + "\n")
+                f.write(str(self.ui.algorithm.currentText()) + "\n")
+                f.write(str(self.ui.generations.currentText()) + "\n")
+                f.write(str(self.ui.islands.currentText()) + "\n")
+                f.write(str(self.ui.individuals.currentText()) + "\n")
+                f.write(str(self.ui.asteroid_mass.currentText()) + "\n")
+                f.write(str(self.ui.legs.currentText()) + "\n")
+                f.write(str(self.ui.body_density.currentText()) + "\n")
+                f.write(str(self.ui.leg_density.currentText()) + "\n")
+                f.close()
+            except Exception as e:
+                QtGui.QMessageBox.information(self, 'Error: Could not save file', str(e))
         
 
 if __name__ == "__main__":
