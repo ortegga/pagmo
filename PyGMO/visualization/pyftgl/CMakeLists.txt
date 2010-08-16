@@ -27,6 +27,9 @@ MESSAGE(STATUS "FreeType include dir: ${FREETYPE_INCLUDE_DIRS}")
 
 # Python and friends
 FIND_PACKAGE(Boost COMPONENTS python REQUIRED)
+if(NOT Boost_PYTHON_FOUND)
+   MESSAGE(FATAL_ERROR "Library Boost Python not found. Please make sure that you have the Boost Python library installed")
+ENDIF(NOT Boost_PYTHON_FOUND)
 FIND_PACKAGE(PythonLibs)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR} ${Boost_PYTHON_INCLUDE_DIR} ${PYTHON_INCLUDE_PATH})
 
