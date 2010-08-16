@@ -26,6 +26,8 @@
 #  The environment loads the robot and asteroid models and puts them into an ODE world.
 #  The ODE world handles all physics simulation.
 #  Code is based on the ode.environment module from PyBrain
+#
+#  @author John Glover
 from pybrain.rl.environments.ode import sensors, actuators
 import ode
 import xode.parser
@@ -36,8 +38,6 @@ import numpy as np
 #
 #  Handles all Physics simulation. 
 #  It loads the robot and asteroid models and puts them into an ODE world. 
-#
-#  @author John Glover
 class ALifeEnvironment(object):
     ## Constructor
     def __init__(self):
@@ -133,6 +133,7 @@ class ALifeEnvironment(object):
             j = ode.ContactJoint(world, contactgroup, c)
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())
+#            print c.getContactGeomParams() 
             
     ## Get the distance between the given body and the centre of the asteroid
     #  @param body the body
@@ -225,8 +226,6 @@ class ALifeEnvironment(object):
 # 
 #  It also uses standard ODE gravity instead of the custom gravity calculation
 #  performed in ALifeEnvironment.
-#
-#  @author John Glover
 class ALifePlane(ALifeEnvironment):
     ## Constructor
     def __init__(self):

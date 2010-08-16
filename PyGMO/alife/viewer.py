@@ -54,7 +54,7 @@ class ALifeViewer(object):
         ## @var height viewport height
         self.height = 600  
         ## @var _center_obj The ode object to center the camera view on
-        self._center_obj = env.robot.body
+        self._center_obj = env.robot.main_body
         ## @var _center_on_obj Whether or not to center the camera view on self._center_obj
         self._center_on_obj = True
         ## @var _center_x x coordinate of the center of the current view point
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     from asteroid import Asteroid
     
     env = ALifeEnvironment()
-    robot = Robot(env.world, env.space, [0, 150, 0])
+    robot = Robot(env.world, env.space, [10, 150, 0])
     env.set_robot(robot)
     asteroid = Asteroid(env.space, "models/asteroid_textured.x3d")
     env.set_asteroid(asteroid)

@@ -27,12 +27,8 @@
 #  @author John Glover
 
 # todo:
-# - robot body sections/legs
 # - load/save data
-# - update robot when parameters change
 # - launch evolve in separate thread?
-
-
 from math import acos, pi, sqrt
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -63,7 +59,7 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         ## @var environment ALifeEnvironment object
         self.environment = ALifeEnvironment()
         ## @var robot The robot that will interact with the environment
-        self.robot = Robot(self.environment.world, self.environment.space, [0, 150, 0])
+        self.robot = Robot(self.environment.world, self.environment.space, [10, 150, 0])
         self.environment.set_robot(self.robot)
         ## @var asteroid The asteroid 
         self.asteroid = Asteroid(self.environment.space, "models/asteroid_textured.x3d")
@@ -75,7 +71,7 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         ## @var experiment ALifeExperiment object
         self.experiment = ALifeExperiment(self.task, self.agent, self.environment) 
         ## @var _center_obj The ode object to center the camera view on
-        self._center_obj = self.robot.body
+        self._center_obj = self.robot.main_body
         ## @var _center_on_obj Whether or not to center the camera view on self._center_obj
         self._center_on_obj = True
         ## @var _center_x x coordinate of the center of the current view point
@@ -235,7 +231,36 @@ class ALifeGUI(QtGui.QMainWindow):
         self.connect(self.ui.start_pause, 
                      QtCore.SIGNAL("clicked()"), 
                      self.start_pause)
-        self.connect(self.ui.restart, QtCore.SIGNAL("clicked()"), self.restart)
+        self.connect(self.ui.reset, 
+                     QtCore.SIGNAL("clicked()"), 
+                     self.reset)
+        self.connect(self.ui.legs, 
+                     QtCore.SIGNAL("currentIndexChanged(int)"),
+                     self.change_legs)
+
+    def update_environment(self):
+        # asteroid mass
+        mass = float(self.ui.asteroid_mass.currentText())
+        if not self.ui.main_view.asteroid.mass == mass:
+            self.ui.main_view.asteroid.mass = mass
+        # number of legs
+        legs = int(self.ui.legs.currentText())
+        if not self.ui.main_view.robot.get_num_legs() == legs:
+            # changing the number of legs means resetting the robot
+            # in the environment, as the environment has its own list
+            # of bodies and geometries
+            self.ui.main_view.environment.body_geom = []
+            self.ui.main_view.robot.set_num_legs(legs)
+            self.ui.main_view.environment.set_robot(self.ui.main_view.robot)
+        # body density
+        body_density = float(self.ui.body_density.currentText())
+        if not self.ui.main_view.robot.get_body_density() == body_density:
+            self.ui.main_view.robot.set_body_density(body_density)
+        # leg density
+        leg_density = float(self.ui.leg_density.currentText())
+        if not self.ui.main_view.robot.get_leg_density() == leg_density:
+            self.ui.main_view.robot.set_leg_density(leg_density)
+        self.ui.main_view.update()
         
     ##
     def keyPressEvent(self, event):
@@ -245,16 +270,51 @@ class ALifeGUI(QtGui.QMainWindow):
             self.ui.main_view.zoom_out()
             
     def start_pause(self):
-        if self.ui.start_pause.text() == "Start Simulation":
-            self.ui.start_pause.setText("Pause Simulation")
-            self.ui.main_view.start()
-        else:
-            self.ui.start_pause.setText("Start Simulation")
+        if self.ui.start_pause.text() == "Pause Simulation":
+            self.ui.start_pause.setText("Resume Simulation")
             self.ui.main_view.pause()
+        else:
+            if self.ui.start_pause.text() == "Start Simulation":
+                # make sure environment parameters are up to date
+                self.update_environment()
+                # disable controls until the experiment/simulation is reset
+                self.ui.asteroid_mass.setEnabled(False)
+                self.ui.legs.setEnabled(False)
+                self.ui.body_density.setEnabled(False)
+                self.ui.leg_density.setEnabled(False)
+                self.ui.evolve.setEnabled(False)
+                self.ui.load.setEnabled(False)
+                self.ui.save.setEnabled(False)
+                self.ui.algorithm.setEnabled(False)
+                self.ui.generations.setEnabled(False)
+                self.ui.islands.setEnabled(False)
+                self.ui.individuals.setEnabled(False)
+            self.ui.start_pause.setText("Pause Simulation")
+            # start main view timer, which steps the ALifeExperiment
+            # and draws a frame
+            self.ui.main_view.start()
             
-    def restart(self):
+    def reset(self):
         self.ui.main_view.experiment.reset()
         self.ui.main_view.update()
+        # check to see if either the simulation is running
+        # if not, enable all form fields
+        if self.ui.start_pause.text() != "Pause Simulation":
+            self.ui.start_pause.setText("Start Simulation")
+            self.ui.asteroid_mass.setEnabled(True)
+            self.ui.legs.setEnabled(True)
+            self.ui.body_density.setEnabled(True)
+            self.ui.leg_density.setEnabled(True)
+            self.ui.evolve.setEnabled(True)
+            self.ui.load.setEnabled(True)
+            self.ui.save.setEnabled(True)
+            self.ui.algorithm.setEnabled(True)
+            self.ui.generations.setEnabled(True)
+            self.ui.islands.setEnabled(True)
+            self.ui.individuals.setEnabled(True)
+        
+    def change_legs(self, index):
+        self.update_environment()
         
 
 if __name__ == "__main__":

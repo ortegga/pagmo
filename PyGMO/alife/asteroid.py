@@ -50,6 +50,9 @@ class Asteroid(object):
         self.geom = None
         ## @var name The name of this object
         self.name = "Asteroid"
+        ## @var mass The mass of the asteroid. Used to calculate the force of gravity between
+        #  the asteroid and the robot
+        self.mass = 10000.0
         ## @var _texture_coords Texture Coordinates. For each triangle in the mesh, there should
         #  be a 3-tuple of texture coordinates (s, t), so there is one (s, t) tuple for each vertex.
         self._texture_coords = []

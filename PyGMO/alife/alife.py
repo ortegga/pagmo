@@ -50,7 +50,7 @@ class ALifeProblem(base):
         robot = Robot(self.environment.world, self.environment.space, 
                       [random.randint(-100, 100), 150, 0])
         self.environment.set_robot(robot)
-        asteroid = Asteroid(self.environment.space, "models/asteroid.x3d")
+        asteroid = Asteroid(self.environment.space, "models/asteroid_textured.x3d")
         self.environment.set_asteroid(asteroid)
         self.task = ALifeTask(self.environment)
         self.agent = ALifeAgent(len(self.task.getObservation()))
@@ -100,7 +100,7 @@ class ALifeOnAPlane(base):
     #  possible controller data.
     def __init__(self):
         self.environment = ALifePlane()
-        self.robot = Robot(self.environment.world, self.environment.space, [0, 20, 0])
+        self.robot = Robot(self.environment.world, self.environment.space, [10, 20, 0])
         self.environment.set_robot(self.robot)
         self.task = ALifeTask(self.environment)
         self.agent = ALifeAgent(len(self.task.getObservation()))
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 #    environment = ALifeEnvironment()
 #    robot = Robot(environment.world, environment.space, [0, 150, 0])
 #    environment.set_robot(robot)
-#    asteroid = Asteroid(environment.space, "models/asteroid.x3d")
+#    asteroid = Asteroid(environment.space, "models/asteroid_textured.x3d")
 #    environment.set_asteroid(asteroid)
 #    task = ALifeTask(environment)
 #    agent = ALifeAgent(len(task.getObservation()))
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         print best_weights
     # setup an experiment with a robot controlled by the weights calculated above
     environment = ALifePlane()
-    robot = Robot(environment.world, environment.space, [0, 20, 0])
+    robot = Robot(environment.world, environment.space, [10, 20, 0])
     environment.set_robot(robot)
     task = ALifeTask(environment)
     agent = ALifeAgent(len(task.getObservation()))

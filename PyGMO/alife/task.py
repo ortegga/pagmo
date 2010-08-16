@@ -35,6 +35,8 @@
 #  Tasks associate a purpose with an environment.
 #  In this case, it uses the Agent control data to move a Robot, trying
 #  to maximise the distance moved between fitness evaluations.
+#
+#  @author John Glover
 from pybrain.rl.experiments import Experiment
 from pybrain.rl.environments import EpisodicTask
 from pybrain.rl.environments.ode import sensors
@@ -49,8 +51,6 @@ import random
 #
 #  Experiments manage the interaction between Agent and Task objects,
 #  and evaluate Tasks at a regular interval.
-#
-#  @author John Glover
 class ALifeExperiment(Experiment):
     # @param task an ALifeTask object
     # @param agent an ALifeAgent object  
@@ -105,8 +105,6 @@ class ALifeExperiment(Experiment):
 #  Agents are objects that are capable of producing actions based on
 #  previous observations.
 #  ALifeAgents supply action values that control Robots.
-#
-#  @author John Glover
 class ALifeAgent(Agent):
     ## Constructor
     #  @param num_observations The number of observations that will be returned
@@ -191,8 +189,6 @@ class ALifeAgent(Agent):
 #
 #  The connect method also takes a list of joints as input, rather than
 #  getting this information directly from an Environment object.
-#
-#  @author John Glover
 class JointActuator(object):
     ## Constructor. Initialises an array of joints.
     def __init__(self):
@@ -231,8 +227,6 @@ class JointActuator(object):
 #  Tasks associate a purpose with an environment.
 #  In this case, it uses the Agent control data to move a Robot, trying
 #  to maximise the distance moved between fitness evaluations.
-#
-#  @author John Glover
 class ALifeTask(EpisodicTask):
     ## Constructor
     #  @param env ALifeEnvironment object 
@@ -244,12 +238,10 @@ class ALifeTask(EpisodicTask):
         self._robot_stable = False
         ## @var max_samples The maximum number of samples (steps) before this task is finished.
         self.max_samples = 2000
-        ## @var _robot The Robot being controlled in this task
-        self._robot = env.robot
         ## @var _prev_robot_position The position of the robot at the previous  Task evaluation 
-        self._prev_robot_position = self._robot.get_position()
+        self._prev_robot_position = self.env.robot.get_position()
         ## @var _initial_robot_position The initial position of the robot. Used to reset it.
-        self._initial_robot_position = self._robot.get_position()
+        self._initial_robot_position = self.env.robot.get_position()
         ## @var _distance_moved The distance moved by the robot between consecutive evaluations
         self._distance_moved = 0.0
         ## @var _stable_distance The robot is said to be stable if it moves less than this distance
@@ -257,13 +249,13 @@ class ALifeTask(EpisodicTask):
         self._stable_distance = 0.00001
         ## @var _sensors The Robot's joint sensors
         self._sensors = sensors.JointSensor()
-        for j in self._robot.get_joints():
+        for j in self.env.robot.get_joints():
             self._sensors._joints.append(j)
         self._sensors._update()
         self._sensors._numValues = len(self._sensors.getValues())
         ## @var _actuator The Robot's actuator, moves the legs 
         self._actuator = JointActuator()
-        self._actuator.connect(self._robot.get_joints())
+        self._actuator.connect(self.env.robot.get_joints())
 
     ## Perform an action with the robot using the given action data
     #  Overwrite Task.performAction as it calls environment.performAction 
@@ -273,14 +265,14 @@ class ALifeTask(EpisodicTask):
         # check that robot has stabilised on the asteroid surface
         if not self._robot_stable:
             # calculate distance travelled since last check
-            p = self._robot.get_position()
+            p = self.env.robot.get_position()
             # subtract previous position
             p = (p[0] - self._prev_robot_position[0], 
                  p[1] - self._prev_robot_position[1], 
                  p[2] - self._prev_robot_position[2])
             # get the length of the vector
             self._distance_moved = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-            self._prev_robot_position = self._robot.get_position()
+            self._prev_robot_position = self.env.robot.get_position()
             if not self._robot_stable and self._distance_moved < self._stable_distance:
                 self._robot_stable = True
             else:
@@ -294,14 +286,14 @@ class ALifeTask(EpisodicTask):
     #  @return The distance moved since the last call to getReward()
     def getReward(self):         
         # calculate distance travelled since last check
-        p = self._robot.get_position()
+        p = self.env.robot.get_position()
         # subtract previous position
         p = (p[0] - self._prev_robot_position[0], 
              p[1] - self._prev_robot_position[1], 
              p[2] - self._prev_robot_position[2])
         # get the length of the vector
         self._distance_moved = np.sqrt(p[0]**2 + p[1]**2 + p[2]**2)
-        self._prev_robot_position = self._robot.get_position()
+        self._prev_robot_position = self.env.robot.get_position()
         return self._distance_moved
     
     ## Get the observation for the task, which is the current value of 
@@ -319,7 +311,7 @@ class ALifeTask(EpisodicTask):
     def reset(self):
         self.samples = 0
         self._robot_stable = False
-        self._prev_robot_position = self._robot.get_position()
+        self._prev_robot_position = self.env.robot.get_position()
         self._distance_moved = 0.0
   
         

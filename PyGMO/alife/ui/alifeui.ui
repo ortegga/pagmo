@@ -82,38 +82,6 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="body_sections_label">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>No. Robot Body Sections:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="body_sections">
-       <item>
-        <property name="text">
-         <string>1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>3</string>
-        </property>
-       </item>
-      </widget>
-     </item>
      <item row="0" column="2" rowspan="9">
       <widget class="Line" name="line">
        <property name="orientation">
@@ -156,7 +124,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>No. Legs Per Body Section:</string>
+        <string>No. Legs On The Robot:</string>
        </property>
       </widget>
      </item>
@@ -178,11 +146,6 @@
        <item>
         <property name="text">
          <string>6</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>8</string>
         </property>
        </item>
       </widget>
@@ -301,51 +264,6 @@
        <property name="text">
         <string>Unknown</string>
        </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="asteroid_mass_label">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Asteroid Mass:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QComboBox" name="asteroid_mass">
-       <property name="currentIndex">
-        <number>1</number>
-       </property>
-       <item>
-        <property name="text">
-         <string>5000</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>10000</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>15000</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>20000</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>30000</string>
-        </property>
-       </item>
       </widget>
      </item>
      <item row="5" column="3">
@@ -529,7 +447,7 @@ p, li { white-space: pre-wrap; }
        <item row="0" column="1">
         <widget class="QPushButton" name="save">
          <property name="enabled">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
          <property name="text">
           <string>Save</string>
@@ -538,9 +456,54 @@ p, li { white-space: pre-wrap; }
        </item>
       </layout>
      </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="asteroid_mass_label">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Asteroid Mass:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="asteroid_mass">
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>5000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>10000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>15000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>20000</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>30000</string>
+        </property>
+       </item>
+      </widget>
+     </item>
     </layout>
    </widget>
-   <widget class="QPushButton" name="restart">
+   <widget class="QPushButton" name="reset">
     <property name="geometry">
      <rect>
       <x>440</x>
@@ -550,7 +513,7 @@ p, li { white-space: pre-wrap; }
      </rect>
     </property>
     <property name="text">
-     <string>Restart Simulation</string>
+     <string>Reset Simulation</string>
     </property>
    </widget>
   </widget>

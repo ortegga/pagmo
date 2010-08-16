@@ -22,7 +22,9 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   
 ## @package robot
-#  This module contains the ALife Robot classes. 
+#  This module contains the ALife Robot class.
+#
+#  @author John Glover
 from pybrain.rl.environments.ode import sensors, actuators
 import ode
 import xml.dom.minidom as md
@@ -32,13 +34,11 @@ import numpy as np
 ## Robot class
 #
 #  Defines a robot that will be used in the ALife simulation.
-#  For now this is just a body (box) with 4 cylindrical legs. 
+#  For now this is just a body (box) with cylindrical legs. 
 #  Each leg is attached to the body with a hinge joint.
 #
 #  The constructor takes a optional 3D position vector, which 
-#  the body will be centred on.
-#
-#  @author John Glover
+#  the body will be centered on.
 class Robot(object):
     ## Constructor
     #  @param world The ODE world that bodies are added to
@@ -48,178 +48,180 @@ class Robot(object):
     #  @param name The string containing the name of the robot
     def __init__(self, world, space, body_position=[0.0, 150.0, 0.0], name=""):
         ##
+        self.world = world
+        ## 
+        self.space = space
+        ##
         self.bodies_geoms = []
         ##
         self.joints = []
         ##
         self.name = name
+        ##
+        self._body_sections = 1
         ## The density of the body
         self._body_density = 0.35
         # the size of the body
-        body_size = [4.0, 3.0, 4.0]
+        self._body_size = [4.0, 3.0, 4.0]
+        ##
+        self._legs = 4
         # radius of the legs
-        leg_radius = 0.25
+        self._leg_radius = 0.25
         # length of the legs
-        leg_length = 3.8
+        self._leg_length = 3.8
         # density of the legs
-        leg_density = 0.25
+        self._leg_density = 0.25
         ## Offset used to calculate leg y-axis coordinate.
         #  The last term makes the legs recede into the body slightly, looks
         #  a bit better
-        self._leg_y_offset = (leg_length/2) + (body_size[1]/2) - min(leg_radius*2, 1.0)
+        self._leg_y_offset = ((self._leg_length/2) + 
+                              (self._body_size[1]/2) - 
+                              min(self._leg_radius*2, 1.0))
         # The rotation of the legs
         self._leg_rotation = (1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
         ##
-        self.passpairs = [('robot_body', 'robot_leg1'),
-                          ('robot_body', 'robot_leg2'),
-                          ('robot_body', 'robot_leg3'),
-                          ('robot_body', 'robot_leg4')]
+        self.passpairs = []
         ##
         self.center_obj = "robot_body"
         
-        # Body
-        self.body = ode.Body(world)
-        self.body.name = "robot_body"
-        self.body.setPosition(body_position)
-        self.body.initial_position = body_position
+        ## Main body section. There must always be at least 1 body section.
+        self.main_body = ode.Body(world)
+        self.main_body.name = "robot_body"
+        self.main_body.setPosition(body_position)
+        self.main_body.initial_position = body_position
         body_mass = ode.Mass()
-        body_mass.setBox(self._body_density, body_size[0], body_size[1], body_size[2])
-        self.body.setMass(body_mass)
-        body_geom = ode.GeomBox(space, lengths=body_size)
-        body_geom.name = "robot_body"
-        body_geom.setBody(self.body)
-        self.body.initial_rotation = self.body.getRotation()
-        self.bodies_geoms.append((self.body, body_geom))
+        body_mass.setBox(self._body_density, self._body_size[0], 
+                         self._body_size[1], self._body_size[2])
+        self.main_body.setMass(body_mass)
+        ##
+        self.main_geom = ode.GeomBox(space, lengths=self._body_size)
+        self.main_geom.name = "robot_body"
+        self.main_geom.setBody(self.main_body)
+        self.main_body.initial_rotation = self.main_body.getRotation()
+        self.bodies_geoms.append((self.main_body, self.main_geom))
+        # create legs for main body section
+        self._create_legs(self.main_body)
+        # create additional body sections and legs
+        if self._body_sections > 1:
+            self._create_body_sections()
         
-        # Leg 1
-        leg1 = ode.Body(world)
-        leg1.name = "robot_leg1"
-        leg1_position = (body_position[0]+1.2,
-                         body_position[1]-self._leg_y_offset,
-                         body_position[2]-1.2)
-        leg1.setPosition(leg1_position)
-        leg1.initial_position = leg1_position
-        leg1_mass = ode.Mass()
-        leg1_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
-        leg1.setMass(leg1_mass)
-        leg1_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
-        leg1_geom.name = "robot_leg1"
-        leg1_geom.setBody(leg1)
-        leg1.setRotation(self._leg_rotation)
-        leg1.initial_rotation = self._leg_rotation
-        self.bodies_geoms.append((leg1, leg1_geom))
+    def _create_body_sections(self):
+        # todo: add the ability to create robots with multiple body sections.
+        # These could be connected by simple joints, creating a robot that could
+        # try to move like a snake rather than by walking
+        pass
+    
+    def _create_legs(self, body):
+        for i in range(self._legs):
+            self._create_leg(body, i)
         
-        # Leg 2
-        leg2 = ode.Body(world)
-        leg2.name = "robot_leg2"
-        leg2_position = (body_position[0]-1.2,
-                         body_position[1]-self._leg_y_offset,
-                         body_position[2]-1.2)
-        leg2.setPosition(leg2_position)
-        leg2.initial_position = leg2_position
-        leg2_mass = ode.Mass()
-        leg2_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
-        leg2.setMass(leg2_mass)
-        leg2_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
-        leg2_geom.name = "robot_leg2"
-        leg2_geom.setBody(leg2)
-        leg2.setRotation(self._leg_rotation)
-        leg2.initial_rotation = self._leg_rotation
-        self.bodies_geoms.append((leg2, leg2_geom))
+    def _create_leg(self, body, n):
+        leg = ode.Body(self.world)
+        leg.name = "robot_leg" + str(n+1)
+        # calculate leg spacing based on the size of the body and the 
+        # number of legs on each side of the z-axis
+        legs_per_side = (self._legs / 2)
+        leg_z_spacing = (self._body_size[2]/2.0) / 2.0
+        # calculate leg x-axis offset        
+        if legs_per_side % 2 != 0:
+            leg_x_spacing = self._body_size[0] / legs_per_side
+            if n < 2:
+                leg_x_offset = 0
+            else:
+                if n % 4 > 1:
+                    leg_x_offset = (((n-2)/4) + 1) * leg_x_spacing
+                else:
+                    leg_x_offset = (((n-2)/4) + 1) * -leg_x_spacing
+        else:
+            leg_x_spacing = (self._body_size[0]/2.0) / legs_per_side
+            if n % 4 > 1:
+                leg_x_offset = ((n/4) + 1) * leg_x_spacing
+            else:
+                leg_x_offset = ((n/4) + 1) * -leg_x_spacing
+        # calculate leg z-axis offset
+        if n % 2 == 0:
+            leg_z_offset = leg_z_spacing
+        else:
+            leg_z_offset = -leg_z_spacing
+        # calculate absolute position for the leg using the body
+        # position and the leg offset
+        body_position = body.getPosition()
+        leg_position = (body_position[0]+leg_x_offset, 
+                        body_position[1]-self._leg_y_offset, 
+                        body_position[2]+leg_z_offset)
+        leg.setPosition(leg_position)
+        leg.initial_position = leg_position
+        leg_mass = ode.Mass()
+        leg_mass.setCappedCylinder(self._leg_density, 3, 
+                                   self._leg_radius, self._leg_length)
+        leg.setMass(leg_mass)
+        leg_geom = ode.GeomCCylinder(self.space, length=self._leg_length, 
+                                     radius=self._leg_radius)
+        leg_geom.name = leg.name
+        leg_geom.setBody(leg)
+        leg.setRotation(self._leg_rotation)
+        leg.initial_rotation = self._leg_rotation
+        # add to the list of bodies and geometries
+        self.bodies_geoms.append((leg, leg_geom))
+        # set it so that there is no collision detection between this leg
+        # and the body that it is attached to, otherwise the simulation can
+        # become unstable.
+        self.passpairs.append((body.name, leg.name))
+        # create a hinge joint connecting each leg to the body
+        self._create_leg_joint(body, leg, n)
         
-        # Leg 3
-        leg3 = ode.Body(world)
-        leg3.name = "robot_leg3"
-        leg3_position = (body_position[0]+1.2,
-                         body_position[1]-self._leg_y_offset,
-                         body_position[2]+1.2)
-        leg3.setPosition(leg3_position)
-        leg3.initial_position = leg3_position
-        leg3_mass = ode.Mass()
-        leg3_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
-        leg3.setMass(leg3_mass)
-        leg3_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
-        leg3_geom.name = "robot_leg3"
-        leg3_geom.setBody(leg3)
-        leg3.setRotation(self._leg_rotation)
-        leg3.initial_rotation = self._leg_rotation
-        self.bodies_geoms.append((leg3, leg3_geom))
-        
-        # Leg 4
-        leg4 = ode.Body(world)
-        leg4.name = "robot_leg4"
-        leg4_position = (body_position[0]-1.2,
-                         body_position[1]-self._leg_y_offset,
-                         body_position[2]+1.2)
-        leg4.setPosition(leg4_position)
-        leg4.initial_position = leg4_position
-        leg4_mass = ode.Mass()
-        leg4_mass.setCappedCylinder(leg_density, 3, leg_radius, leg_length)
-        leg4.setMass(leg4_mass)
-        leg4_geom = ode.GeomCCylinder(space, length=leg_length, radius=leg_radius)
-        leg4_geom.name = "robot_leg4"
-        leg4_geom.setBody(leg4)
-        leg4.setRotation(self._leg_rotation)
-        leg4.initial_rotation = self._leg_rotation
-        self.bodies_geoms.append((leg4, leg4_geom))
-        
-        # Joint 1
-        joint1 = ode.HingeJoint(world)
-        joint1.name="robot_body_leg1"
-        joint1.attach(self.body, leg1)
-        joint1.setAnchor((body_position[0]+1.2, 
-                          body_position[1]-(body_size[1]/2), 
-                          body_position[2]-1.2))
-        joint1.setAxis((1,0,0))
-        joint1.setParam(ode.ParamLoStop, -1.2)
-        joint1.setParam(ode.ParamHiStop, 1.2)
-        joint1.setParam(ode.ParamFMax, 10)
-        self.joints.append(joint1)
-        
-        # Joint 2
-        joint2 = ode.HingeJoint(world)
-        joint2.name="robot_body_leg2"
-        joint2.attach(self.body, leg2)
-        joint2.setAnchor((body_position[0]-1.2, 
-                          body_position[1]-(body_size[1]/2), 
-                          body_position[2]-1.2))
-        joint2.setAxis((1,0,0))
-        joint2.setParam(ode.ParamLoStop, -1.2)
-        joint2.setParam(ode.ParamHiStop, 1.2)
-        joint2.setParam(ode.ParamFMax, 10)
-        self.joints.append(joint2)
-        
-        # Joint 3
-        joint3 = ode.HingeJoint(world)
-        joint3.name="robot_body_leg3"
-        joint3.attach(self.body, leg3)
-        joint3.setAnchor((body_position[0]+1.2, 
-                          body_position[1]-(body_size[1]/2), 
-                          body_position[2]+1.2))
-        joint3.setAxis((1,0,0))
-        joint3.setParam(ode.ParamLoStop, -1.2)
-        joint3.setParam(ode.ParamHiStop, 1.2)
-        joint3.setParam(ode.ParamFMax, 10)
-        self.joints.append(joint3)
-        
-        # Joint 4
-        joint4 = ode.HingeJoint(world)
-        joint4.name="robot_body_leg4"
-        joint4.attach(self.body, leg4)
-        joint4.setAnchor((body_position[0]-1.2, 
-                          body_position[1]-(body_size[1]/2), 
-                          body_position[2]+1.2))
-        joint4.setAxis((1,0,0))
-        joint4.setParam(ode.ParamLoStop, -1.2)
-        joint4.setParam(ode.ParamHiStop, 1.2)
-        joint4.setParam(ode.ParamFMax, 10)
-        self.joints.append(joint4)
-        
+    def _create_leg_joint(self, body, leg, n):
+        body_position = body.getPosition()
+        leg_position = leg.getPosition()
+        joint = ode.HingeJoint(self.world)
+        joint.name= body.name + "_leg" + str(n+1)
+        joint.attach(body, leg)
+        joint.setAnchor((leg_position[0], 
+                         body_position[1]-(self._body_size[1]/2.0), 
+                         leg_position[2]))
+        joint.setAxis((1,0,0))
+        joint.setParam(ode.ParamLoStop, -1.2)
+        joint.setParam(ode.ParamHiStop, 1.2)
+        joint.setParam(ode.ParamFMax, 10)
+        self.joints.append(joint)
+                          
     def get_position(self):
-        return self.body.getPosition()    
+        return self.main_body.getPosition()    
         
     def get_joints(self):
         return self.joints
+    
+    def get_num_legs(self):
+        return self._legs
+    
+    def set_num_legs(self, n):
+        if n % 2 != 0:
+            # todo: more detail on this exception
+            raise Exception("OddLegNumber")
+        self._legs = n
+        self.bodies_geoms = []
+        self.bodies_geoms.append((self.main_body, self.main_geom))
+        self._create_legs(self.main_body)
+        
+    def get_body_density(self):
+        return self._body_density
+    
+    def set_body_density(self, density):
+        self._body_density = density
+        body_mass = self.main_body.getMass()
+        body_mass.setBox(self._body_density, self._body_size[0], 
+                         self._body_size[1], self._body_size[2])
+    
+    def get_leg_density(self):
+        return self._leg_density
+    
+    def set_leg_density(self, density):
+        self._leg_density = density
+        for body, geom in self.bodies_geoms:
+            if body.name[0:len("robot_leg")] == "robot_leg":
+                leg_mass = body.getMass()
+                leg_mass.setCappedCylinder(self._leg_density, 3, 
+                                           self._leg_radius, self._leg_length)
 
     def reset(self):
         for body, geom in self.bodies_geoms:
