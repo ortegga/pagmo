@@ -1,6 +1,6 @@
 
 \documentclass[a4paper,11pt]{article}
-\usepackage{rotating}
+\usepackage{float}
 \usepackage{verbatim} 
 \usepackage{graphicx}
 \usepackage{hyperref }
@@ -109,12 +109,15 @@ To get started with the python
 
 \appendix
 
+\newpage
 \section{example1.py}
-
+Very simple example of an earth to mars trajectory.
+\subsection{Data}
+This example does not use external files for data, it declares the data in the code.
 \subsection{Code}
 \verbatiminput{../../example1.py}
 \subsection{Results}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{img/example1}
 \caption{Screenshot of the trajectory from example1.py}
@@ -122,7 +125,9 @@ To get started with the python
 \end{figure}
 
 
+\newpage
 \section{example2.py}
+Example of doing \gls{MGA}.
 \subsection{Data}
 For this example we are using:
 
@@ -133,7 +138,7 @@ For this example we are using:
 \subsection{Code}
 \verbatiminput{../../example2.py}
 \subsection{Results}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{img/example2}
 \caption{Screenshot of the trajectory from example2.py}
@@ -141,7 +146,9 @@ For this example we are using:
 \end{figure}
 
 
+\newpage
 \section{example3.py}
+Example of a simple \gls{DSM}.
 \subsection{Data}
 For this example we are using:
 
@@ -152,7 +159,7 @@ For this example we are using:
 \subsection{Code}
 \verbatiminput{../../example3.py}
 \subsection{Results}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{img/example3}
 \caption{Screenshot of the trajectory from example3.py}
@@ -160,7 +167,9 @@ For this example we are using:
 \end{figure}
 
 
+\newpage
 \section{example4.py}
+Complete complex dataset example. This one does a gravity assist and multiple \gls{DSM}.
 \subsection{Data}
 For this example we are using:
 
@@ -171,7 +180,7 @@ For this example we are using:
 \subsection{Code}
 \verbatiminput{../../example4.py}
 \subsection{Results}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \includegraphics[width=1\textwidth]{img/example4}
 \caption{Screenshot of the trajectory from example4.py}
