@@ -41,10 +41,7 @@ if __name__ == "__main__":
    traj.setUnits( "km", "d", "km/s" )
 
    # Create some stuff
-   traj.origin( True )
-   traj.vectors( True )
    traj.repeat( True )
-   traj.axes( True )
 
    # Start the engine
    traj.start()

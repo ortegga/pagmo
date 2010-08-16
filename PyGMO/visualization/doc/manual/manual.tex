@@ -1,7 +1,7 @@
 
 \documentclass[a4paper,11pt]{article}
 \usepackage{float}
-\usepackage{verbatim} 
+\usepackage{listings}
 \usepackage{graphicx}
 \usepackage{hyperref }
 \usepackage[acronym]{glossaries}
@@ -15,8 +15,11 @@
 }
 \date{\today}
 
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
 \begin{document}
-\maketitle
+\input{./cover.tex}
+%\maketitle
 
 \begin{abstract}
 Manual for the Visualization module from PyGMO developed for PaGMO as part of the Google Summer of Code 2010 project.
@@ -42,7 +45,7 @@ The main requirement for the visualization module is \gls{python} and \gls{openg
 \item OpenGL 1.1 capable card with VBO extension
 \end{itemize}
 
-To be able to run the visualization module you must have all the dependencies. The dependency list is:
+To be able to run the visualization module you must have all the dependencies. The dependency list is:\label{lbl:deps}
 
 \begin{itemize}
 \item \gls{python}
@@ -66,11 +69,11 @@ The Visualization module is designed around flexibility and simplicity.
 \item Time slider to be able to move to any time instant in the path
 \item Keyboard interaction
 \item Mouse Interaction that behaves like most 3D applications
-\item Support for processing \gls{CSV} files.
+\item Support for processing \gls{csv} files.
 \end{itemize}
 
 
-\section{Installing the Visualization Module}
+\section{Installing the Visualization Module}\label{sec:install}
 
 The installation is not different from the standard \gls{PaGMO} and \gls{PyGMO} installation\cite{install:pagmo}. However care must be taken so that \gls{PyGMO} is also installed.
 
@@ -84,12 +87,12 @@ The visualization module has two important aspects. The first is the acquiring o
 
 The \gls{python} \gls{API} is aimed at developers although it is simple enough to be used by anyone.
 
-\subsubsection{Getting Started}
+\subsubsection{Getting Started}\label{sec:started}
 
 To get started with the python you just have to include the module. If PyGMO is properly installed and your python paths are set correctly you should be able to run the following line in python console or a python script:
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 from PyGMO import visualization
-\end{verbatim}
+\end{lstlisting}
 This line will import the visualization module to allow you to get started with it. If no error is thrown that means you have PyGMO properly installed. If you get an error check the troubleshooting guide in section \ref{sec:troubleshoot}.
 
 The next important step to be able to visualize a trajectory is to generate a proper dataset. Datasets are composed of control pointse. Each control point has the following format:
@@ -115,7 +118,7 @@ That means the length of each control point is of 10 values. So each dataset sho
 
 Of course these values would have to be formatted as a python list or tuple. We can create the dataset tuple with the following code:
 
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 data = ( 8273.267,
             135299631.153314,
                -67433330.1118738,
@@ -136,65 +139,195 @@ data = ( 8273.267,
             0.,
                0.,
                0. )
-\end{verbatim}
+\end{lstlisting}
 
 Now that we have the data we have to prepare the conversion ratios so that they get converted to \gls{SI}\cite{siunits} base units. In our case this means seconds for $t$, meters for $r$, meters per second for $v$ and meters per second for $dv$. In this case our dataset we have to convert from days, kilometers, kilometers per second and kilometers per second respectively. So now we proceed to generate the trajectory class with our data:
 
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 traj = visualization.Trajectory3D( data, # Our dataset
       640, 480, # Our window size
       24.*3600., # Conversion from days to seconds
       1000., # Conversion from kilometers to meters
-      1000., # Conversion from kilometers per second to meters per second
-      1. ) # Conversion from kilometers per second to meters per second
-\end{verbatim}
+      1000., # Conversion from kilometers per second
+             # to meters per second
+      1. ) # Conversion from kilometers per second
+           # to meters per second
+\end{lstlisting}
 
 Now we have created the class object. We can now proceed to manipulate it. For example, if we want to add the planets of earth and mars it's as easy as running the following command:
 
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 traj.addPlanets( [ 'earth', 'mars' ] )
-\end{verbatim}
+\end{lstlisting}
 
 They will be created using the \gls{mjd2000} dates from the $t$ value of the control points. It is very important that the $t$ value matches the right time otherwise the planets will not by synchronized with the trajectory. To display units again in the original dataset units we can run the $setUnits$ function.
 
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 traj.setUnits( "km", "d", "km/s" )
-\end{verbatim}
+\end{lstlisting}
 
 This will make the class convert the units when displaying them to the units we just defined. Finally we can mess a bit with the visual aspect of the window before displaying it.
 
-\begin{verbatim}
-traj.origin( True ) # Displays the origin axes, useful for debugging and getting a reference idea
-traj.vectors( True ) # Shows vectors from the moving object to the origin, useful for debugging
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
+traj.origin( True ) # Displays the origin axes,
+                    # useful for debugging and
+                    # getting a reference idea
+traj.vectors( True ) # Shows vectors from the moving
+                      #object to the origin,
+                      useful for debugging
 traj.repeat( True ) # Makes the animation repeat itself
-traj.axes( True ) # Sets axes that display the values on the projection of the screen
-\end{verbatim}
+traj.axes( True ) # Sets axes that display the values
+                  # on the projection of the screen
+\end{lstlisting}
 
 When we are satisfied with the tuning of the class we can create the window with the $start$ function.
 
-\begin{verbatim}
+\begin{lstlisting}[language=Python,breakatwhitespace=true]
 traj.start()
-\end{verbatim}
+\end{lstlisting}
 
-Now the window will be created and show the data. The output of this example can be seen at \ref{img:example1}. The full source code is available at appendix \ref{sec:example1}. For more details on how to manipulate the trajectory in the window go to section \ref{sec:window}.
+Now the window will be created and show the data. The output of this example can be seen at \ref{img:example1}. The full source code is available at appendix \ref{app:example1}. For more details on how to manipulate the trajectory in the window go to section \ref{sec:window}.
 
 
 \subsubsection{Advanced}\label{sec:advanced}
 
+While the visualization module may seem simple it has many features that make it much more complex than it seems. One of the most important features is the ability to read from \gls{csv} files. Basically it allows you to import control points and planet flybys from \gls{csv} files.
 
-\subsubsection{Common Issues}
+To load control points from a \gls{csv} file you basically need to define a \gls{csv} file in the same format as the data shown in section \ref{sec:started}. That is to use the following format:
+
+$ t, r, v, dv $
+
+With $r$, $v$ and $dv$ being 3 component vectors. When you have a file in this format you then pass the file name as the data paramaeter when creating a new class. For example example2.py in appendix \ref{app:example2} uses the following:
+
+\begin{lstlisting}[language=Python]
+traj = visualization.Trajectory3D( "CassiniMGA.txt", 640, 480,
+      24.*3600., 1000., 1000., 1000. )
+\end{lstlisting}
+
+It is loading the data from $CassiniMGI.txt$ which is the \gls{csv} file containing the data. Planets can also be loaded this way, however planets are much more powerful this way as you can specify flyby distances and delta velocity of the flyby. The format for the planet \gls{csv} file is the following:
+
+$ name, date, dv, r $
+
+$name$ is the name of the planet which can be one of:
+
+\begin{itemize}
+\item Mercury
+\item Venus
+\item Earth
+\item Mars
+\item Jupiter
+\item Saturn
+\item Uranus
+\item Neptune
+\end{itemize}
+
+$date$ is the date of the flyby. This date can be in any format and the parser will interprete it. If it is just a number it is assumed to be in \gls{mjd2000} as days. $dv$ is the delta velocity of the flyby in kilometers per second and $r$ is the distance of the flyby in kilometers. If $r$ is 'NaN' it assumes that the planet is either the take off or the land planet. An example planet \gls{csv} file would be:
+
+\begin{lstlisting}
+Earth,8.3230060190000000E+03,0.,NaN
+Earth,9.3718274560000100E+03,0.,7000.0
+Jupiter,1.1235668426000000E+04,0.,NaN
+\end{lstlisting}
+
+This is example is taken from appendix \ref{app:example2}. The first line is the take off from Earth. The second line is a flyby of earth at 7000 kilometers distance. The third line is the arrival at Jupiter. To load planets from the \gls{csv} file it just has to be passed as the parameter of $addPlanets$ like so:
+
+\begin{lstlisting}[language=Python]
+traj.addPlanets( "CassiniMGA_flybyinfo.txt" )
+\end{lstlisting}
+
+There is more \gls{API} also available. To read the documentation you can access it with:
+
+\begin{lstlisting}[language=Python]
+from PyGMO import visualization
+help(visualization)
+\end{lstlisting}
+
+
+%\subsubsection{Common Issues}
 
 
 \subsection{3D Trajectory Window}\label{sec:window}
 
+The 3D Trajectory Window is composed of many elements. Some of these can be seen in \ref{img:guide}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1\textwidth]{img/guide}
+\caption{Example of the window elements}
+\label{img:guide}
+\end{figure}
+
+Many of these elements are optional and can be toggled through the python API when creating the window.
+
+\subsubsection{Mouse}
+
+The mouse is mainly used for moving the camera. The bindings are an unofficial 3D standard:
+
+\begin{itemize}
+\item \textbf{Middle Mouse Drag:} Rotates the camera around.
+\item \textbf{Control + Middle Mouse Drag:} Moves the camera around.
+\item \textbf{Left Mouse Click:} Interacts with the control
+\end{itemize}
 
 \subsubsection{Keybindings}
 
+The keybindings are designed for interaction with all sorts of elements. These bindings are grouped into two major grous: camera and playback bindings.
 
-\subsubsection{Common Issues}
+The camera bindings:
+
+\begin{itemize}
+\item \textbf{Escape:} Exits.
+\item \textbf{q:} Exits.
+\item \textbf{Arrow Keys:} Rotates the camera around.
+\item \textbf{c:} Resets the camera to isometric and optimizing screen space.
+\item \textbf{z:} Zooms in.
+\item \textbf{Z:} Zooms out.
+\item \textbf{2:} Faces from the bottom (0, 0, -1).
+\item \textbf{4:} Faces from the left (0, -1, 0).
+\item \textbf{5:} Faces forwards (0, 1, 0).
+\item \textbf{6:} Faces from the right (0, 1, 0).
+\item \textbf{8:} Faces from the top (0, 0, 1).
+\end{itemize}
+
+The playback bindings:
+
+\begin{itemize}
+\item \textbf{p:} Toggles pause.
+\item \textbf{r:} Restarts playback.
+\item \textbf{f:} Accelerates playback.
+\item \textbf{s:} Slows down playback.
+\item \textbf{h:} Toggles control visibility.
+\end{itemize}
+
+
+%\subsubsection{Common Issues}
 
 
 \section{Troubleshooting}\label{sec:troubleshoot}
+
+\subsection{Import fails}
+
+If you are getting the following error.
+
+\begin{lstlisting}
+>>> from PyGMO import visualization
+ Traceback (most recent call last):
+   File "<stdin>", line 1, in <module>
+   ImportError: No module named PyGMO
+\end{lstlisting}
+
+You have not installed PyGMO properly, please refer to section \ref{sec:install} for how to install.
+
+
+\subsection{Missing dependencies}
+
+If you are getting an error similar to:
+
+\begin{lstlisting}
+Warning: The python-opengl bindings are missing, you won't be able to use the visualization module.
+\end{lstlisting}
+
+Please double check to make sure you have all the PyGMO dependencies. Refer to section \ref{lbl:deps} for details on the dependencies.
 
 
 \appendix
@@ -205,7 +338,7 @@ Very simple example of an earth to mars trajectory.
 \subsection{Data}
 This example does not use external files for data, it declares the data in the code.
 \subsection{Code}
-\verbatiminput{../../example1.py}
+\lstinputlisting[language=Python]{../../example1.py}
 \subsection{Results}
 \begin{figure}[H]
 \centering
@@ -216,7 +349,7 @@ This example does not use external files for data, it declares the data in the c
 
 
 \newpage
-\section{example2.py}
+\section{example2.py}\label{app:example2}
 Example of doing \gls{MGA}.
 \subsection{Data}
 For this example we are using:
@@ -226,7 +359,7 @@ For this example we are using:
 \item CassiniMGA\_flybyinfo.txt
 \end{itemize}
 \subsection{Code}
-\verbatiminput{../../example2.py}
+\lstinputlisting[language=Python]{../../example2.py}
 \subsection{Results}
 \begin{figure}[H]
 \centering
@@ -247,7 +380,7 @@ For this example we are using:
 \item EarthMarsDSM\_flybyinfo.txt
 \end{itemize}
 \subsection{Code}
-\verbatiminput{../../example3.py}
+\lstinputlisting[language=Python]{../../example3.py}
 \subsection{Results}
 \begin{figure}[H]
 \centering
@@ -268,7 +401,7 @@ For this example we are using:
 \item EarthEarthJupiter\_flybyinfo.txt
 \end{itemize}
 \subsection{Code}
-\verbatiminput{../../example4.py}
+\lstinputlisting[language=Python]{../../example4.py}
 \subsection{Results}
 \begin{figure}[H]
 \centering
