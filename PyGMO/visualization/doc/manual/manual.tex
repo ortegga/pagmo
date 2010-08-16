@@ -1,5 +1,6 @@
 
 \documentclass[a4paper,11pt]{article}
+\usepackage{rotating}
 \usepackage{verbatim} 
 \usepackage{graphicx}
 \usepackage{hyperref }
@@ -25,9 +26,9 @@ Manual for the Visualization module from PyGMO developed for PaGMO as part of th
 \tableofcontents
 \newpage
 
+
 \section{Introduction}
 This is the manual for the Visualization module which is part of the \gls{PyGMO} python suite for interaction with \gls{PaGMO}. The objective of this module is 3D Visualization of Interplanetary Trajectories. This manual is intended both for python developers using the PyGMO \gls{API} and end users executing the python script.
-
 
 
 \subsection{Requirements}
@@ -86,6 +87,97 @@ The \gls{python} \gls{API} is aimed at developers although it is simple enough t
 \subsubsection{Getting Started}
 
 To get started with the python
+
+
+\subsubsection{Advanced}
+
+
+\subsubsection{Common Issues}
+
+
+\subsection{3D Trajectory Window}
+
+
+\subsubsection{Keybindings}
+
+
+\subsubsection{Common Issues}
+
+
+\section{Troubleshooting}
+
+
+\appendix
+
+\section{example1.py}
+
+\subsection{Code}
+\verbatiminput{../../example1.py}
+\subsection{Results}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1\textwidth]{img/example1}
+\caption{Screenshot of the trajectory from example1.py}
+\label{img:example1}
+\end{figure}
+
+
+\section{example2.py}
+\subsection{Data}
+For this example we are using:
+
+\begin{itemize}
+\item CassiniMGA.txt
+\item CassiniMGA\_flybyinfo.txt
+\end{itemize}
+\subsection{Code}
+\verbatiminput{../../example2.py}
+\subsection{Results}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1\textwidth]{img/example2}
+\caption{Screenshot of the trajectory from example2.py}
+\label{img:example2}
+\end{figure}
+
+
+\section{example3.py}
+\subsection{Data}
+For this example we are using:
+
+\begin{itemize}
+\item EarthMarsDSM.txt
+\item EarthMarsDSM\_flybyinfo.txt
+\end{itemize}
+\subsection{Code}
+\verbatiminput{../../example3.py}
+\subsection{Results}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1\textwidth]{img/example3}
+\caption{Screenshot of the trajectory from example3.py}
+\label{img:example3}
+\end{figure}
+
+
+\section{example4.py}
+\subsection{Data}
+For this example we are using:
+
+\begin{itemize}
+\item EarthEarthJupiter.csv
+\item EarthEarthJupiter\_flybyinfo.txt
+\end{itemize}
+\subsection{Code}
+\verbatiminput{../../example4.py}
+\subsection{Results}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1\textwidth]{img/example4}
+\caption{Screenshot of the trajectory from example4.py}
+\label{img:example4}
+\end{figure}
+
 
 
 \section{GUI Mock-up}
