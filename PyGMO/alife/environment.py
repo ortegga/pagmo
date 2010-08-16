@@ -129,7 +129,6 @@ class ALifeEnvironment(object):
             j = ode.ContactJoint(world, contactgroup, c)
             j.name = None
             j.attach(geom1.getBody(), geom2.getBody())
-#            print c.getContactGeomParams() 
             
     ## Get the distance between the given body and the centre of the asteroid
     #  @param body the body
