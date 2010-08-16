@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'alifeui.ui'
 #
-# Created: Mon Aug 16 14:20:37 2010
+# Created: Mon Aug 16 17:40:26 2010
 #      by: PyQt4 UI code generator 4.7.4
 #
 # WARNING! All changes made in this file will be lost!
@@ -140,6 +140,8 @@ class Ui_ALife(object):
         self.algorithm = QtGui.QComboBox(self.layoutWidget)
         self.algorithm.setObjectName("algorithm")
         self.algorithm.addItem("")
+        self.algorithm.addItem("")
+        self.algorithm.addItem("")
         self.gridLayout.addWidget(self.algorithm, 5, 4, 1, 1)
         self.generations_label = QtGui.QLabel(self.layoutWidget)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
@@ -151,6 +153,12 @@ class Ui_ALife(object):
         self.gridLayout.addWidget(self.generations_label, 6, 3, 1, 1)
         self.generations = QtGui.QComboBox(self.layoutWidget)
         self.generations.setObjectName("generations")
+        self.generations.addItem("")
+        self.generations.addItem("")
+        self.generations.addItem("")
+        self.generations.addItem("")
+        self.generations.addItem("")
+        self.generations.addItem("")
         self.generations.addItem("")
         self.gridLayout.addWidget(self.generations, 6, 4, 1, 1)
         self.islands_label = QtGui.QLabel(self.layoutWidget)
@@ -249,6 +257,7 @@ class Ui_ALife(object):
         self.retranslateUi(ALife)
         self.legs.setCurrentIndex(1)
         self.body_density.setCurrentIndex(1)
+        self.algorithm.setCurrentIndex(1)
         self.asteroid_mass.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(ALife)
 
@@ -275,9 +284,17 @@ class Ui_ALife(object):
         self.fitness_label.setText(QtGui.QApplication.translate("ALife", "Fitness:", None, QtGui.QApplication.UnicodeUTF8))
         self.fitness.setText(QtGui.QApplication.translate("ALife", "Unknown", None, QtGui.QApplication.UnicodeUTF8))
         self.algorithm_label.setText(QtGui.QApplication.translate("ALife", "Algorithm:", None, QtGui.QApplication.UnicodeUTF8))
-        self.algorithm.setItemText(0, QtGui.QApplication.translate("ALife", "Differential Evolution", None, QtGui.QApplication.UnicodeUTF8))
+        self.algorithm.setItemText(0, QtGui.QApplication.translate("ALife", "DE", None, QtGui.QApplication.UnicodeUTF8))
+        self.algorithm.setItemText(1, QtGui.QApplication.translate("ALife", "IHS", None, QtGui.QApplication.UnicodeUTF8))
+        self.algorithm.setItemText(2, QtGui.QApplication.translate("ALife", "PSO", None, QtGui.QApplication.UnicodeUTF8))
         self.generations_label.setText(QtGui.QApplication.translate("ALife", "No. Generations:", None, QtGui.QApplication.UnicodeUTF8))
         self.generations.setItemText(0, QtGui.QApplication.translate("ALife", "1", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(1, QtGui.QApplication.translate("ALife", "2", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(2, QtGui.QApplication.translate("ALife", "3", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(3, QtGui.QApplication.translate("ALife", "4", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(4, QtGui.QApplication.translate("ALife", "5", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(5, QtGui.QApplication.translate("ALife", "10", None, QtGui.QApplication.UnicodeUTF8))
+        self.generations.setItemText(6, QtGui.QApplication.translate("ALife", "20", None, QtGui.QApplication.UnicodeUTF8))
         self.islands_label.setText(QtGui.QApplication.translate("ALife", "No. Islands:", None, QtGui.QApplication.UnicodeUTF8))
         self.islands.setItemText(0, QtGui.QApplication.translate("ALife", "1", None, QtGui.QApplication.UnicodeUTF8))
         self.islands.setItemText(1, QtGui.QApplication.translate("ALife", "2", None, QtGui.QApplication.UnicodeUTF8))

@@ -163,7 +163,7 @@ class ALifeAgent(Agent):
     def set_weights(self, weights):
         if not len(weights) == len(self._network.params):
             # todo: more detail on this exception
-            raise Exception("InvalidWeights")
+            raise Exception("InvalidNumberOfWeights")
         for i in range(len(weights)):
             self._network.params[i] = weights[i]
              

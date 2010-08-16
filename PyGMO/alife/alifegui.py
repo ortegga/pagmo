@@ -26,6 +26,7 @@
 #
 #  @author John Glover
 from math import acos, pi, sqrt
+import random
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -33,12 +34,14 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtOpenGL import QGLWidget
 import Image
 from ui.alifeui import Ui_ALife
+from PyGMO import problem, algorithm, topology, archipelago
 from viewer import ALifeViewer
 from environment import ALifeEnvironment
 from task import ALifeExperiment
 from robot import Robot
 from asteroid import Asteroid
 from task import ALifeExperiment, ALifeAgent, ALifeTask
+from alife import ALifeProblem
 
 ##
 class ALifeViewerWidget(QGLWidget, ALifeViewer):
@@ -209,7 +212,51 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         print "Click and drag with the mouse to move the camera around the robot"
         
         
-##
+class EvolutionThread(QtCore.QThread):
+    def __init__(self, algo, num_generations, num_islands,
+                 num_individuals, mass, legs,
+                 body_density, leg_density, parent=None):
+        QtCore.QThread.__init__(self, parent)
+        environment = ALifeEnvironment()
+        robot = Robot(environment.world, environment.space, 
+                      [random.randint(-100, 100), 150, 0])
+        robot.set_num_legs(legs)
+        robot.set_body_density(body_density)
+        robot.set_leg_density(leg_density)
+        environment.set_robot(robot)
+        asteroid = Asteroid(environment.space, "models/asteroid_textured.x3d")
+        asteroid.mass = mass
+        environment.set_asteroid(asteroid)
+        # setup PaGMO problem
+        self.prob = ALifeProblem(environment, robot, asteroid)
+        self.topo = topology.ring()
+        self.algo = algo
+        self.num_generations = num_generations
+        self.num_islands = num_islands
+        self.num_individuals = num_individuals
+    
+    def run(self):
+        a = archipelago(self.prob, self.algo, self.num_islands, 
+                        self.num_individuals, self.topo)
+        # todo: check for progress bar being cancelled after each generation
+        for i in range(self.num_generations):
+            a.evolve(1)
+            self.emit(QtCore.SIGNAL("Generation(int)"), i)
+            a.join()
+        # get the weights from the winning robot
+        max_distance_moved = 0
+        best_weights = np.zeros(len(a[0].population.champion.x))
+        count = 0
+        for i in a:
+            if -i.population.champion.f[0] > max_distance_moved:
+                max_distance_moved = -i.population.champion.f[0]
+                best_weights = i.population.champion.x
+        # emit fitness for the winning individual
+        self.emit(QtCore.SIGNAL("Fitness(float)"), max_distance_moved)
+        # emit weights for the winning individual
+        self.emit(QtCore.SIGNAL("Weights(PyQt_PyObject)"), best_weights)
+
+
 class ALifeGUI(QtGui.QMainWindow):
     ##
     def __init__(self):
@@ -281,7 +328,7 @@ class ALifeGUI(QtGui.QMainWindow):
         self.ui.main_view.experiment = ALifeExperiment(self.ui.main_view.task, 
                                                        self.ui.main_view.agent, 
                                                        self.ui.main_view.environment) 
-        
+
     ##
     def keyPressEvent(self, event):
         if event.text() == 'z':
@@ -336,8 +383,57 @@ class ALifeGUI(QtGui.QMainWindow):
     def change_legs(self, index):
         self.update_environment()
         
+    def update_progress(self, generation):
+        self.progress.setValue(generation)
+        
+    def update_fitness(self, fitness):
+        self.ui.fitness.setText(str(fitness))
+        
+    def update_weights(self, weights):
+        self.ui.main_view.agent.set_weights(weights)
+        if hasattr(self, 'progress'):
+            self.progress.cancel()
+        self.ui.weights.setText("Evolved weights")
+        
     def evolve(self):
-        print 'evolve'
+        try:
+            # get evolution parameters
+            if self.ui.algorithm.currentText() == "DE":
+                algo = algorithm.de(5)
+            elif self.ui.algorithm.currentText() == "IHS":
+                algo = algorithm.ihs(5)
+            elif self.ui.algorithm.currentText() == "PSO":
+                algo = algorithm.pso(5)
+            else:
+                raise Exception("AlgorithmNotDefined")
+            num_generations = int(self.ui.generations.currentText())
+            num_islands = int(self.ui.islands.currentText())
+            num_individuals = int(self.ui.individuals.currentText())
+            if self.ui.algorithm.currentText() == "DE" and num_individuals < 6:
+                raise Exception("At least 6 individuals needed for DE")
+            # get environment and robot parameters
+            mass = float(self.ui.asteroid_mass.currentText())
+            legs = int(self.ui.legs.currentText())
+            body_density = float(self.ui.body_density.currentText())
+            leg_density = float(self.ui.leg_density.currentText())
+        except Exception as e:
+            # catch any PaGMO parameter errors
+            QtGui.QMessageBox.information(self, 'Error', str(e))
+            return
+            
+        # run evolution in a separate thread so the GUI does not freeze up
+        self.evo = EvolutionThread(algo, num_generations, num_islands,
+                                   num_individuals, mass, legs,
+                                   body_density, leg_density)
+        self.connect(self.evo, QtCore.SIGNAL("Generation(int)"), self.update_progress)
+        self.connect(self.evo, QtCore.SIGNAL("Weights(PyQt_PyObject)"), self.update_weights)
+        self.connect(self.evo, QtCore.SIGNAL("Fitness(float)"), self.update_fitness)
+        self.evo.start()
+        # create a progress bar to update the user and to allow them to cancel the
+        # process after the current generation has evolved.
+        self.progress = QtGui.QProgressDialog("Evolving robot control data", 
+                                              QtCore.QString(), 0, num_generations)
+        self.progress.show()
         
     def load(self):
         file_name = QtGui.QFileDialog.getOpenFileName(self, "Load Robot Control Data")
@@ -396,9 +492,10 @@ class ALifeGUI(QtGui.QMainWindow):
                 self.ui.leg_density.setCurrentIndex(self.ui.leg_density.findText(leg_density))
                 
                 # update environment and experiment
-                self.update_environment()
-                self.update_experiment()
                 f.close()
+                self.update_environment()
+                self.update_weights(weights)
+                self.ui.weights.setText("Loaded")
             except Exception as e:
                 QtGui.QMessageBox.information(self, 'Error: Could not load file', str(e))
     
