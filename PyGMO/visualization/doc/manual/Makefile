@@ -6,6 +6,7 @@ PDFLATEX := pdflatex
 
 
 TEX = latex
+GLOSS = makeglossaries
 BIBTEX = bibtex
 DVIPS = dvips -t a4 -Ppdf -G0
 PS2PDF = ps2pdf -dPDFSETTINGS=/prepress -dEmbedAllFonts=true -dEncodeGrayImages=false -dEncodeMonoImages=false -dEncodeColorImages=false
@@ -19,6 +20,7 @@ PS2PDF = ps2pdf -dPDFSETTINGS=/prepress -dEmbedAllFonts=true -dEncodeGrayImages=
 
 .tex.dvi:
 	$(TEX) $<
+	$(GLOSS) $*
 	$(BIBTEX) $*
 	$(TEX) $<
 	$(TEX) $<
