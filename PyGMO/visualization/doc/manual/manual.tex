@@ -86,16 +86,106 @@ The \gls{python} \gls{API} is aimed at developers although it is simple enough t
 
 \subsubsection{Getting Started}
 
-To get started with the python
+To get started with the python you just have to include the module. If PyGMO is properly installed and your python paths are set correctly you should be able to run the following line in python console or a python script:
+\begin{verbatim}
+from PyGMO import visualization
+\end{verbatim}
+This line will import the visualization module to allow you to get started with it. If no error is thrown that means you have PyGMO properly installed. If you get an error check the troubleshooting guide in section \ref{sec:troubleshoot}.
+
+The next important step to be able to visualize a trajectory is to generate a proper dataset. Datasets are composed of control pointse. Each control point has the following format:
+
+$ t, r, v, dv $
+
+Where $r$, $v$ and $dv$ are vectors of length 3 containing the x, y and z components. They stand for:
+
+\begin{itemize}
+\item $t$: Time stamp of the control point. Should be in \gls{mjd2000}\cite{mjd2000} format although the units do not matter as they can be converted.
+\item $r$: The position from the common reference which is usually the sun. Has 3 components for the x, y and z vectors.
+\item $v$: The velocity with 3 components.
+\item $dv$: The delta velocity with 3 components.
+\end{itemize}
+
+That means the length of each control point is of 10 values. So each dataset should have a length that is a multiple of 10. Data can be passed either by a tuple or it can be read from a file. The loading data from a file is handled in the advanced \gls{python} in section \ref{sec:advanced}. The simple example dataset taken from example1.py in appendix \ref{app:example1} is the following (numbers truncated so the table fits):
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+   t & r.x & r.y & r.z & v.x & v.y & v.z & dv.x & dv.y & dv.z \\
+   8273.2 & 13.52e6 & -67.43e6 & 0. & 13.31 & 30.26 & -1.21 & 0. & 0. & 0. \\
+   8623.2 & -242.53e6 & -36.77e6 & 5.20e6 & 5.46 & -19.75 & 0.56 & 0. & 0. & 0. \\
+\end{tabular}
+
+Of course these values would have to be formatted as a python list or tuple. We can create the dataset tuple with the following code:
+
+\begin{verbatim}
+data = ( 8273.267,
+            135299631.153314,
+               -67433330.1118738,
+               0.,
+            13.3117666043686,
+               30.2608967735421,
+               -1.21905509181638,
+            0.,
+               0.,
+               0.,
+         8623.267,
+            -242539545.423682,
+               -36777066.1865885,
+               5209166.99174208,
+            5.46701901228146,
+               -19.7530014959265,
+               0.562626144359047,
+            0.,
+               0.,
+               0. )
+\end{verbatim}
+
+Now that we have the data we have to prepare the conversion ratios so that they get converted to \gls{SI}\cite{siunits} base units. In our case this means seconds for $t$, meters for $r$, meters per second for $v$ and meters per second for $dv$. In this case our dataset we have to convert from days, kilometers, kilometers per second and kilometers per second respectively. So now we proceed to generate the trajectory class with our data:
+
+\begin{verbatim}
+traj = visualization.Trajectory3D( data, # Our dataset
+      640, 480, # Our window size
+      24.*3600., # Conversion from days to seconds
+      1000., # Conversion from kilometers to meters
+      1000., # Conversion from kilometers per second to meters per second
+      1. ) # Conversion from kilometers per second to meters per second
+\end{verbatim}
+
+Now we have created the class object. We can now proceed to manipulate it. For example, if we want to add the planets of earth and mars it's as easy as running the following command:
+
+\begin{verbatim}
+traj.addPlanets( [ 'earth', 'mars' ] )
+\end{verbatim}
+
+They will be created using the \gls{mjd2000} dates from the $t$ value of the control points. It is very important that the $t$ value matches the right time otherwise the planets will not by synchronized with the trajectory. To display units again in the original dataset units we can run the $setUnits$ function.
+
+\begin{verbatim}
+traj.setUnits( "km", "d", "km/s" )
+\end{verbatim}
+
+This will make the class convert the units when displaying them to the units we just defined. Finally we can mess a bit with the visual aspect of the window before displaying it.
+
+\begin{verbatim}
+traj.origin( True ) # Displays the origin axes, useful for debugging and getting a reference idea
+traj.vectors( True ) # Shows vectors from the moving object to the origin, useful for debugging
+traj.repeat( True ) # Makes the animation repeat itself
+traj.axes( True ) # Sets axes that display the values on the projection of the screen
+\end{verbatim}
+
+When we are satisfied with the tuning of the class we can create the window with the $start$ function.
+
+\begin{verbatim}
+traj.start()
+\end{verbatim}
+
+Now the window will be created and show the data. The output of this example can be seen at \ref{img:example1}. The full source code is available at appendix \ref{sec:example1}. For more details on how to manipulate the trajectory in the window go to section \ref{sec:window}.
 
 
-\subsubsection{Advanced}
+\subsubsection{Advanced}\label{sec:advanced}
 
 
 \subsubsection{Common Issues}
 
 
-\subsection{3D Trajectory Window}
+\subsection{3D Trajectory Window}\label{sec:window}
 
 
 \subsubsection{Keybindings}
@@ -104,13 +194,13 @@ To get started with the python
 \subsubsection{Common Issues}
 
 
-\section{Troubleshooting}
+\section{Troubleshooting}\label{sec:troubleshoot}
 
 
 \appendix
 
 \newpage
-\section{example1.py}
+\section{example1.py}\label{app:example1}
 Very simple example of an earth to mars trajectory.
 \subsection{Data}
 This example does not use external files for data, it declares the data in the code.
