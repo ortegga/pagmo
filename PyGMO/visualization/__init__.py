@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
-# Copyright (C) 2004-2009 The PaGMO development team,
+# Copyright (C) 2010 The PaGMO development team,
 # Advanced Concepts Team (ACT), European Space Agency (ESA)
 # http://apps.sourceforge.net/mediawiki/pagmo
 # http://apps.sourceforge.net/mediawiki/pagmo/index.php?title=Developers
@@ -22,14 +22,22 @@
 # Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-# Version information
-__version__ = "0.1"
+# Module information
+__author__  = "Edgar Simo, Chit Hong Yam, Dario Izzo, Francesco Biscani"
+__copyright__  = "Copyright 2010, The PaGMO development team"
+__credits__    = [ "Edgar Simo", "Chit Hong Yam", "Dario Izzo", "Francesco Biscani" ]
+__license__    = "GPL"
+__version__    = "1.0.0"
+__maintainer__ = "Edgar Simo"
+__email__      = "bobbens@gmail.com"
+__status__     = "Production"
 
-
+# Local imports
 import traj3d
 import traj3d_traj
 import traj3d_planet
 
+# External deps
 import re
 import csv
 import dateutil.parser
