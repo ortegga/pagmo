@@ -8,10 +8,6 @@
 namespace odeint
 {
 
-
-  /*<todo> add reference to docking problem here. 
-  /But we need to know what a docking problem will
-  /look like</todo>*/
   template <typename cuda_type>
     class hills_eq_task : public cuda::task<cuda_type>
     {
@@ -35,9 +31,9 @@ namespace odeint
       bool launch()
       {
 	using namespace cuda;
-	dataset<cuda_type> * pX = this->get_dataset(param_state);
-	dataset<cuda_type> * pDxdt = this->get_dataset(param_dx_dt);
-	dataset<cuda_type> * pOutputs = this->get_dataset(param_outputs);
+	dataset<cuda_type> * pX = this->get_dataset(param_state); // tasks * 6 
+	dataset<cuda_type> * pDxdt = this->get_dataset(param_dx_dt); // tasks * 6
+	dataset<cuda_type> * pOutputs = this->get_dataset(param_outputs); // tasks * 2
 
 	if (!(pX && pDxdt && pOutputs))
 	  {
@@ -70,8 +66,6 @@ namespace odeint
       {
 	param_x = 0,
 	param_dx_dt,
-	param_t,
-	param_dt,
 	param_dx_dm, 
 	param_x_t
       };
@@ -112,14 +106,16 @@ namespace odeint
 	dim3 blocksize(1,1,1);
 
 	dim3 gridsize(pXt->get_tasksize()*this->m_task_count,1,1);
-	cu_assign_sum<cuda_type>( *pXt->get_data(), *pX->get_data() , *pDxdt->get_data() , blocksize, gridsize);
+	cu_assign_sum<cuda_type>( *pXt->get_data(), *pX->get_data() , *pDxdt->get_data() , dh, 
+				  pXt->get_tasksize(), blocksize, gridsize);
 
 	if (!launch_sub_task(pXt,pDxdt,th))
 	  {
 	    return false;
 	  }
 
-	cu_assign_sum<cuda_type>( *pXt->get_data() , *pX->get_data() , *pDxdt->get_data() , dh , blocksize, gridsize);
+	cu_assign_sum<cuda_type>( *pXt->get_data() , *pX->get_data() , *pDxdt->get_data() , dh , 
+				  pXt->get_tasksize(), blocksize, gridsize);
 
 	if (!launch_sub_task(pXt,pDxdm,th))
 	  {
@@ -127,7 +123,8 @@ namespace odeint
 	  }
 
 	cu_assign_sum_increment<cuda_type>( *pXt->get_data(), *pX->get_data() , *pDxdm->get_data() ,
-					    *pDxdt->get_data(), m_param_dt  , blocksize, gridsize);
+					    *pDxdt->get_data(), m_param_dt  , pXt->get_tasksize(), 
+					    blocksize, gridsize);
 
 	if (!launch_sub_task(pXt,pDxdt,m_param_t+m_param_dt))
 	  {
@@ -136,11 +133,16 @@ namespace odeint
 
 	dim3 blocksize1(pX->get_tasksize()*this->m_task_count,1,1);
 	cu_increment_sum_sum<cuda_type>( *pX->get_data() , *pDxdt->get_data() ,
-					 pDxdt->get_data() , *pDxdm->get_data(),
+					 *pDxdt->get_data() , *pDxdm->get_data(),
 					 m_param_dt /  cuda_type( 6.0 ) , cuda_type(2.0),
-					  blocksize1, gridsize);
+					  pXt->get_tasksize(), blocksize1, gridsize);
 	return true;
 
+      }
+
+      sub_task_type * get_subtask()
+      {
+	return m_sub_task;
       }
 
 

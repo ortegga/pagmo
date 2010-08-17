@@ -33,8 +33,15 @@ namespace odeint
       {
 	if (inputs.size() == get_size())
 	  {
-    	    return this->set_inputs (hills_eq_task<ty>::param_state, inputs);
+    	    return cuda::tasklet<ty>::set_inputs(hills_eq_task<ty>::param_state, inputs);
 	  }
+	return false;
+      }
+
+      bool prepare_outputs()
+      {
+	//Theres nothing to prepare.
+	return  true;
       }
     protected:
       unsigned int m_size;
@@ -51,14 +58,26 @@ namespace odeint
     {
 
     }
-   
+
+    virtual bool set_inputs(const std::vector<ty> & inputs)
+    {
+        if (inputs.size() == get_size())
+	  {
+	    return cuda::tasklet<ty>::set_inputs (task::param_x, inputs);
+	  }
+	return false;
+    }
+
+    virtual bool get_outputs( std::vector<ty> & outputs)
+    {
+      return cuda::tasklet<ty>::get_outputs (task::outputs, outputs);
+    }
+
     virtual bool prepare_outputs()
     {
-      return m_system_task->prepare_outputs() && 
-	this->prepare_dataset( this->m_task->param_x, get_size()) && 
-	this->prepare_dataset( this->m_task->param_dx_dt, get_size()) &&
-	this->prepare_dataset( this->m_task->param_dx_dm, get_size()) &&
-	this->prepare_dataset( this->m_task->param_x_t, get_size());
+      return this->prepare_dataset( task::param_dx_dt, get_size()) &&
+	this->prepare_dataset( task::param_dx_dm, get_size()) &&
+	this->prepare_dataset( task::param_x_t, get_size());
     }
     unsigned int get_size()
     {

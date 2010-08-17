@@ -15,6 +15,10 @@ namespace cuda
     void set_task(int id) { m_id = id;}
     unsigned int get_id() const { return m_id;} 
     virtual ~tasklet() {}
+    task<ty> * get_task ()
+    {
+      return m_task;
+    }
   protected:
 
     virtual bool  prepare_dataset(int parameter, int size)

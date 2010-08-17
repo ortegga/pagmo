@@ -219,7 +219,7 @@ __global__ void cu_hills_equation_kernel(cuda_type *S,  cuda_type *D,  cuda_type
   cuda_type omega = S[++sstride];
 	
   cuda_type distance = sqrt(x * x + y * y);
-	
+
   if(theta < -M_PI) theta += 2 * M_PI;
   if(theta > M_PI) theta -= 2 * M_PI;
 	

@@ -67,7 +67,6 @@ namespace ann_toolbox {
 
     virtual bool prepare_outputs()
     {
-      std::cout<<" multilayer_perceptron::prepare_outputs"<<std::endl;
 	 return neural_network<ty>::prepare_outputs() &&  
 	   this->prepare_dataset(cuda::task<ty>::hiddens, m_hidden);
     }
