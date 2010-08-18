@@ -6,6 +6,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.4.0)
 # Setup and include CMake modules.
 SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_modules)
 
+INCLUDE(CMakeDependentOption)
 INCLUDE(CheckTypeSize)
 INCLUDE(PaGMOCPackSetup)
 
@@ -57,7 +58,7 @@ OPTION(BUILD_MAIN "Build 'main.cpp'." ON)
 OPTION(BUILD_PYGMO "Build Python bindings." OFF)
 
 # Build Option: interplanetary trajectory visualizer.
-OPTION(BUILD_VISUALIZATION "Build 3D Trajectory Visualizer Python Module." OFF)
+CMAKE_DEPENDENT_OPTION(BUILD_VISUALIZATION "Build 3D Trajectory Visualizer Python Module." OFF "BUILD_PYGMO" OFF)
 
 # Build Option: minimisers from the GNU scientific library (GSL).
 OPTION(ENABLE_GSL "Enable support for GSL minimisers (requires GSL >= 1.13)." OFF)

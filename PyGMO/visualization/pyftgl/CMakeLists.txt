@@ -26,8 +26,20 @@ MESSAGE(STATUS "FreeType libraries: ${FREETYPE_LIBRARIES}")
 MESSAGE(STATUS "FreeType include dir: ${FREETYPE_INCLUDE_DIRS}")
 
 ADD_LIBRARY(FTGL SHARED ftgl.cpp)
-INSTALL(FILES __INIT__.py DESTINATION ${PYTHON_MODULES_PATH})
 
-# Link
-TARGET_LINK_LIBRARIES(FTGL ${FTGL_LIBRARY} ${OPENGL_LIBRARY} ${FREETYPE_LIBRARIES} ${PYTHON_LIBRARIES} ${MANDATORY_LIBRARIES})
+# Here we need to set a proper prefix and suffix for the pyftgl module file: we want to strip the 'lib' prefix (as
+# Python modules do not need it) and use as extension either .so (for UNIX-like OS) or .pyd (for Windows). The
+# PYDEXTENSION and SOEXTENSION variables are set in PaGMOPythonSetup.cmake.
+SET_TARGET_PROPERTIES(FTGL PROPERTIES PREFIX "")
+IF(PYDEXTENSION)
+	SET_TARGET_PROPERTIES(FTGL PROPERTIES SUFFIX ".pyd")
+ELSEIF(SOEXTENSION)
+	SET_TARGET_PROPERTIES(FTGL PROPERTIES SUFFIX ".so")
+ENDIF(PYDEXTENSION)
 
+# We need to link in all the standard PaGMO libraries, the Python libraries, Freetype and FTGL.
+TARGET_LINK_LIBRARIES(FTGL ${MANDATORY_LIBRARIES} ${PYTHON_LIBRARIES} ${FREETYPE_LIBRARIES} ${FTGL_LIBRARY})
+INSTALL(TARGETS FTGL
+	RUNTIME DESTINATION ${PYGMO_INSTALL_PATH}/visualization
+	LIBRARY DESTINATION ${PYGMO_INSTALL_PATH}/visualization
+)
