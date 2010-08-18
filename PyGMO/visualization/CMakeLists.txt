@@ -7,4 +7,4 @@ IF(FTGL_IMPORT_OUPTUT)
 ENDIF(FTGL_IMPORT_OUPTUT)
 
 # Install
-INSTALL(FILES __init__.py frange.py traj3d.py traj3d_object.py traj3d_traj.py traj3d_path.py traj3d_planet.py Vera.ttf DESTINATION ${PYGMO_INSTALL_PATH}/visualization)
+INSTALL(FILES __init__.py frange.py traj3d.py traj3d_object.py traj3d_traj.py traj3d_path.py traj3d_planet.py FreeSans.ttf DESTINATION ${PYGMO_INSTALL_PATH}/visualization)
