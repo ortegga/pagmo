@@ -23,6 +23,8 @@
   
 ## @package robot
 #  This module contains the ALife Robot class.
+#  Robots consist of ODE bodies, geometries and joints. They interact
+#  with ALifeEnvironment objects, and can be controlled by ALifeAgents.
 #
 #  @author John Glover
 from pybrain.rl.environments.ode import sensors, actuators
@@ -47,44 +49,47 @@ class Robot(object):
     #                       robot body
     #  @param name The string containing the name of the robot
     def __init__(self, world, space, body_position=[0.0, 150.0, 0.0], name=""):
-        ##
+        ## @var world The ODE world that bodies are added to
         self.world = world
-        ## 
+        ## @var space The ODE space that geometries are added to
         self.space = space
-        ##
+        ## @var bodies_geoms A list of the robot's (body, geom) tuples
         self.bodies_geoms = []
-        ##
+        ## @var joints A list of the robot's joints
         self.joints = []
-        ##
+        ## @var name The robot's name
         self.name = name
-        ##
+        ## @var _body_sections The number of body sections that the robot has
         self._body_sections = 1
-        ## The density of the body
+        ## @var _body_density The density of each body section
         self._body_density = 0.35
-        # the size of the body
+        ## @var _body_size the size of each body section
         self._body_size = [4.0, 3.0, 4.0]
-        ##
+        ## @var _legs The number of legs per body section
         self._legs = 4
-        # radius of the legs
+        ## @var _leg_radius The radius of each leg
         self._leg_radius = 0.25
-        # length of the legs
+        ## @var _leg_length The length of the each leg
         self._leg_length = 3.8
-        # density of the legs
+        ## @var _leg_density The density of the each leg
         self._leg_density = 0.25
-        ## Offset used to calculate leg y-axis coordinate.
+        ## @var _leg_y_offset An offset used to calculate leg y-axis coordinate.
         #  The last term makes the legs recede into the body slightly, looks
         #  a bit better
         self._leg_y_offset = ((self._leg_length/2) + 
                               (self._body_size[1]/2) - 
                               min(self._leg_radius*2, 1.0))
-        # The rotation of the legs
+        ## @var _leg_rotation The rotation of the legs
         self._leg_rotation = (1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
-        ##
+        ## @var passpairs Tuples of object names that will be ignored during collision
+        #  detection. Trying to do collision detection between joined bodies can
+        #  lead to very unstable simulations. Instead, joint stops are used to make
+        #  sure that legs cannot pass through the body sections.
         self.passpairs = []
-        ##
+        ##  @var center_obj The object that the camera view will be centered on.
         self.center_obj = "robot_body"
-        
-        ## Main body section. There must always be at least 1 body section.
+        ## @var main_body The main body section. There must always be at least 1 
+        #  body section.
         self.main_body = ode.Body(world)
         self.main_body.name = "robot_body"
         self.main_body.setPosition(body_position)
@@ -93,7 +98,7 @@ class Robot(object):
         body_mass.setBox(self._body_density, self._body_size[0], 
                          self._body_size[1], self._body_size[2])
         self.main_body.setMass(body_mass)
-        ##
+        ## @var main_geom The geometry of the main body section
         self.main_geom = ode.GeomBox(space, lengths=self._body_size)
         self.main_geom.name = "robot_body"
         self.main_geom.setBody(self.main_body)
@@ -105,16 +110,25 @@ class Robot(object):
         if self._body_sections > 1:
             self._create_body_sections()
         
+    ## Create additional body sections
     def _create_body_sections(self):
         # todo: add the ability to create robots with multiple body sections.
         # These could be connected by simple joints, creating a robot that could
         # try to move like a snake rather than by walking
         pass
     
+    ## Create legs on the given body section
+    #  @var body The body that legs will be added to
     def _create_legs(self, body):
         for i in range(self._legs):
             self._create_leg(body, i)
         
+    ## Create leg number n on the given body.
+    #  This creates the ODE body and geometry at an appropriate position relative
+    #  to the given body, then it calls _create_joint to create an ODE joint for
+    #  the leg.
+    #  @var body The body that a leg is being added to
+    #  @var n The leg number
     def _create_leg(self, body, n):
         leg = ode.Body(self.world)
         leg.name = "robot_leg" + str(n+1)
@@ -169,7 +183,11 @@ class Robot(object):
         self.passpairs.append((body.name, leg.name))
         # create a hinge joint connecting each leg to the body
         self._create_leg_joint(body, leg, n)
-        
+
+    ## Creates a joint between the given body and leg
+    #  @param body The body that is being connected in the joint
+    #  @param leg The leg that is being connected in the joint
+    #  @param n The leg number
     def _create_leg_joint(self, body, leg, n):
         body_position = body.getPosition()
         leg_position = leg.getPosition()
@@ -184,16 +202,21 @@ class Robot(object):
         joint.setParam(ode.ParamHiStop, 1.2)
         joint.setParam(ode.ParamFMax, 10)
         self.joints.append(joint)
-                          
+
+    ## @return The position of the main body section
     def get_position(self):
         return self.main_body.getPosition()    
-        
+    
+    ## @return A list of the robot's joints
     def get_joints(self):
         return self.joints
     
+    ## @return The number of legs per body section
     def get_num_legs(self):
         return self._legs
     
+    ## Set the number of legs per body section
+    #  @param n The new number of legs
     def set_num_legs(self, n):
         if n % 2 != 0:
             # todo: more detail on this exception
@@ -204,18 +227,24 @@ class Robot(object):
         self.bodies_geoms.append((self.main_body, self.main_geom))
         self._create_legs(self.main_body)
         
+    ## @return The density of the body sections
     def get_body_density(self):
         return self._body_density
     
+    ## Set the density of the body sections
+    #  @param The new body section density
     def set_body_density(self, density):
         self._body_density = density
         body_mass = self.main_body.getMass()
         body_mass.setBox(self._body_density, self._body_size[0], 
                          self._body_size[1], self._body_size[2])
     
+    ## @return The density of the legs
     def get_leg_density(self):
         return self._leg_density
     
+    ## Set the density of the legs
+    #  @param density The new leg density
     def set_leg_density(self, density):
         self._leg_density = density
         for body, geom in self.bodies_geoms:
@@ -224,6 +253,7 @@ class Robot(object):
                 leg_mass.setCappedCylinder(self._leg_density, 3, 
                                            self._leg_radius, self._leg_length)
 
+    ## Reset the robot to it's initial state
     def reset(self):
         for body, geom in self.bodies_geoms:
             body.setPosition(body.initial_position)

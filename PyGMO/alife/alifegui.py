@@ -22,7 +22,7 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   
 ## @package alifegui
-#  This module contains a simple GUI for the alife problem 
+#  This module contains a simple GUI for the ALife problem.
 #
 #  @author John Glover
 from math import acos, pi, sqrt
@@ -43,18 +43,25 @@ from asteroid import Asteroid
 from task import ALifeExperiment, ALifeAgent, ALifeTask
 from alife import ALifeProblem
 
-##
+## ALifeViewerWidget class
+#
+#  A QGLWidget (OpenGL with Qt) that will render the ALifeEnvironment.
+#  It also inherits from ALifeViewer, using its rendering code where
+#  possible. Some methods had to be overwritten to use Qt instead of 
+#  GLUT.
 class ALifeViewerWidget(QGLWidget, ALifeViewer):
     ## Constructor
+    #  @param parent The parent widget
+    #  @param geometry The geometry that this widget should use
+    #  @param size_policy the size policy that this widget should use
     def __init__(self, parent, geometry, size_policy):
         QGLWidget.__init__(self, parent)
         self.setGeometry(geometry)
         self.setSizePolicy(size_policy)
-        ##
+        ## A timer used to update the rendered image. Every timeout,
+        #  the experiment is stepped and the scene is redrawn.
         self._timer = QtCore.QTimer()
-        ##
         self._timer.setSingleShot(False)
-        ##
         self._timer.timeout.connect(self.step)
         ## @var environment ALifeEnvironment object
         self.environment = ALifeEnvironment()
@@ -64,9 +71,9 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         ## @var asteroid The asteroid 
         self.asteroid = Asteroid(self.environment.space, "models/asteroid_textured.x3d")
         self.environment.set_asteroid(self.asteroid)
-        ##
+        ## @var task An ALifeTask object
         self.task = ALifeTask(self.environment)
-        ##
+        ## @var agent An ALifeAgent object
         self.agent = ALifeAgent(len(self.task.getObservation()))
         ## @var experiment ALifeExperiment object
         self.experiment = ALifeExperiment(self.task, self.agent, self.environment) 
@@ -109,17 +116,21 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         self._screenshot_dir = "screenshots/"
         self.print_controls()
         
+    ## Start stepping the experiment and rendering.
     def start(self):
         self._timer.start(self._fps)
         
+    ## Pause the experiment
     def pause(self):
         self._timer.stop()
-        
+    
+    ## Step the experiment and render the next frame    
     def step(self):
         for i in range(self._steps_per_frame):
             self.experiment.step()
         self.update()
 
+    ## Render the OpenGL scene
     def paintGL(self):
         self._prepare()
         for (body, geom) in self.environment.get_objects():
@@ -127,10 +138,14 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         if self.asteroid:
             self._draw_asteroid(self.asteroid)
         
+    ## Resize the OpenGl viewport and set the perspective
+    #  @param w The new width
+    #  @param h The new height
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
         gluPerspective(40.0, float(w)/h, 1.0, 30.0)
     
+    ## Initialise OpenGl. Called once, before drawing.
     def initializeGL(self):
         # Initialize Viewport and Shading
         glViewport(0, 0, self.width(), self.height())
@@ -191,16 +206,22 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         self._last_z = z1
         self.update()
             
+    ## Respond to mouse press events
+    #  @param event The mouse press event
     def mousePressEvent(self, event):
         self._mouse_view = True
 
+    ## Respond to mouse release events
+    #  @param event The mouse release event
     def mouseReleaseEvent(self, event):
         self._mouse_view = False
         
+    ## Zoom in on the robot
     def zoom_in(self):
         self._view_distance -= self.zoom_increment
         self.update()
         
+    ## Zoom out from the robot
     def zoom_out(self):
         self._view_distance += self.zoom_increment
         self.update()
@@ -211,8 +232,25 @@ class ALifeViewerWidget(QGLWidget, ALifeViewer):
         print "Hold shift and press the 'z' key zoom out"
         print "Click and drag with the mouse to move the camera around the robot"
         
-        
+
+## EvolutionThread class
+#
+#  This class generates new weights for the Robot using PaGMO.
+#  This is performed in a separate thread as the computation can take
+#  quite a while to run, which would freeze up the GUI if called from
+#  the main thread.
 class EvolutionThread(QtCore.QThread):
+    ## Constructor
+    #  @param algo A PyGMO.algorithm object
+    #  @param num_generations The number of generations of artificial
+    #  evolution that will be performed
+    #  @param num_islands The number of islands
+    #  @param num_individuals The number of individuals on each island
+    #  @param mass The asteroid mass
+    #  @param legs The number of legs that the Robot will have
+    #  @param body_density The density of the Robot body
+    #  @param leg_density The density of the Robot's legs
+    #  @param parent The parent of this object
     def __init__(self, algo, num_generations, num_islands,
                  num_individuals, mass, legs,
                  body_density, leg_density, parent=None):
@@ -228,13 +266,22 @@ class EvolutionThread(QtCore.QThread):
         asteroid.mass = mass
         environment.set_asteroid(asteroid)
         # setup PaGMO problem
+        ## @var prob A PyGMO.problem object
         self.prob = ALifeProblem(environment, robot, asteroid)
+        ## @var topo The island topology
         self.topo = topology.ring()
+        ## @var algo A PyGMO.algorithm objct
         self.algo = algo
+        ## @var num_generations The number of generations of artificial evolution
+        #  that will be performed
         self.num_generations = num_generations
+        ## @var num_islands The number of islands
         self.num_islands = num_islands
+        ## @var num_individuals The number of individuals on each island
         self.num_individuals = num_individuals
     
+    ## The main function in the thread. Generates new control weights,
+    #  and emits the fitness and the list of weights as Qt signals.
     def run(self):
         a = archipelago(self.prob, self.algo, self.num_islands, 
                         self.num_individuals, self.topo)
@@ -257,17 +304,22 @@ class EvolutionThread(QtCore.QThread):
         self.emit(QtCore.SIGNAL("Weights(PyQt_PyObject)"), best_weights)
 
 
+## ALifeGUI class
+#
+#  The main GUI widget. Uses widget names and positions defined in the UI file
+#  alifeui.py, generated from alifeui.ui using pyuic4.
+#  Replaces the placeholder widget called main_view with an instance 
+#  of ALifeViewerWidget. 
 class ALifeGUI(QtGui.QMainWindow):
-    ##
+    ## Constructor
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
-        ##
+        ## The UI, generated from alifeui.ui
         self.ui = Ui_ALife()
-        ##
         self.ui.setupUi(self)
         size_policy = self.ui.main_view.sizePolicy()
         geometry = self.ui.main_view.frameGeometry()
-        ##
+        ## The main view, an instance of ALifeViewerWidget
         self.ui.main_view = ALifeViewerWidget(self.ui.centralwidget,
                                               geometry,
                                               size_policy)
@@ -294,6 +346,9 @@ class ALifeGUI(QtGui.QMainWindow):
                      QtCore.SIGNAL("clicked()"), 
                      self.save)
 
+    ## Check for any changes between the form input parameters and the
+    #  corresponding parameters in the ALifeEnvironment object of the ALifeViewerWidget, 
+    #  and update the ALifeEnvironment accordingly.
     def update_environment(self):
         # asteroid mass
         mass = float(self.ui.asteroid_mass.currentText())
@@ -321,6 +376,7 @@ class ALifeGUI(QtGui.QMainWindow):
         # display
         self.ui.main_view.update()
         
+    ## Update the ALifeExperiment object in the ALifeViewerWidget
     def update_experiment(self):
         self.ui.main_view.task = ALifeTask(self.ui.main_view.environment)
         num_observations = len(self.ui.main_view.task.getObservation())
@@ -329,13 +385,17 @@ class ALifeGUI(QtGui.QMainWindow):
                                                        self.ui.main_view.agent, 
                                                        self.ui.main_view.environment) 
 
-    ##
+    ## Respond to key press events
+    #  @param event The key press event
     def keyPressEvent(self, event):
         if event.text() == 'z':
             self.ui.main_view.zoom_in()
         elif event.text() == 'Z':
             self.ui.main_view.zoom_out()
             
+    ## Respond to the start/pause/resume button being clicked.
+    #  Set the appropriate ALifeExperiment state, and disable
+    #  form widgets if necessary.
     def start_pause(self):
         if self.ui.start_pause.text() == "Pause Simulation":
             self.ui.start_pause.setText("Resume Simulation")
@@ -360,7 +420,10 @@ class ALifeGUI(QtGui.QMainWindow):
             # start main view timer, which steps the ALifeExperiment
             # and draws a frame
             self.ui.main_view.start()
-            
+    
+    ## Respond to the reset button being clicked.
+    #  Resets the experiment and enables form widgets if the
+    #  experiment is not still running.
     def reset(self):
         self.ui.main_view.experiment.reset()
         self.ui.main_view.update()
@@ -380,21 +443,28 @@ class ALifeGUI(QtGui.QMainWindow):
             self.ui.islands.setEnabled(True)
             self.ui.individuals.setEnabled(True)
         
+    ## Respond to the number of legs on the robot being changed.
+    #  Updates the display so the new robot is rendered.
     def change_legs(self, index):
         self.update_environment()
         
+    ## Update the progress bar showing the status of the evolution
     def update_progress(self, generation):
         self.progress.setValue(generation)
         
+    ## Update the fitness label
     def update_fitness(self, fitness):
         self.ui.fitness.setText(str(fitness))
         
+    ## Update the robot weights and the weights display label
     def update_weights(self, weights):
         self.ui.main_view.agent.set_weights(weights)
         if hasattr(self, 'progress'):
             self.progress.cancel()
         self.ui.weights.setText("Evolved weights")
         
+    ## Respond to the evolve button being clicked.
+    #  Creates a separate thread to perform artificial evolution using PaGMO
     def evolve(self):
         try:
             # get evolution parameters
@@ -435,6 +505,9 @@ class ALifeGUI(QtGui.QMainWindow):
                                               QtCore.QString(), 0, num_generations)
         self.progress.show()
         
+    ## Respond to the load button being clicked.
+    #  Prompts the user for an input file, then attempts to parse it, loading
+    #  previously saved form data.
     def load(self):
         file_name = QtGui.QFileDialog.getOpenFileName(self, "Load Robot Control Data")
         if file_name:
@@ -499,6 +572,9 @@ class ALifeGUI(QtGui.QMainWindow):
             except Exception as e:
                 QtGui.QMessageBox.information(self, 'Error: Could not load file', str(e))
     
+    ## Respond to the save button being clicked.
+    #  Prompt the user for a new file name to save to, then attempt to save all form
+    #  data to that file.
     def save(self):
         file_name = QtGui.QFileDialog.getSaveFileName(self, "Save Robot Control Data")
         if file_name:

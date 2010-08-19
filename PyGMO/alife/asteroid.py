@@ -22,15 +22,23 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   
 ## @package asteroid
-#  This module contains the Asteroid classes.
+#  This module contains the Asteroid class.
 #
-#  Each Asteroid creates a XODE string that is returned by the
-#  get_xode() method.
+#  An asteroid must contain an ODE geometry called geom and have a
+#  mass value, both of which are used by ALifeEnvironment objects.
 #
-#  The XODE string must contain a geometry node called 'asteroid'.
-#  This is all that is retained by the environment, the rest is ignored.
-#  If the XODE string contains more than one node called 'asteroid', only
-#  the first one is used.
+#  TriMesh geometry objects may be created from IndexedFaceSets in 
+#  X3D files by using the load_x3d method. This means that 3D modelling
+#  packages may be used to create the asteroid model as long as they
+#  can export X3D files.
+#
+#  The asteroid may have an image texture. If the texture_file variable
+#  is not empty, the renderer (ALifeViewer) will try to use the file
+#  at this path and the texture coordinates in _texture_coords to
+#  texture the object. Texture information is automatically read from X3D
+#  files if load_x3d is called.
+#
+#  @author John Glover
 import xml.dom.minidom as md
 import os.path
 import ode
@@ -38,8 +46,6 @@ import ode
 ## Asteroid class
 #
 #  Creates an ODE geometry object called 'asteroid' in an XODE string
-#
-#  @author John Glover
 class Asteroid(object):
     ## Constructor
     #  @param x3d_file The path to a X3D file that contains a model called 'Asteroid' (optional) 
@@ -122,7 +128,7 @@ class Asteroid(object):
                         coord_index = ifs.attributes['coordIndex'].value
                         for face in coord_index.split(','):
                             # make sure that the given faces are triangles
-                            # there should 4 indicies, the last one equal to -1
+                            # there should 4 indices, the last one equal to -1
                             indicies = face.split()
                             if len(indicies) == 4 and int(indicies[3]) == -1:
                                 triangles.append((int(indicies[0]),

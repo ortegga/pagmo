@@ -22,9 +22,11 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
   
 ## @package alife
-#  This package defines a PaGMO problem for the ALife project.
+#  This package defines PaGMO problems for the ALife project.
 #  The goal is to evolve a walking behaviour for a robot in a low gravity
 #  environment (an asteroid in this case).
+#
+#  @author John Glover
 from PyGMO.problem import base
 from PyGMO import problem, algorithm, topology, archipelago
 from environment import ALifeEnvironment, ALifePlane
@@ -44,30 +46,43 @@ import random
 #  The objective function measures the distance moved by the robot during
 #  the one run of an ALifeExperiment, the robot being controlled by the 
 #  given input weights
-#
-#  @author John Glover
 class ALifeProblem(base):
+    ## Constructor
+    #  @param env An ALifeEnvironment object that will be used by this problem.
+    #  @param robot A Robot object
+    #  @param asteroid An asteroid object
     def __init__(self, env, robot, asteroid=None):
         if not env:
+            ## @param environment The ALifeEnvironment 
             self.environment = ALifeEnvironment()
         else:
             self.environment = env
         if not robot:
+            ## @param robot The Robot
             self.robot = Robot(self.environment.world, self.environment.space, 
                                [random.randint(-100, 100), 150, 0])
             self.environment.set_robot(self.robot)
         else:
             self.robot = robot
         if not asteroid:
+            ## @param asteroid An Asteroid
             self.asteroid = Asteroid(self.environment.space, "models/asteroid_textured.x3d")
             self.environment.set_asteroid(self.asteroid)
         else:
             self.asteroid = asteroid
+        ## @param task An ALifeTask object
         self.task = ALifeTask(self.environment)
+        ## @param agent An ALifeAgent object
         self.agent = ALifeAgent(len(self.task.getObservation()))
+        ## @param experiment an ALifeExperiment object
         self.experiment = ALifeExperiment(self.task, self.agent, self.environment)
-        super(ALifeProblem, self).__init__(self.agent.num_weights())    
+        # PaGMO problem base constructor
+        super(ALifeProblem, self).__init__(self.agent.num_weights())
+        ## @param lb The lower bound for each parameter in the objective function.
+        #  As this is a list of neural network weights, the same lower bound is
+        #  specified for each weight.
         self.lb = [-10 for i in range(self.agent.num_weights())]
+        ## @param ub The upper bound for each parameter in the objective function.
         self.ub = [10 for i in range(self.agent.num_weights())]
 
     ## @return The name of this problem
@@ -93,8 +108,8 @@ class ALifeProblem(base):
     ## The objective function for this problem. Performs a run of an ALifeExperiment
     #  with the given control weights.
     #  @param x The new set of weights to evaluate
-    #  @return The distance moved by the robot during the experiment, under
-    #  the control of the given weights.
+    #  @return The distance moved by the robot during the experiment, under the
+    #  control of the given weights.
     def _objfun_impl(self, x):
         # update agent weights
         self.agent.set_weights(x)
@@ -112,22 +127,30 @@ class ALifeProblem(base):
 #
 #  The objective function measures the distance moved by the robot during
 #  the one run of an ALifeExperiment, the robot being controlled by the 
-#  given input weights
-#
-#  @author John Glover
+#  given input weights.
 class ALifeOnAPlane(base):
     ## Constructor. Initialises the problem, declaring an ALife Environment,
     #  Task, Agent and Experiment. Also sets the upper and lower bounds for 
     #  possible controller data.
     def __init__(self):
+        ## @var environment An ALifeEnvironment object
         self.environment = ALifePlane()
+        ## @var robot A Robot object
         self.robot = Robot(self.environment.world, self.environment.space, [10, 20, 0])
         self.environment.set_robot(self.robot)
+        ## @var task An ALifeTask object
         self.task = ALifeTask(self.environment)
+        ## @var agent An ALifeAgent object
         self.agent = ALifeAgent(len(self.task.getObservation()))
+        ## @var experiment An ALifeExperiment object
         self.experiment = ALifeExperiment(self.task, self.agent, self.environment)
-        super(ALifeOnAPlane, self).__init__(self.agent.num_weights())    
+        # PaGMO problem base constructor
+        super(ALifeOnAPlane, self).__init__(self.agent.num_weights())
+        ## @param lb The lower bound for each parameter in the objective function.
+        #  As this is a list of neural network weights, the same lower bound is
+        #  specified for each weight.    
         self.lb = [-10 for i in range(self.agent.num_weights())]
+        ## @param ub The upper bound for each parameter in the objective function.
         self.ub = [10 for i in range(self.agent.num_weights())]
 
     ## @return The name of this problem

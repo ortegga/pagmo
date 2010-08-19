@@ -56,7 +56,10 @@ class ALifeEnvironment(object):
         ## @var contactgroup A joint group for the contact joints that 
         # are generated whenever two bodies collide
         self.contactgroup = ode.JointGroup()
-        ##
+        ## @var passpairs Tuples of object names that will be ignored during collision
+        #  detection. Trying to do collision detection between joined bodies can
+        #  lead to very unstable simulations. Instead, joint stops are used to make
+        #  sure that legs cannot pass through the body sections.
         self.passpairs = []
         ## @var grav_constant The Gravitational constant (G) used to calculate
         #  the force of gravity between bodies and the asteroid. Uses a simplified
@@ -81,6 +84,8 @@ class ALifeEnvironment(object):
     def get_objects(self):
         return self.body_geom
         
+    ## Set the robot that will interact with this environment
+    #  @param robot The robot that will interact with this environment
     def set_robot(self, robot):
         self.robot = robot
         for body_geom in robot.bodies_geoms:
@@ -89,7 +94,7 @@ class ALifeEnvironment(object):
             self.passpairs.append(passpair)
         
     ## Adds an asteroid geometry to the environment
-    #  @param asteroid
+    #  @param asteroid The asteroid
     def set_asteroid(self, asteroid):
         self.asteroid = asteroid
             
@@ -161,7 +166,7 @@ class ALifeEnvironment(object):
         else:
             return (0, 0, 0)
     
-    ## Resets the environment
+    ## Resets the environment and the robot in it if one exists
     def reset(self):
         self.step_count = 0
         if self.robot:
@@ -214,10 +219,10 @@ class ALifeEnvironment(object):
         return self.step_count
 
 
-## APlane class
+## ALifePlane class
 #
 #  A simplification of the ALifeEnvironment that uses an infinitely flat 2D plane
-#  instead of an asteroid for the ground. 
+#  instead of an asteroid for the ground. Useful for testing.
 # 
 #  It also uses standard ODE gravity instead of the custom gravity calculation
 #  performed in ALifeEnvironment.

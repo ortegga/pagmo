@@ -60,11 +60,15 @@ class ALifeExperiment(Experiment):
         ## @var step_size The amount by which the ODE environment moves forward
         #  at each step.
         self.step_size = 0.04
+        ## @var _stable_distance When the Robot's movement between steps is less
+        #  than this distance, it is said to be stable and the Task can properly
+        #  begin.
         self.task._stable_distance = self.step_size / 400
         ## @var env The ODE Environment
         self.env = env
             
-    ## Change the default behaviour of _oneInteraction as we don't need to 
+    ## One interaction between the environment, agent and task.
+    #  Change the default behaviour of _oneInteraction as we don't need to 
     #  directly reward the agent. PaGMO will assess the Agent's actions.
     def _oneInteraction(self):
         self.stepid += 1
@@ -72,6 +76,8 @@ class ALifeExperiment(Experiment):
         self.agent.integrateObservation(self.task.getObservation())
         self.task.performAction(self.agent.getAction())
         
+    ## Compute the next step in the experiment.
+    #  Does not check to see if the task is finished or not.
     def step(self):
         self._oneInteraction()
         
@@ -93,7 +99,8 @@ class ALifeExperiment(Experiment):
     def get_environment(self):
         return self.env
     
-    ## Reset this Experiment. Automatically called when perform() is called.
+    ## Reset this Experiment so that another run can be performed.
+    #  Automatically called when perform() is called.
     def reset(self):
         self.env.reset()
         self.agent.reset()
@@ -121,11 +128,14 @@ class ALifeAgent(Agent):
         #  will produce. Determines the number of inputs and outputs to the Agent's
         #  neural network.
         self._num_observations = num_observations
-        ## @var _network The Agent's neural network
+        ## @var _network The Agent's neural network. Defined in _create_network().
         self._network = None
         self._create_network()
         
     ## Create the Agent's neural network.
+    #  Currently this is a recurrent neural network. The input and output layers
+    #  are LinearLayers. There is one fully connected hidden layer that is a
+    #  SigmoidLayer.
     def _create_network(self):
         self._network = RecurrentNetwork()
         # create and add the input layer
@@ -171,8 +181,7 @@ class ALifeAgent(Agent):
     def num_weights(self):
         return len(self._network.params)
     
-    ## Resets the Agent.
-    #  Just resets the history of the Agent's neural network
+    ## Reset the Agent by resetting the history of the Agent's neural network
     def reset(self):
         self._network.reset()
     
@@ -192,12 +201,15 @@ class ALifeAgent(Agent):
 class JointActuator(object):
     ## Constructor. Initialises an array of joints.
     def __init__(self):
+        ## @var _joints The ODE joints controlled by this actuator
         self._joints = []
+        ## @var _num_values The number of values that are expected
+        #  by the update function, based on the number of joints and
+        #  the type of each joint.
         self._num_values = 0
     
     ## Connect every joint in joints to this JointActuator.
-    #  Also sets the number of values expected by the update function
-    #  based on the number of joints and the type of each joint.
+    #  Also sets the number of values expected by the update function.
     #  @param joints A list of joints to connect to this JointActuator
     def connect(self, joints):
         self._num_values = 0
@@ -217,7 +229,7 @@ class JointActuator(object):
                 j.setParam(ode.ParamVel, values[0])
                 values = values[1:]
     
-    ## @return The number of velocity values required for the update function
+    ## @return The number of velocity values expected by the update function
     def num_values(self):
         return self._num_values
 

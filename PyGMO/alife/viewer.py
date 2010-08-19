@@ -165,7 +165,7 @@ class ALifeViewer(object):
         glLoadIdentity()
         gluPerspective(45, 1.3333, 0.2, 500)
 
-        # Initialize ModelView matrix
+        # Initialise ModelView matrix
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
@@ -180,8 +180,8 @@ class ALifeViewer(object):
         gluLookAt(eyeX, eyeY, eyeZ, self._center_x, self._center_y, self._center_z, 0, 1, 0)
         
     ## Draw an ODE object.
-    #  @param body The body object.
-    #  @param geom The body geometry object.
+    #  @param body The ODE body object.
+    #  @param geom The ODE geometry object.
     def _draw_object(self, body, geom):
         glPushMatrix()
         
@@ -273,7 +273,7 @@ class ALifeViewer(object):
         
     ## Draw the Asteroid object.
     #  The asteroid is drawn separately for now so that it can be textured
-    #  @param asteroid An object of type Asteroid
+    #  @param asteroid An Asteroid object
     def _draw_asteroid(self, asteroid):
         # assume asteroid.geom is of type ode.GeomTriMesh
         # note: geom.getTriangleCount seems to be undocumented, can't find
@@ -283,7 +283,6 @@ class ALifeViewer(object):
             # setup the texture if one exists
             glEnable(GL_BLEND)
             glColor(1, 1, 1)
-            #glColor3f(0.53, 0.44, 0.35)
             glEnable(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, self.asteroid_tex_id)
             # draw with texture coordinates
@@ -316,8 +315,7 @@ class ALifeViewer(object):
         glPopMatrix()
         
     ## The drawing callback function.
-    #  Prepares the screen for drawing, then goes through every ODE object
-    #  and renders it.
+    #  Prepares the screen for drawing then renders every ODE object.
     def _draw(self):
         self._prepare()
         # Call step on the experiment first if one exists. This will perform
@@ -349,7 +347,9 @@ class ALifeViewer(object):
         glutPostRedisplay() 
 
     ## The keyboard callback function.
-    #  @param key The key that was pressed
+    #  @param key The key that was pressed.
+    #  @param x The mouse x coordinate when the key was pressed.
+    #  @param y The mouse x coordinate when the key was pressed.
     def _key_pressed(self, key, x, y):
         if key == 's':
             self._capture_screen = not self._capture_screen
@@ -371,7 +371,9 @@ class ALifeViewer(object):
             
     ## Callback function for 'special' keys
     #  Up and down arrow keys are used for zooming in and out respectively
-    #  @param key The key that was pressed     
+    #  @param key The key that was pressed.
+    #  @param x The mouse x coordinate when the key was pressed.
+    #  @param y The mouse y coordinate when the key was pressed.   
     def _special_func(self, key, x, y):
         if key == GLUT_KEY_UP:
             self._view_distance -= self.zoom_increment
@@ -379,6 +381,8 @@ class ALifeViewer(object):
             self._view_distance += self.zoom_increment
     
     ## Control the zoom factor
+    #  @param x The mouse x coordinate.
+    #  @param z The mouse y coordinate.
     def _motion(self, x, z):
         if not self._mouse_view:
             return
@@ -391,6 +395,8 @@ class ALifeViewer(object):
     #  a little by shifting the hemisphere into the ground by 0.1 units,
     #  such that approaching the perimeter does not cause a huge change in the
     #  viewing direction. The limit for l is thus cos(arcsin(0.1)).
+    #  @param x The mouse x coordinate.
+    #  @param z The mouse y coordinate.
     def _passive_motion(self, x, z):
         if not self._mouse_view:
             return
@@ -416,8 +422,8 @@ class ALifeViewer(object):
     ## Save the current frame to a png image
     #  The path is <self._screenshot_dir><img_number>.png
     #  self._screenshot_dir is automatically created if it does not exist.
-    #  Shots are automatically numerated based on how many files are already 
-    #  in the directory.
+    #  Shots are automatically named and numbered based on how many files 
+    #  are already in the directory.
     def screenshot(self):
         if not os.path.exists(self._screenshot_dir):
             os.makedirs(self._screenshot_dir)
