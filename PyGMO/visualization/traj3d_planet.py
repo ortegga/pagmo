@@ -39,7 +39,10 @@ except ImportError:
 try:
    import FTGL
 except ImportError:
-   raise ImportError( "Warning: The python-ftgl bindings are missing, you won't be able to use the visualization module." )
+   try:
+      import _FTGL as FTGL
+   except:
+      raise ImportError( "Warning: The python-ftgl bindings are missing, you won't be able to use the visualization module." )
 
 # NumPy
 try:
