@@ -36,21 +36,19 @@ try:
    from OpenGL.GLUT import *
    from OpenGL.arrays import ArrayDatatype as ADT
 except ImportError:
-   print( "Warning: The python-opengl bindings are missing, you won't be able to use the visualization module." )
-   raise ImportError
+   raise ImportError( "Warning: The python-opengl bindings are missing, you won't be able to use the visualization module." )
 
 # FTGL
 try:
    import FTGL
 except ImportError:
-   print( "Warning: The python-ftgl bindings are missing, you won't be able to use the visualization module." )
-   raise ImportError
+   raise ImportError( "Warning: The python-ftgl bindings are missing, you won't be able to use the visualization module." )
 
 # NumPy
 try:
    from numpy import *
 except ImportError:
-   print( "Warning: The numpy bindings are missing, you won't be able to use the visualization module." )
+   raise ImportError( "Warning: The numpy bindings are missing, you won't be able to use the visualization module." )
 
 # Local imports
 from frange import *
