@@ -51,7 +51,7 @@ class ALifeProblem(base):
     #  @param env An ALifeEnvironment object that will be used by this problem.
     #  @param robot A Robot object
     #  @param asteroid An asteroid object
-    def __init__(self, env, robot, asteroid=None):
+    def __init__(self, env=None, robot=None, asteroid=None):
         if not env:
             ## @param environment The ALifeEnvironment 
             self.environment = ALifeEnvironment()
@@ -182,14 +182,14 @@ if __name__ == "__main__":
     # behaviour in our robot
     prob = ALifeProblem()
     # define the algorithm used to optimise the problem's objective function
-    algo = algorithm.de(75)
+    algo = algorithm.ihs(5)
     # define the archipelago
     topo = topology.ring()
-    num_islands = 5
-    num_individuals = 10
+    num_islands = 1
+    num_individuals = 3
     a = archipelago(prob, algo, num_islands, num_individuals, topo)
     # allow to evolve
-    a.evolve(3)
+    a.evolve(1)
     a.join()
     # get the weights from the winning robot
     max_distance_moved = 0
