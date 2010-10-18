@@ -37,7 +37,7 @@ namespace odeint
 
 	if (!(pX && pDxdt && pOutputs))
 	  {
-	    std::cout <<" Could not find a dataset"<<std::endl;
+	    std::cout <<" Could not find a dataset ("<<pX<<" "<<pDxdt<<" "<<pOutputs<<" ---"<<std::endl;
 	    //Raise error that something was not initialised
 	    return false;
 	  }
@@ -90,7 +90,7 @@ namespace odeint
 
 	if (!(pX && pDxdt && pDxdm && pXt && m_sub_task))
 	  {
-	    std::cout <<" Could not find a dataset"<<std::endl;
+	    std::cout <<" Could not find a dataset ("<<pX<<" "<<pDxdt<<" "<<pDxdm<<" "<<pXt<<std::endl;
 	    //Raise error that something was not initialised
 	    return false;
 	  }

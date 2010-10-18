@@ -5,8 +5,7 @@
 
 #include <string>
 #include <ostream>
-#include <cuda.h>
-#include <cuda_runtime.h>
+#include "pagmo_cuda.h"
 #include "boost/shared_ptr.hpp"
 
 

@@ -25,8 +25,8 @@
 // Created by Juxi Leitner on 2009-12-21.
 // based on the TwoDee Artificial Neural Network Code
 
-#ifndef ANN_TB_ELMAN_NETWORK_H
-#define ANN_TB_ELMAN_NETWORK_H
+#ifndef ANN_TB_CTRNN_H
+#define ANN_TB_CTRNN_H
 
 #include "neural_network.h"
 #include "cudaty.h"
@@ -34,44 +34,63 @@
 namespace ann_toolbox {
 	
 /**
- * An Elman network (named after Jeff Elman) is a recurrent neural network (RNN), a class of
- * artificial neural networks (ANN), where fixed connections backwards are added. This creates
- * an internal state of the network which allows it to exhibit dynamic temporal behavior. In
- * an Elman network connections from the middle (hidden) layer to so called "context units", 
- * which are added to the input nodes.
- * More info: http://en.wikipedia.org/wiki/Recurrent_neural_network#Elman_network
+ * A Continuous-Time Recurrent Neural Networks (CTRNNs) is a dynamic neural network
+ * allowing recurrent connections and considers continuous time as a factor.
+ * TODO
+ * More info: add link
  */	
-class elman_network : public neural_network {
+class ctrnn : public neural_network {
 public:
 	/// Constructor
 	/**
-	 * Creates a new elman_network object, which is derived from the neural_network class
-	 * and using one hidden layer of nodes and "context units" from that hidden layer as
-	 * extra inputs. It calls the set_weights function to initalize the weights of the neural
-	 * network.	
+	 * Creates a new ctrnn (continuous-time recurrent neural network) object, which is derived
+	 * from the neural_network class.
 	 * \param input_nodes	the number of input nodes
 	 * \param hidden_nodes	the number of nodes in the hidden layer
 	 * \param output_nodes	the number of output nodes (default = 1)
 	 * \param w				the weights, with which the neural network is initiated (empty by default)
 	 * \return a perceptron object
 	 */
-	elman_network(unsigned int input_nodes_, unsigned int hidden_nodes_, 
+	ctrnn(unsigned int input_nodes_, unsigned int hidden_nodes_, 
 			unsigned int output_nodes_ = 1, const std::vector<CUDA_TY> &w = std::vector<CUDA_TY>());	
 
 	/// Destructor
-    ~elman_network();
+    ~ctrnn();
+
+	/// Getter/SetterFunctions
+	virtual void set_weights(const std::vector<CUDA_TY> &w); 
+	//void set_time_step(double ts);
 
 	/// Compute Outputs
 	const std::vector<CUDA_TY> compute_outputs(std::vector<CUDA_TY> &inputs);
+	
+	// setter methods for the lower and upper boundaries
+	void set_weights_lower_bound(CUDA_TY _in) { lowbound_weights = _in; }
+	void set_weights_upper_bound(CUDA_TY _in) { uppbound_weights = _in; }	
+
+	void set_bias_lower_bound(CUDA_TY _in) { lowbound_bias = _in; }
+	void set_bias_upper_bound(CUDA_TY _in) { uppbound_bias = _in; }	
+
+	void set_tau_lower_bound(CUDA_TY _in) { lowbound_tau = _in; }
+	void set_tau_upper_bound(CUDA_TY _in) { uppbound_tau = _in; }	
+	
+	/// Stream output operator.
+	friend std::ostream &operator<<(std::ostream &, const ctrnn &);	
 
 protected:
 	// number of hidden nodes
 	unsigned int	m_hidden;
+	CUDA_TY	m_time_step;
+	// the upper and lower boundaries to which the 0-1 values will be scaled
+	// different boundaries may exist for the weights, the biases and the taus
+	CUDA_TY lowbound_weights, uppbound_weights, lowbound_bias, uppbound_bias,
+		lowbound_tau, uppbound_tau;
+	
 	// a vector to store the memory of the network (feedback nodes)
-	std::vector<CUDA_TY>	m_memory;	
+	std::vector<CUDA_TY>	m_hidden_neurons;
+	std::vector<CUDA_TY>	m_output_neurons;		
 };
 
 }
 #endif
-
 

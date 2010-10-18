@@ -12,6 +12,7 @@ namespace cuda
     m_activedev = -1;
     if(!load())
       {
+	std::cout<<"cuda failed to load"<<std::endl;
 	//pagmo throw;
       }
   }
@@ -29,10 +30,8 @@ namespace cuda
 	m_devices.push_back(pInfo);
       }
 
-    if (devnum > 1)
-      {
-	set_device(0);
-      }
+    std::cout<<"info::load loaded "<<devnum<<std::endl;
+    set_device(0);
     return true;
   }
 
@@ -53,6 +52,16 @@ namespace cuda
   deviceinfo * info::get_device()
   {
     return get_at(m_activedev);
+  }
+
+  deviceinfo* info::get_at(unsigned int index) 
+  { 
+    if (index < get_count()) 
+      {
+	std::cout<<"info::get_at"<<std::endl;
+	return m_devices[index];
+      }
+    return NULL;
   }
 
   unsigned int info::get_maxthreadcount()
@@ -97,8 +106,6 @@ namespace cuda
 
   unsigned int deviceinfo::get_maxthreadcount()
   {
-    //This is ambiguous. We cant be sure that this will be the
-    //optimal size
     return m_prop.multiProcessorCount * 8 * m_prop.warpSize;
   }
 
@@ -106,7 +113,6 @@ namespace cuda
   {
     return  m_prop.warpSize;
   }
-
 
   std::ostream & operator <<(std::ostream & os, const info & dev)
   {
@@ -133,7 +139,7 @@ namespace cuda
       <<" integrated mem: "<<dev.m_prop.integrated
       <<" map host mem: "<<dev.m_prop.canMapHostMemory
       <<std::endl;
-
+    
     os<<"registers per block: "<<dev.m_prop.regsPerBlock<<std::endl;
     os<<"warp size: "<<dev.m_prop.warpSize<<std::endl;
     os<<"memory pitch (MB): "<<(dev.m_prop.memPitch >> 20)<<std::endl;

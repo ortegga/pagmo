@@ -3,28 +3,55 @@
 #ifndef __PAGMO_CUDA_LOGGER__
 #define __PAGMO_CUDA_LOGGER__
 
-using namespace std;
 
-class Logger : public ostream
-{
- public:
-  Logger ()
-    {
-      m_bActivated = true;
-    }
-  bool m_bActivated;
-};
+#ifndef CUDA_LOG_DISABLED
 
-template <class T>
-ostream & operator << (Logger & logger, const T & t)
+#define CUDA_LOG_INFO(X, Y) (logger_info << (X) << (Y) << std::endl)
+#define CUDA_LOG_WARN(X, Y) (logger_warn << (X) << (Y) << std::endl)
+#define CUDA_LOG_ERR(X, Y) (logger_err << (X) << (Y) << std::endl)
+
+#else
+
+#define CUDA_LOG_INFO(x, y) ;
+#define CUDA_LOG_WARN(x, y) ;
+#define CUDA_LOG_ERR(x, y) ;
+
+#endif
+
+
+#include <iostream>
+#include "pagmo_cuda.h"
+
+namespace cuda
 {
-  if (m_bActivated)
+
+  class Logger : public std::ostream
+  {
+  public:
+    Logger (bool bActivated = true)
+      {
+	m_bActivated = bActivated;
+      }
+    bool active() { return m_bActivated;}
+    bool m_bActivated;
+  };
+
+  template <class T>
+    Logger & operator << (Logger & logger, const T & t)
     {
-      std::cout << t;
+      if (logger.active())
+	{
+	  std::cout << t;
+	}
+      return logger;
     }
-  return logger;
+
+  Logger& operator << (Logger & logger, cudaError_t & err) ;
+    
+
+    extern Logger logger_info;
+    extern Logger logger_warn;
+    extern Logger logger_err;
 }
-
-Logger logger;
 
 #endif

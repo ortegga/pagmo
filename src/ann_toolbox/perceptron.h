@@ -30,6 +30,8 @@
 
 #include "neural_network.h"
 #include "../cuda/cudatask.h"
+#include "../cuda/kernel_dims.h"
+#include "../cuda/nnet.h"
 
 namespace ann_toolbox {
 	
@@ -39,20 +41,45 @@ namespace ann_toolbox {
    * classifier. 
    * More info: http://en.wikipedia.org/wiki/Perceptron
    */	
-  template <typename ty, int activ_type>
-    class perceptron : public neural_network <ty> {
+  template <typename ty, size_t in_, size_t out_, typename activ_type>
+    class perceptron : public neural_network <ty, in_, out_> {
   public:
-    typedef typename cuda::perceptron_task <ty,activ_type> task;
 
-
-  perceptron(unsigned int input_nodes_, unsigned int output_nodes_ = 1, 
-	     cuda::task<ty> * pTask = NULL) : 
-    neural_network(input_nodes_, output_nodes_, pTask)
+    typedef neural_network<ty, in_, out_> base;
+    
+  perceptron(cuda::info & in, size_t individuals, size_t task_count) : 
+    neural_network<ty, in_, out_>::neural_network(in, individuals, task_count)
       {
-	this->m_weights = (this->m_inputs + 1) * this->m_outputs;
+	this->m_weights = (in_ + 1) * out_;
+	this->set_shared_chunk(0, this->m_weights, in_);
+	this->set_global_chunk(0, this->m_weights, in_ + out_);
       }
 
+
     ~perceptron() {}
+
+    bool launch() 
+    {
+
+      dataset<ty> * pOutData = this->get_dataset(base::param_outputs);
+      dataset<ty> * pInput = this->get_dataset(base::param_inputs);
+      dataset<ty> * pWeights = this->get_dataset(base::param_weights);
+
+      if (!(pInput && pWeights && pOutData))
+	{
+	  std::cout <<" Could not find a dataset"<<std::endl;
+	  return false;
+	}
+      
+      std::cout <<"preparing dimensions"<<this->m_info<<" "<<this->get_profile()<<std::endl;
+      //each thread block contains O number of threads
+      block_complete_dimensions dims (&this->m_info, this->get_profile());
+
+      std::cout<<"Launching kernel"<<std::endl;
+            cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
+					     *pOutData->get_data(),  pInput->get_task_size(), &dims);
+      return true;
+    }
 
   };
 

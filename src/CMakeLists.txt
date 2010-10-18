@@ -147,11 +147,14 @@ IF(ENABLE_CUDA)
   INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/cuda/")
   SET(ANN_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudainfo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatimer.cpp
     "${ANN_FILES}" )
 
   SET(ANN_FILES
-    cuda/layer.cu
+    cuda/kernel.cu
+    cuda/nnet.cu
+    #problem/docking.cu
     "${ANN_FILES}")
 
   CUDA_ADD_LIBRARY(ann_toolbox ${ANN_FILES})

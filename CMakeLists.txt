@@ -1,4 +1,5 @@
-PROJECT(PaGMO)
+
+ PROJECT(PaGMO)
 
 ENABLE_TESTING()
 
@@ -17,7 +18,7 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
 	# Add to the base flags extra warnings, and set up message reporting from the compiler so that it is Eclipse-friendly.
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wdisabled-optimization -fmessage-length=0 -Wnon-virtual-dtor")
 	# Additional flags to turn off some GCC warnings that in practice clutter the compilation output.
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -fno-strict-aliasing -Wno-deprecated")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -Wno-missing-field-initializers -fno-strict-aliasing -Wno-deprecated")
 	# Suggested for multithreaded code.
 	ADD_DEFINITIONS(-D_REENTRANT)
 	# Atomic builtins for GCC.
@@ -52,6 +53,8 @@ ENDIF(COMMAND CMAKE_POLICY)
 # Provides build options to CMake.
 # Build Option: when active the file main.cpp is built and linked to the PaGMO static library.
 OPTION(BUILD_MAIN "Build 'main.cpp'." ON)
+
+OPTION(BUILD_CUDA_TEST "Build 'cuda_test.cpp'." OFF)
 
 # Build Option: when active the bindings to Python are compiled and linked (installation).
 OPTION(BUILD_PYGMO "Build Python bindings." OFF)
@@ -202,6 +205,14 @@ IF(ENABLE_CUDA)
 
 	MARK_AS_ADVANCED(CUDA_CUDARTEMU_LIBRARY)
 	ENDIF(CUDA_BUILD_EMULATION)
+
+	# we need to do this since cuda does not support gcc 4.4 yet
+	#SET (CMAKE_C_COMPILER "/usr/bin/gcc-4.3")
+	#SET (CMAKE_CXX_COMPILER "/usr/bin/g++-4.3")
+	#SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--compiler-bindir /usr/local/bin/gnuc4.3" )
+	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--ptxas-options=-v" )
+	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--keep" )
+	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g" )
 ENDIF(ENABLE_CUDA)
 
 # Let's include Boost's headers.
@@ -282,8 +293,8 @@ ENDIF(BUILD_PYGMO)
 
 # Link main to pagmo_static library.
 IF(BUILD_MAIN)
-	ADD_EXECUTABLE(main main.cpp)
-	TARGET_LINK_LIBRARIES(main pagmo_static ann_toolbox ${MANDATORY_LIBRARIES})
+  ADD_EXECUTABLE(main main.cpp)
+  TARGET_LINK_LIBRARIES(main pagmo_static ann_toolbox ${MANDATORY_LIBRARIES})
 ENDIF(BUILD_MAIN)
 
 IF(ENABLE_TESTS)
