@@ -104,7 +104,7 @@ namespace cuda
 
       virtual bool set_individual_inputs(size_t individual, size_t id, size_t parameter, const std::vector<cuda_type> & inputs)
       {
-	size_t realid = individual*m_profile.individuals + id;
+	size_t realid = individual*m_profile.points + id;
 	if (is_valid(realid))
 	  {
 	    if (!has_data(parameter))
@@ -140,7 +140,7 @@ namespace cuda
       virtual bool get_individual_outputs( size_t individual, size_t id, size_t parameterid, std::vector<cuda_type> & outputs)
       {
 	outputs.clear();
-	size_t realid = individual*m_profile.individuals + id;
+	size_t realid = individual*m_profile.points + id;
 	if (!has_data(parameterid) || 	!is_valid(realid))
 	  {
 	    CUDA_LOG_ERR(" get_outputs failed id:", id);
@@ -180,7 +180,7 @@ namespace cuda
 	    CUDA_LOG_WARN(" prepare_dataset creating dataset:", parameter);
 	    return create_data(parameter, size, true, false);
 	  }
-	CUDA_LOG_WARN(" prepare_dataset dataset already exists:", parameter);
+	CUDA_LOG_WARN(" prepare_individual_dataset dataset already exists:", parameter);
 	return false;
       }
 
@@ -291,7 +291,7 @@ namespace cuda
 	size_t instances = 0;
 	if (!has_data(parameterid)) 
 	  {
-	    if (bindividual)
+	    if (!bindividual)
 	      {
 		instances = m_profile.get_task_count();
 	      }

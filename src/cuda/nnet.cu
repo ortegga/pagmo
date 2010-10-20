@@ -61,21 +61,10 @@ struct linear_functor
 
 /////////////////////////////////////////////////////////////////////////////////////
 //Description: neural networks layer compute
-//What it needs to accomplish:
-//I = inputs
-//O = outputs
-//N = Individuals
-//S = start points
-//
-//Passing in N*S*(I+1)*O weights
-//Passing in N*S*I inputs
-//Expecting N*S*O outputs
-//
+// whole individuals. outputs*points = individual size
+// continuous memory in I, O, W. Need to compute netid as
+// indivId*points+pointid
 
-//What we expect is that there should only be
-// W*I weights in memory ever
-// 
-//
 
 __shared__ void * compute_layer_shared_mem;
 template <typename cuda_type, typename activ_type >
@@ -88,28 +77,27 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
   //cuda_type * s_weights = (cuda_type *) compute_layer_shared_mem; 
   //cuda_type * s_inputs = & ((cuda_type *) compute_layer_shared_mem)[inputs * outputs + 1]; // plus some offset
-
-  size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
   //Add check for last block that will be running less than normal threads
   if (threadIdx.x < tasks_per_block)
     {
-
+      size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
       //0. load shared memory with inputs and weights. 
-      unsigned int netid = tx / outputs;
+      unsigned int taskid = tx / outputs;
       unsigned int yid = tx % outputs;
       unsigned int netsize = (inputs + 1)*outputs;
+      unsigned int individ = tx / (outputs*points);
    
       //1. load in the bias
-      cuda_type value = W[netsize*netid + (inputs + 1)*yid + inputs];
+      cuda_type value = W[netsize*individ + (inputs + 1)*yid + inputs];
 
       //2. Add the weights * inputs.
       for (int i=0; i < inputs; ++i)
 	{
-	  value += X[inputs*netid+i]*W[ netsize*netid + (inputs + 1)*yid + i];
+	  value += X[inputs*taskid+i]*W[ netsize*individ + (inputs + 1)*yid + i];
 	}
 
       //3. save to output
-      Y[netid*outputs+yid] = value;//activator ( value );     
+      Y[taskid*outputs+yid] = activator ( value );     
     }
 };
 
@@ -134,6 +122,7 @@ __host__ void cu_compute_layer(cuda_type *X, cuda_type *W,  cuda_type *Y, size_t
      dims_->get_tasks_per_block(), 
      dims_->get_individuals(), 
      dims_->get_points());
+  cudaThreadSynchronize();
 }
 
 template <>
@@ -148,6 +137,7 @@ __host__ void cu_compute_layer<float, linear_functor<float> >(float *X, float *W
      dims_->get_tasks_per_block(), 
      dims_->get_individuals(),
      dims_->get_points());
+  cudaThreadSynchronize();
 }
 
 template <>
@@ -162,6 +152,7 @@ __host__ void cu_compute_layer<float, sigmoid_functor<float> > (float *X, float 
     (X, W, Y, inputs, dims_->get_task_size(), 
      dims_->get_tasks_per_block(), 
      dims_->get_individuals(), dims_->get_points());
+  cudaThreadSynchronize();
 }
 
 template <>
@@ -176,6 +167,7 @@ __host__ void cu_compute_layer<double, linear_functor<double> > (double *X, doub
      dims_->get_tasks_per_block(), 
      dims_->get_individuals(),
      dims_->get_points());
+  cudaThreadSynchronize();
 }
 
 template <>

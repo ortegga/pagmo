@@ -111,7 +111,7 @@ int print_subtask(int individualid, int taskid, multilayer_nnet * pNet)
       std::cout<<*iter<<" ";
       }*/
 
-  std::cout <<std::endl<<"outputs: ";
+  std::cout <<std::endl<<individualid<<"/"<<taskid<<" outputs: ";
 
   O.clear();
   
