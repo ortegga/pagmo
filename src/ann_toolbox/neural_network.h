@@ -71,11 +71,11 @@ namespace ann_toolbox {
 	}
       return false;
     }
-    virtual bool set_weights(size_t individual, const std::vector<ty> &chromosome)
+    virtual bool set_weights(size_t individual, const std::vector<ty> &weights)
     {
-      if (chromosome.size() == get_number_of_weights())
+      if (weights.size() == get_number_of_weights())
 	{
-	  return task<ty>::set_inputs (individual, param_weights, chromosome);
+	  return task<ty>::set_inputs (individual, param_weights, weights);
 	}
       return false;
     }
@@ -88,7 +88,7 @@ namespace ann_toolbox {
     virtual bool prepare_outputs()
     {
       int size = get_number_of_output_nodes();
-      return task<ty>::prepare_dataset(param_outputs, size);
+      return task<ty>::prepare_individual_dataset(param_outputs, size);
     }
      
     virtual bool launch() = 0;

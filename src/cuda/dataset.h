@@ -57,6 +57,7 @@ namespace cuda
 	if (err != cudaSuccess)
 	  {
 	    CUDA_LOG_ERR("Could not set dataset values ", err);
+	    CUDA_LOG_ERR("\nstride: ", taskId*m_stride);
 	    return false;
 	  }
 	return true;

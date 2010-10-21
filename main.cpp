@@ -30,8 +30,8 @@ int main( int argc, char **argv )
   info & inf = *pInf;
   std::cout << inf << std::endl;
 
-  unsigned int taskCount = 20;
-  unsigned int individuals = 10;
+  unsigned int taskCount = 10;
+  unsigned int individuals = 3;
 
   //task might need to know the complete type of the subtasks.
 
@@ -81,7 +81,7 @@ int load_subtask(int individualid, int taskid, multilayer_nnet * pNet)
       for (unsigned int j=0; j< pNet->get_number_of_weights(); j++)
 	{
 	  //  std::cout<<j+1+taskid<<" ";
-	  W.push_back(j + 1 + taskid);
+	  W.push_back(j + 1 + individualid);
 	}
       std::cout<<pNet->set_weights(individualid, W)<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
     }

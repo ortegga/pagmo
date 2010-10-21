@@ -172,16 +172,21 @@ namespace cuda
       else
 	m_block_size = block_size;
 
+      m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+      
       // Assuming equal threads go in all the blocks.
-      m_block_count = jobs / m_block_size + (jobs % m_block_size ? 1 : 0);
+      m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
 
-      m_indivs_per_block = m_prof->individuals / m_block_count + (m_prof->individuals % m_block_count ? 1 : 0);
+      //m_block_count = jobs / m_block_size + (jobs % m_block_size ? 1 : 0);
+      //m_indivs_per_block = m_prof->individuals / m_block_count;// + (m_prof->individuals % m_block_count ? 1 : 0);
 
       m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
 
       //m_indivs_per_block = (m_block_size / m_prof->get_individual_job_count()) * m_prof->task_size;
 
 
+      std::cout<<"m_block_count "<<m_block_count<<std::endl;
+      std::cout<<"m_indivs_per_block "<<m_indivs_per_block<<std::endl;
       std::cout<<"m_prof->get_total_indiv_shared_chunk "<<m_prof->get_total_indiv_shared_chunk()<<std::endl;
       std::cout<<"m_prof->get_individual_job_count()"<<m_prof->get_individual_job_count()<<std::endl;
       std::cout<<"Kernel dimensions "<<m_block_size<<" "<<m_block_count<<" "<<m_block_shared_mem<<" "<<m_indivs_per_block<<std::endl;
@@ -221,7 +226,7 @@ namespace cuda
 
       for (; i <= props->maxThreadsPerBlock; i=i<<1 )
 	{
-	  if (i >= indiv_jobs && minval > (i - (indiv_jobs % i)))
+	  if (i >= indiv_jobs && minval >= (i - (indiv_jobs % i)))
 	    {
 	      minval = i - ( indiv_jobs % i);			 
 	      minind = i;
@@ -277,20 +282,6 @@ namespace cuda
   protected:
     cuda::timer m_duration;
     bool m_started;
-  };
-
-  class naive_kernel_dimensions : public kernel_dimensions
-  {
-  public:
-    naive_kernel_dimensions (cuda::info * inf, task_profile * prof): 
-    kernel_dimensions(inf, prof)
-      {
-
-	/*size_t jobs = m_prof->task_size * m_prof->points;
-	m_block_size = jobs % inf.get_prop().maxThreadsPerBlock;
-	m_block_count = jobs / m_block_size + (jobs % m_block_size ? 1 : 0);*/
-      
-      }
   };
 
 }

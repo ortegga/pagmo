@@ -105,6 +105,7 @@ namespace cuda
       virtual bool set_individual_inputs(size_t individual, size_t id, size_t parameter, const std::vector<cuda_type> & inputs)
       {
 	size_t realid = individual*m_profile.points + id;
+	std::cout<<"set_individual_inputs: Id"<<realid<<std::endl;
 	if (is_valid(realid))
 	  {
 	    if (!has_data(parameter))
@@ -141,6 +142,7 @@ namespace cuda
       {
 	outputs.clear();
 	size_t realid = individual*m_profile.points + id;
+	std::cout<<"ID: "<<realid<<std::endl;
 	if (!has_data(parameterid) || 	!is_valid(realid))
 	  {
 	    CUDA_LOG_ERR(" get_outputs failed id:", id);
@@ -291,7 +293,7 @@ namespace cuda
 	size_t instances = 0;
 	if (!has_data(parameterid)) 
 	  {
-	    if (!bindividual)
+	    if (bindividual)
 	      {
 		instances = m_profile.get_task_count();
 	      }
