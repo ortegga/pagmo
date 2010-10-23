@@ -114,13 +114,13 @@ namespace ann_toolbox {
 	    return false;
 	  }
 
-	block_complete_dimensions dims1 (this->m_info, &(this->m_hidden_task));
+	block_complete_dimensions dims1 (&this->m_info, &(this->m_hidden_task));
 
 	cu_compute_layer<ty, activ_type>(*pInput->get_data(), *pWeights->get_data(), *pHidden->get_data(),  
 					 pInput->get_task_size(), &dims1);
 
       
-	block_complete_dimensions dims2 (this->m_info, this->get_profile());
+	block_complete_dimensions dims2 (&this->m_info, this->get_profile());
 
 	cu_compute_layer<ty, activ_type>(*pHidden->get_data(), *pOutputWeights->get_data(), *pOutData->get_data(),  
 					 pHidden->get_task_size(), & dims2);

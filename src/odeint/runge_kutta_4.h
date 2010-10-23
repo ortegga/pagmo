@@ -87,12 +87,8 @@ namespace pagmo
 
 	  block_complete_dimensions dims (this->m_inf, pX->get_tasksize(), this->m_task_count, shared_data_size, global_data_size);
 
-	  dim3 blocksize(pX->get_tasksize(),1,1);
-
-	  dim3 gridsize(this->m_task_count,1,1);
-
 	  runge_kutta_integrate<ty, system>(*pX->get_data()  , *pO->get_data(), m_param_t, m_param_dt,pX->get_tasksize(), 
-					    m_param_scale_limits, task_data_size, blocksize, gridsize);
+					    m_param_scale_limits, task_data_size, &dims);
 
 	  return true;
 

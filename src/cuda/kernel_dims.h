@@ -176,14 +176,7 @@ namespace cuda
       
       // Assuming equal threads go in all the blocks.
       m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
-
-      //m_block_count = jobs / m_block_size + (jobs % m_block_size ? 1 : 0);
-      //m_indivs_per_block = m_prof->individuals / m_block_count;// + (m_prof->individuals % m_block_count ? 1 : 0);
-
       m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
-
-      //m_indivs_per_block = (m_block_size / m_prof->get_individual_job_count()) * m_prof->task_size;
-
 
       std::cout<<"m_block_count "<<m_block_count<<std::endl;
       std::cout<<"m_indivs_per_block "<<m_indivs_per_block<<std::endl;

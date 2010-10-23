@@ -71,13 +71,10 @@ namespace ann_toolbox {
 	  return false;
 	}
       
-      std::cout <<"preparing dimensions"<<this->m_info<<" "<<this->get_profile()<<std::endl;
-      //each thread block contains O number of threads
       block_complete_dimensions dims (&this->m_info, this->get_profile());
-
-      std::cout<<"Launching kernel"<<std::endl;
-            cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
-					     *pOutData->get_data(),  pInput->get_task_size(), &dims);
+      
+      cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
+				       *pOutData->get_data(),  pInput->get_task_size(), &dims);
       return true;
     }
 

@@ -25,39 +25,6 @@ struct linear_functor
   }
 };
 
-///////////////////////////////////////////////////////////
-// nnets are small. So
-
-/*template <typename cuda_type, typename activ_type >
-  __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,  
-  cuda_type *Y, size_t inputs, size_t outputs,
-  activ_type activator = activ_type()) 
-  {
-  // read in the weights
-  }*/
-
-
-/*template <typename cuda_type, typename activ_type >
-  __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,  
-  cuda_type *Y, size_t inputs, size_t outputs,
-  activ_type activator = activ_type()) 
-  {
-
-  unsigned int tx = threadIdx.x;
-  unsigned int netid = tx / outputs;
-  unsigned int yid = tx % outputs;
-  unsigned int netsize = (inputs + 1)*outputs;
-
-  cuda_type value = W[netsize*netid + (inputs + 1)*yid + inputs];
-  for (int i=0; i < inputs; ++i)
-  {
-  value += X[inputs*netid+i]*W[ netsize*netid + (inputs + 1)*yid + i];
-  }
-  Y[tx] = activator ( value );
-
-  };*/
-
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 //Description: neural networks layer compute
@@ -65,8 +32,20 @@ struct linear_functor
 // continuous memory in I, O, W. Need to compute netid as
 // indivId*points+pointid
 
+template <typename cuda_type>
+__device__ void load_to_shared(cuda_type * shared, cuda_type * global, size_t size)
+{
+  size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+  for (int i=0; i < segment ; ++i)
+    {
+      if (i*segment + threadIdx.x < size)
+	shared [i*segment + threadIdx.x] = global[blockIdx.x*size +  i*segment + threadIdx.x];
+    }
+}
 
-__shared__ void * compute_layer_shared_mem;
+
+//calculate correct offsets
+extern __shared__ char compute_layer_shared_mem [];
 template <typename cuda_type, typename activ_type >
 __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,  
 					cuda_type *Y, size_t inputs, size_t outputs,
@@ -75,25 +54,35 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 					activ_type activator = activ_type()) 
 {
 
-  //cuda_type * s_weights = (cuda_type *) compute_layer_shared_mem; 
-  //cuda_type * s_inputs = & ((cuda_type *) compute_layer_shared_mem)[inputs * outputs + 1]; // plus some offset
+  size_t netsize = (inputs + 1)*outputs;
+  size_t block_individuals = tasks_per_block / (points * outputs);
+
+
+  //0. load shared memory with inputs and weights. 
+  cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
+  load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
+
+  cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
+  load_to_shared<cuda_type>(Xs, X, inputs*block_individuals*points);
+
+  __syncthreads();
+
   //Add check for last block that will be running less than normal threads
   if (threadIdx.x < tasks_per_block)
     {
       size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
-      //0. load shared memory with inputs and weights. 
-      unsigned int taskid = tx / outputs;
-      unsigned int yid = tx % outputs;
-      unsigned int netsize = (inputs + 1)*outputs;
-      unsigned int individ = tx / (outputs*points);
-   
+      size_t taskid = tx / outputs;
+      size_t yid = tx % outputs;
+      size_t individ = tx / (outputs*points);
+      size_t sha_individ = threadIdx.x / (outputs*points);
+      size_t sha_taskid = threadIdx.x / (outputs);   
       //1. load in the bias
-      cuda_type value = W[netsize*individ + (inputs + 1)*yid + inputs];
+      cuda_type value = Ws[netsize*sha_individ + (inputs + 1)*yid + inputs];
 
       //2. Add the weights * inputs.
       for (int i=0; i < inputs; ++i)
 	{
-	  value += X[inputs*taskid+i]*W[ netsize*individ + (inputs + 1)*yid + i];
+	  value += Xs[inputs*sha_taskid+i]*Ws[ netsize*sha_individ + (inputs + 1)*yid + i];
 	}
 
       //3. save to output
