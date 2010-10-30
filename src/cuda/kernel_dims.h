@@ -14,62 +14,19 @@ namespace cuda
     kernel_dimensions (info * inf, task_profile * prof) :  
     m_inf(inf), m_prof(prof)
     {      
-      check_problems();
+      
     }
     virtual ~kernel_dimensions() {}
 
     // checks for validity
 
-    bool check_shared_mem()
-    {
-      /*const cudaDeviceProp & props = m_inf.get_prop();
-      if (m_prof->shared_chunk > props.sharedMemPerBlock)
-	{
-	  return false;
-	  }*/
-      return true;
-    }
+    bool check_shared_mem();
 
-    bool check_global_mem()
-    {
-      /*const cudaDeviceProp & props = m_inf.get_prop();
-      if (m_prof->global_chunk*m_prof->task_count >  props.totalGlobalMem)
-	{
-	  return false;
-	  }*/
-      return true;
-    }
+    bool check_global_mem();
 
-    bool check_task_size()
-    {
-      /*      const cudaDeviceProp & props = m_inf.get_prop();
-      if (m_prof->task_size > (size_t)props.maxThreadsPerBlock)
-	{
-	  return false;
-	  }*/
-      return true;
-    }
+    bool check_task_size();
 
-    bool check_problems()
-    {
-      /*const cudaDeviceProp & props = m_inf.get_prop();
-      if (m_prof->shared_chunk > props.sharedMemPerBlock)
-	{
-	  CUDA_LOG_ERR("shared mem requirements exceed device capability", m_prof->shared_chunk);
-	  return false;
-	}
-      if (m_prof->task_size > (size_t)props.maxThreadsPerBlock)
-	{
-	  CUDA_LOG_ERR("task cannot fit in a block", m_prof->task_size);
-	  return false;
-	}
-      if (m_prof->global_chunk >  props.sharedMemPerBlock)
-	{
-	  CUDA_LOG_ERR("task cannot fit in global memory", m_prof->global_chunk);
-	  return false;
-	  }*/
-      return true;
-    }
+    bool check_problems();
 
     //Getters 
 
@@ -77,11 +34,15 @@ namespace cuda
     virtual dim3 get_block_dims() = 0;
     //assume a single row of blocks
     virtual dim3 get_grid_dims() = 0;
-    //Amount to allocate to each block. 
-    //Will be the max of something
+    //Amount to shared memory to allocate to each block. 
     virtual size_t get_shared_mem_size() = 0;
     //The number of tasks per block can be variable?
     virtual size_t get_tasks_per_block() = 0;
+    //Amount of global data
+    virtual size_t get_global_mem_size()
+    {
+      return m_prof->get_total_global_chunk();
+    }
 
     virtual bool refresh() 
     {
@@ -120,12 +81,6 @@ namespace cuda
   // Each block contains an integer number of individuals (which cant be subdivided further)
   // smallest sized blocks that maximize occupancy
 
-  // block size depends on:
-  // shared memory availability
-  // optimal warp size
-  // max threads per block allowed
-
-  //TODO---------- fix this class
   class block_complete_dimensions : public kernel_dimensions
   {
   public:
@@ -191,25 +146,9 @@ namespace cuda
     //TODO add some code to make sure individual chunks lie in the same block
     size_t use_shared_mem_suggestion( const cudaDeviceProp * props, task_profile * prof)
     {
-      /*size_t indiv_jobs =  prof->get_individual_job_count();
-      size_t totalmem = prof->get_total_indiv_shared_chunk(); 
-
-      size_t block_count = totalmem / props.sharedMemPerBlock + (totalmem % props.sharedMemPerBlock ? 1 : 0);
-      for (size_t i = props.warpSize; i <= props.maxThreadsPerBlock; i=i<<1 )
-	{
-	  if (i * block_count > indiv_jobs * tasksize)
-	    {
-	      CUDA_LOG_INFO("shared memory suggestion: ", i);
-	      return i;
-	    }
-	}
-      CUDA_LOG_WARN("could not get a valid shared memory suggestion", totalmem);
-      return props.warpSize;*/
       return 200000;
     }
 
-    // gives blocksize with the least residue (most occupancy)
-    // given a number of indivisible jobs, find the block size/block count that fits the most jobs with the least residue.
     size_t use_thread_suggestion(const cudaDeviceProp * props, task_profile * prof)
     {
       size_t indiv_jobs =  prof->get_individual_job_count();

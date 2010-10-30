@@ -149,6 +149,7 @@ IF(ENABLE_CUDA)
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudainfo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatimer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/kernel_dims.cpp
     "${ANN_FILES}" )
 
   SET(ANN_FILES

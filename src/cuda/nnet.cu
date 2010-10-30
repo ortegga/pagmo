@@ -46,6 +46,8 @@ __device__ void load_to_shared(cuda_type * shared, cuda_type * global, size_t si
 
 //calculate correct offsets
 extern __shared__ char compute_layer_shared_mem [];
+
+
 template <typename cuda_type, typename activ_type >
 __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,  
 					cuda_type *Y, size_t inputs, size_t outputs,

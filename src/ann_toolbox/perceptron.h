@@ -67,7 +67,7 @@ namespace ann_toolbox {
 
       if (!(pInput && pWeights && pOutData))
 	{
-	  std::cout <<" Could not find a dataset"<<std::endl;
+	  CUDA_LOG_ERR("Could not find a dataset", 0);
 	  return false;
 	}
       

@@ -36,7 +36,7 @@ namespace cuda
     bool m_bActivated;
   };
 
-  template <class T>
+  template <typename T>
     Logger & operator << (Logger & logger, const T & t)
     {
       if (logger.active())

@@ -28,10 +28,10 @@ namespace pagmo
 	cristos_twodee_fitness3
       };
 
-    evaluate_fitness_task(info & inf, fitness_type type , 
-			  unsigned int taskCount, ty vicinity_distance, 
+    evaluate_fitness_task(info & inf, fitness_type type , size_t individuals, 
+			  size_t taskCount, ty vicinity_distance, 
 			  ty vicinity_speed, ty max_docking_time ) : 
-      task<ty>::task(inf, taskCount), m_fitness_type(type), 
+      task<ty>::task(inf, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
 	m_inputs (6), m_outputs (3), 
 	m_vicinity_distance(vicinity_distance), 
 	m_vicinity_speed(vicinity_speed), 
@@ -70,7 +70,7 @@ namespace pagmo
 	return false;
       }
 
-      virtual bool get_outputs( int taskid, std::vector<ty> & outputs)
+       virtual bool get_outputs( int taskid, std::vector<ty> & outputs)
       {
 	return task<ty>::get_outputs (taskid, param_outputs, outputs);
       }
@@ -94,14 +94,12 @@ namespace pagmo
 	    return false;
 	  }
 
-	dim3 b(pOutData->get_tasksize()*this->m_task_count,1,1);
-
-	dim3 g(1,1,1);
+	block_complete_dimensions dims(&this->m_info, this->get_profile());
 
 	switch (m_fitness_type)
 	  {
 	  case  minimal_distance:
-	    cu_compute_fitness_mindis<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), pOutData->get_tasksize(), g, b); 
+	    cu_compute_fitness_mindis<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), pOutData->get_task_size(), &dims); 
 	    break;				
 	    /*case  minimal_distance_speed_theta:
 	    cu_compute_fitness_mindis_theta<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), width, g, b);

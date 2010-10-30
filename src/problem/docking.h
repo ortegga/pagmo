@@ -136,9 +136,9 @@ namespace pagmo
       
 	for(i = 0;i < random_start.size();i++) 
 	  {		
-	    ann->set_weights(i,v);
+	    ann->set_weights(0,v);//<TODO> update with individual id
 	    starting_condition = random_start[i];
-	    ann->set_inputs(i,starting_condition);
+	    ann->set_inputs(0,i,starting_condition);
 	  }
 	std::string logg;
 	f[0] = one_run(logg);	
@@ -193,8 +193,9 @@ namespace pagmo
 	size_t size = random_start.size();
 	std::cout <<" random starts " << size<< std::endl;
 
+	//TODO
 	fitness_task_type fitness_task (inf, fitness_task_type::minimal_distance , 
-					ann->get_number_of_outputs(),  vicinity_distance,  
+					0, ann->get_number_of_outputs(),  vicinity_distance,  
 					vicinity_speed, max_docking_time );
 	fitness_task.prepare_outputs();
 	std::cout <<"docking problem configuration" <<max_docking_time<<std::endl;
@@ -217,12 +218,12 @@ namespace pagmo
 	    for (unsigned int k = 0; k < size; ++k)
 	      {
 		//Possibly unnecessary steps here
-		ann->get_outputs(k, nnetouts);
+		ann->get_outputs(0, k, nnetouts); //update with individual id
 		if(nnetouts.size() > 2) nnetouts.pop_back();	//delete last
-		integrator_task->set_dynamical_inputs(k, nnetouts); 
+		integrator_task->set_dynamical_inputs(0, k, nnetouts); //<TODO>
 		std::vector<float_type> tmp = random_start[k];
 		tmp.pop_back();
-		if (!integrator_task->set_inputs(k, tmp))
+		if (!integrator_task->set_inputs(0, k, tmp))//<todo>
 		  {
 		    std::cout <<"size mismatch ["<<tmp.size()<<"/"<<size<<"]"<<std::endl;
 		  }
@@ -233,7 +234,7 @@ namespace pagmo
 	    fitness_task.set_time(t+dt);
 	    for (unsigned int k = 0; k < size; ++ k)
 	      {
-		integrator_task->get_outputs(k, nnetouts);
+		integrator_task->get_outputs(0, k, nnetouts);//TODO
 		fitness_task.set_inputs(k, nnetouts);
 		std::vector<float_type> tmp = random_start[k];
 		std::vector<float_type> initdis;
@@ -277,12 +278,6 @@ namespace pagmo
       float_type time_step; 					// for integrator		
       cuda::info & inf;
     };	
-
-    /*    template <>
-      class docking<float>;
-
-    template <>
-    class docking<double>;*/
   }
 }
 #endif

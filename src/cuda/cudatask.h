@@ -42,6 +42,11 @@ namespace cuda
       return task_chunk * get_individual_job_count ()  + point_chunk;
     }
 
+    size_t get_total_global_chunk()
+    {
+      return (task_global_chunk * get_individual_job_count() + point_global_chunk) * individuals + indiv_global_chunk;
+    }
+
       void set_global_chunk(size_t i, size_t p, size_t t)
       {
 	indiv_global_chunk = i;
