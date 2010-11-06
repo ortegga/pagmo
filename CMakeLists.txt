@@ -213,6 +213,7 @@ IF(ENABLE_CUDA)
 	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--ptxas-options=-v" )
 	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--keep" )
 	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g" )
+	SET (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--compiler-options;-fno-inline;-Xcompiler;-D__builtin_stdarg_start=__builtin_va_start" )
 ENDIF(ENABLE_CUDA)
 
 # Let's include Boost's headers.
