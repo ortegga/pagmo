@@ -36,69 +36,69 @@ using namespace cuda;
 
 namespace ann_toolbox {
 
-  template <typename ty, size_t in_, size_t out_>
-    class neural_network : public task<ty>
-  {
-  public:
-  neural_network(info & in, size_t individuals, size_t task_count): 
-    task<ty> ( in, individuals, task_count, out_) , 
-      m_weights(0)
-	{
-	}
-    virtual ~neural_network(){}
-
-    enum 
+    template <typename ty, size_t in_, size_t out_>
+	class neural_network : public task<ty>
     {
-      param_inputs = 0,
-      param_weights = 1,
-      param_hiddens = 2,
-      param_outputs = 3,
-      param_output_weights = 4,
+    public:
+    neural_network(info & in, size_t individuals, size_t task_count): 
+	task<ty> ( in, individuals, task_count, out_) , 
+	    m_weights(0)
+	    {
+	    }
+	virtual ~neural_network(){}
+
+	enum 
+	{
+	    param_inputs = 0,
+	    param_weights = 1,
+	    param_hiddens = 2,
+	    param_outputs = 3,
+	    param_output_weights = 4,
+	};
+
+
+	unsigned int get_number_of_input_nodes() const{ return get_number_of_inputs(); }
+	unsigned int get_number_of_inputs() const	{ return in_; }	
+	unsigned int get_number_of_output_nodes() const	{ return get_number_of_outputs(); }
+	unsigned int get_number_of_outputs() const	{ return out_; }
+	unsigned int get_number_of_weights() const	{ return m_weights; }
+
+	virtual bool set_inputs(size_t individual, size_t taskid, const std::vector<ty> & inputs)
+	{
+	    if (inputs.size() == get_number_of_inputs())
+	    {
+		return task<ty>::set_inputs (individual, taskid, param_inputs, inputs, get_number_of_inputs());
+	    }
+	    return false;
+	}
+	virtual bool set_weights(size_t individual, const std::vector<ty> &weights)
+	{
+	    if (weights.size() == get_number_of_weights())
+	    {
+		return task<ty>::set_individual_inputs (individual, param_weights, weights, get_number_of_weights());
+	    }
+	    return false;
+	}
+
+	virtual bool get_outputs( size_t individual, int taskid, std::vector<ty> & outputs)
+	{
+	    return task<ty>::get_outputs (individual, taskid, param_outputs, outputs);
+	}
+     
+	virtual bool prepare_outputs()
+	{ 
+	    int size = get_number_of_output_nodes();
+	    return task<ty>::prepare_dataset(param_outputs, size);
+	}
+     
+	virtual bool launch() = 0;
+     
+    protected:
+     
+	const char*	  m_name;
+	size_t  m_weights;
+     
     };
-
-
-    unsigned int get_number_of_input_nodes() const{ return get_number_of_inputs(); }
-    unsigned int get_number_of_inputs() const	{ return in_; }	
-    unsigned int get_number_of_output_nodes() const	{ return get_number_of_outputs(); }
-    unsigned int get_number_of_outputs() const	{ return out_; }
-    unsigned int get_number_of_weights() const	{ return m_weights; }
-
-    virtual bool set_inputs(size_t individual, size_t taskid, const std::vector<ty> & inputs)
-    {
-      if (inputs.size() == get_number_of_inputs())
-	{
-	  return task<ty>::set_individual_inputs (individual, taskid, param_inputs, inputs);
-	}
-      return false;
-    }
-    virtual bool set_weights(size_t individual, const std::vector<ty> &weights)
-    {
-      if (weights.size() == get_number_of_weights())
-	{
-	  return task<ty>::set_inputs (individual, param_weights, weights);
-	}
-      return false;
-    }
-
-    virtual bool get_outputs( size_t individual, int taskid, std::vector<ty> & outputs)
-    {
-      return task<ty>::get_individual_outputs (individual, taskid, param_outputs, outputs);
-    }
-     
-    virtual bool prepare_outputs()
-    {
-      int size = get_number_of_output_nodes();
-      return task<ty>::prepare_individual_dataset(param_outputs, size);
-    }
-     
-    virtual bool launch() = 0;
-     
-  protected:
-     
-    const char*	  m_name;
-    size_t  m_weights;
-     
-  };
   
 }
 #endif

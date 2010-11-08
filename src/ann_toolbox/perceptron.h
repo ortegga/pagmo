@@ -35,50 +35,50 @@
 
 namespace ann_toolbox {
 	
-  /**
-   * A simple perceptron (a type of artificial neural network), representing the 
-   * simplest kind of feedforward neural network. This basically refers to a linear
-   * classifier. 
-   * More info: http://en.wikipedia.org/wiki/Perceptron
-   */	
-  template <typename ty, size_t in_, size_t out_, typename activ_type>
-    class perceptron : public neural_network <ty, in_, out_> {
-  public:
+    /**
+     * A simple perceptron (a type of artificial neural network), representing the 
+     * simplest kind of feedforward neural network. This basically refers to a linear
+     * classifier. 
+     * More info: http://en.wikipedia.org/wiki/Perceptron
+     */	
+    template <typename ty, size_t in_, size_t out_, typename activ_type>
+	class perceptron : public neural_network <ty, in_, out_> {
+    public:
 
-    typedef neural_network<ty, in_, out_> base;
+	typedef neural_network<ty, in_, out_> base;
     
-  perceptron(cuda::info & in, size_t individuals, size_t task_count) : 
-    neural_network<ty, in_, out_>::neural_network(in, individuals, task_count)
-      {
-	this->m_weights = (in_ + 1) * out_;
-	this->set_shared_chunk(0, this->m_weights, in_);
-	this->set_global_chunk(0, this->m_weights, in_ + out_);
-      }
-
-
-    ~perceptron() {}
-
-    bool launch() 
-    {
-
-      dataset<ty> * pOutData = this->get_dataset(base::param_outputs);
-      dataset<ty> * pInput = this->get_dataset(base::param_inputs);
-      dataset<ty> * pWeights = this->get_dataset(base::param_weights);
-
-      if (!(pInput && pWeights && pOutData))
+    perceptron(cuda::info & in, size_t individuals, size_t task_count) : 
+	neural_network<ty, in_, out_>::neural_network(in, individuals, task_count)
 	{
-	  CUDA_LOG_ERR("Could not find a dataset", 0);
-	  return false;
+	    this->m_weights = (in_ + 1) * out_;
+	    this->set_shared_chunk(0, this->m_weights, in_);
+	    this->set_global_chunk(0, this->m_weights, in_ + out_);
 	}
-      
-      block_complete_dimensions dims (&this->m_info, this->get_profile());
-      
-      cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
-				       *pOutData->get_data(),  pInput->get_task_size(), &dims);
-      return true;
-    }
 
-  };
+
+	~perceptron() {}
+
+	bool launch() 
+	{
+
+	    dataset<ty> * pOutData = this->get_dataset(base::param_outputs);
+	    dataset<ty> * pInput = this->get_dataset(base::param_inputs);
+	    dataset<ty> * pWeights = this->get_dataset(base::param_weights);
+
+	    if (!(pInput && pWeights && pOutData))
+	    {
+		CUDA_LOG_ERR("Could not find a dataset", 0);
+		return false;
+	    }
+      
+	    block_complete_dimensions dims (&this->m_info, this->get_profile());
+      
+	    cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
+					     *pOutData->get_data(),  pInput->get_task_size(), &dims);
+	    return true;
+	}
+
+    };
 
 }
 #endif
