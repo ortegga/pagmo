@@ -264,7 +264,9 @@ int main(int argc, char *argv[]){
 	cout << "Creating an archipelago...";
 	ring_topology top;
 	MigrationScheme migS(top);
-	MigrationPolicy migP;	
+//	MigrationPolicy migP;
+					//probability, one individual per island, up to 100% of the population can be replaced (1.0)
+	MigrationPolicy migP(0.2, ChooseBestMigrationSelectionPolicy(1), RandomMigrationReplacementPolicy(1.0));	
 	Migration m(migS, migP);
 	archipelago arch = archipelago(prob, algo, islands, individuals, m);
 	cout << "Created!";
