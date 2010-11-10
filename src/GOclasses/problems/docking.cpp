@@ -39,12 +39,13 @@
 #include "../../ann_toolbox/multilayer_perceptron.h"
 #include "../../odeint/odeint.hpp"
 
+#include "../../logger.h"
 
-extern std::string max_log_string;
-extern double max_log_fitness;
+extern my_logger logging;
 extern bool pre_evolve;
 
 namespace pagmo {
+	
 namespace problem {	
 	
 // Constructor for the docking problem
@@ -297,7 +298,7 @@ void docking::generate_full_grid_positions(int h, int v) const {
 
 // Objective function to be minimized
 double docking::objfun_(const std::vector<double> &v) const {	
-	static int cnt = 0;
+	//static int cnt = 0;
 	if(v.size() != ann->get_number_of_weights()) {
 		pagmo_throw(value_error, "wrong number of weights in the chromosome");
 	}
@@ -317,10 +318,10 @@ double docking::objfun_(const std::vector<double> &v) const {
 	log += "\tx\ty\ttheta : ul\tur\tt-neur\n";
 	////////////////////////////////
 		
-	if(++cnt == 50) {
+	/*if(++cnt == 50) {
 		cnt = 0;
 		std::cout << "#";std::cout.flush();
-	}
+	}*/
 
 	for(i = 0;i < random_start.size();i++) {		
 
@@ -343,12 +344,13 @@ double docking::objfun_(const std::vector<double> &v) const {
 	
 	//////////////////////////////////////
 	// Add the best fitness to the logger
- 	if(max_log_fitness > average) {
+ 	if(logging.best_value() > average) {
 		sprintf(h, "docking::objfun_: return value:  %f\n", average); //:%f theta: %f speed: %f\n, distance, theta, speed);
 		log = log + h;
 
-		max_log_fitness = average;
-		max_log_string = log;
+		//max_log_fitness = average;
+		//max_log_string = log;
+		logging.log(log, average);
 	}
 	/////////////////////////////////////
 	

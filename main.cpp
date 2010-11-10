@@ -39,15 +39,31 @@
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/ctrnn.h"
 
+#include "src/logger.h"
 #include "src/config_toolbox/config_parser.h"
 
 using namespace std;
 using namespace pagmo;
 
-extern std::string max_log_string = "";
+
+my_logger logging;
+
+extern string max_log_string = "";
 extern double max_log_fitness = 99.0;
 extern bool pre_evolve = false;
 
+
+void usage(const char* name) {
+	printf("PaGMO Evolving Docking Simulator\n"
+		"usage: %s <config-file> <options>\n"
+			"with options:\n"
+			"  --load <file>   load a chromosome from <file> and perform a docking simulation run\n"
+			"  --help          display this help text\n"
+		"\n",
+		name
+	);
+	exit(0);
+}
 
 std::vector<double> load_chromosome_twodee(std::string fname) {
 	fstream file;
@@ -70,13 +86,13 @@ std::vector<double> load_chromosome_twodee(std::string fname) {
 	return chromosome;	
 }
 
-void evaluate_twodee() {
+void evaluate_twodee(std::string file) {
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
 	//	double start_cnd[] = { -1.615471, 0.0, 0.438620, 0.0, 0.0, 0.0 };	
 	ann_toolbox::multilayer_perceptron ann(7, 20, 3);
-	std::vector<double> v = load_chromosome_twodee("chromosome.log");
+	std::vector<double> v = load_chromosome_twodee(file.c_str());  // "chromosome.log"
 
 	problem::docking prob = problem::docking(&ann, 8, problem::docking::SPOKE_POS/*FIXED_POS*/, 25, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
@@ -113,8 +129,12 @@ int main(int argc, char *argv[]){
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
 	char *config_filename;
-	if ( argc >= 2 ) config_filename = argv[1];
-	else	config_filename = NULL;	
+	if ( argc == 2 ) config_filename = argv[1];
+	else if ( argc > 2){
+		// TODO need to parse parameters!!
+		
+		usage(argv[0]);
+	} else config_filename = NULL;	
 	config_parser config(config_filename);
 	
 	/////////////////////////////////
@@ -137,13 +157,14 @@ int main(int argc, char *argv[]){
 	int algo_mutation = 30;     		config.read_parameter("MUTATION_RATE", algo_mutation);
 	int algo_elitism = 1;				config.read_parameter("ELITISM", algo_elitism);
                                 		
-	int islands = 1;				config.read_parameter("ISLANDS", islands);
-	int individuals = 33;			config.read_parameter("INDIVIDUALS", individuals);
+	int islands = 1;					config.read_parameter("ISLANDS", islands);
+	int individuals = 33;				config.read_parameter("INDIVIDUALS", individuals);
 
 	double vicinity_distance = 0.1;		config.read_parameter("VICINITY_DISTANCE", vicinity_distance);
 	double vicinity_speed = 0.1;		config.read_parameter("VICINITY_SPEED", vicinity_speed);
 	double vicinity_orientation = 0.1;	config.read_parameter("VICINITY_ORIENTATION", vicinity_orientation);	
 	
+	bool upload_enabled = true;			config.read_parameter("ENABLE_UPLOAD", (int&)upload_enabled);	
 	
 	time_t seconds = time (NULL);
 	std::string run_id = boost::lexical_cast<std::string>(seconds);
@@ -181,14 +202,8 @@ int main(int argc, char *argv[]){
 	configs += "-------------------------------------\n";
 	cout << configs;
 	///////////////////////////////////////////////////////////
-		
-		
-		
-/*		TODO
-			make the logging more general
-			same with the upload of the file
-*/			
 			
+					
 	////////////////////////////////////////////////
 	// Define the neural network
 	// // CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN -- CTRNN
@@ -240,20 +255,21 @@ int main(int argc, char *argv[]){
 
 	///////////////////////////////////////////////
 	// Start evolution
-	cout << "\rStarting evolution ...          ID: " << run_id << "            " << endl;	
+	cout << "\rStarting evolution ...          ID: " << run_id << "          " << endl;	
 	
 	ofstream myfile;
 	int i = 0, lasti = 0;
 	double best_fitness = 99.9;	// minimizing!!
 	double last_fitness = 99.9;
 	
-	//vector<individual> good_ones;
 
+	max_log_fitness	= 0.0;		
+		
 	pre_evolve = true;		// generate random positions at first
 	// run until we are quite good
 	while(best_fitness > -1.7/*i++ < 6/**/) { 
-		cout << "\r                                                          "
-			 << "                                                            ";
+		cout << "\r                                                      "
+			 << "                                                        ";
 		cout << "\rGeneration #" << i << " ["; cout.flush();
 		
 		max_log_fitness	= 0.0;		
@@ -261,28 +277,32 @@ int main(int argc, char *argv[]){
 		arch.join();
 		i++;
 
-		cout << "] best: " << arch.best().get_fitness() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
-			
+		// can the object be changed while here? after the join of the arch?!
+		// dunno ... test that!
+		cout << "] best: " << arch.best().get_fitness() << "~" << logging.best_value() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+		// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
+		
 		//////////////////////////////////////////
 		// logging
-		if(max_log_fitness < best_fitness) {
-			best_fitness = max_log_fitness;	
-			cout << "\r=== Best increased @ #" << i-1 << ": " << max_log_fitness << endl;
-
+		if(logging.best_value() < best_fitness) {	// max_log_fitness
+			best_fitness = logging.best_value();	
+			cout << "\r=== Best increased @ #" << i-1 << ": " << best_fitness << endl;
+			
 			// write to file
 			std::string h = "id_" + run_id + "_bestrun.dat";
 			myfile.open (h.c_str());
 //			myfile << "ID: " << run_id << endl;
 			myfile << configs << endl;//expected
-			myfile << max_log_string << endl;
+//			myfile << max_log_string << endl;			
+			myfile << logging << endl;
 			myfile.close();	
 			lasti = i-1;
-			
+						
 			// save good ones
 			//good_ones.push_back(arch.best());
 		}
-		if(max_log_fitness < last_fitness) {	
-			last_fitness = max_log_fitness;
+		if(logging.best_value() < last_fitness) {	
+			last_fitness = logging.best_value();
 			std::string h = boost::lexical_cast<std::string>(i-1);
 			while(h.length() < 5) h = "0" + h;
 			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
@@ -292,13 +312,17 @@ int main(int argc, char *argv[]){
 			myfile << max_log_string << endl;
 			myfile.close();	
 			//////////////////////////////////////////
+			
 			lasti = i-1;
 			
-			// try to put it online!
-			std::string cmd = "curl -H \"Expect: \" -F \"file=@";
-			cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
-			cmd += " -o tmp.out";
-			int ret = system (cmd.c_str());	
+			if (upload_enabled) {
+				// try to put it online!
+				std::string cmd = "curl -H \"Expect: \" -F \"file=@";
+				cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
+				cmd += " -o tmp.out";
+			
+				int ret = system (cmd.c_str());	
+			}
 			
 		}
 		cout.flush();		
@@ -312,7 +336,7 @@ int main(int argc, char *argv[]){
 	}	
 	
 	// finished
-	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;
+	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;	
 
 	return 0;
 }

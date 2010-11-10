@@ -39,6 +39,7 @@
 
 
 extern std::string max_log_string;
+extern std::string *log_strings;
 extern double max_log_fitness;
 
 namespace pagmo {
@@ -144,6 +145,7 @@ double docking::objfun_(const std::vector<double> &v) const
  	if(max_log_fitness < retval) {
 		max_log_fitness = retval;
 		max_log_string = log;
+		log_strings[1] = log;		
 	}
 	
 	// PaGMO minimizes the objective function!! therefore the minus here
