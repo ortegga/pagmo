@@ -70,9 +70,7 @@ public:
 	
 	
 	/// Stream output operator.
-	friend __PAGMO_VISIBLE_FUNC std::ostream &operator<<(std::ostream &s, const my_logger &log)
-	{
-		s << "LoggeR:" << std::endl;
+	friend __PAGMO_VISIBLE_FUNC std::ostream &operator<<(std::ostream &s, const my_logger &log)	{
 		s << log.logstring;
 		return s;
 	}

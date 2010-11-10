@@ -36,6 +36,11 @@
 #include "src/GOclasses/algorithms/de.h"
 #include "src/GOclasses/algorithms/sga.h"
 
+#include "src/GOclasses/basic/migration/MigrationScheme.h"
+#include "src/GOclasses/basic/migration/MigrationPolicy.h"
+#include "src/GOclasses/basic/migration/ChooseBestMigrationSelectionPolicy.h"
+#include "src/GOclasses/basic/topology/ring_topology.h"
+
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/ctrnn.h"
 
@@ -128,12 +133,21 @@ int main(int argc, char *argv[]){
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
+	
+	bool less_output = false;
+	
 	char *config_filename;
 	if ( argc == 2 ) config_filename = argv[1];
 	else if ( argc > 2){
-		// TODO need to parse parameters!!
-		
-		usage(argv[0]);
+		int i = 1;
+		config_filename = argv[i];
+		for (i++; i < argc; i++) {
+			if (strcmp(argv[i], "--help") == 0) usage(argv[0]);
+			if (strcmp(argv[i], "--less") == 0) less_output = true; 
+//			else if (strcmp(argv[i], "--nogui") == 0) { gui = false; realtime = false; }
+//			else if (strcmp(argv[i], "--fast") == 0) { realtime = false; }
+			else printf("warning: unknown command line option '%s'\n", argv[i]);
+		}
 	} else config_filename = NULL;	
 	config_parser config(config_filename);
 	
@@ -150,7 +164,7 @@ int main(int argc, char *argv[]){
 	int prob_maximum_time = 25;			config.read_parameter("MAX_TIME", prob_maximum_time);
 
 	double integrator_timestep = 0.1;	config.read_parameter("INTEGRATOR_STEP", integrator_timestep);
-	int evolution_stuck_threshold = 11; config.read_parameter("STUCK_THRESHOLD", evolution_stuck_threshold);
+	int evolution_stuck_threshold = 500;config.read_parameter("STUCK_THRESHOLD", evolution_stuck_threshold);
 	
 	int algo_generations = 11;			config.read_parameter("GENERATIONS", algo_generations);
 	int algo_crossover = 90;    		config.read_parameter("CROSSOVER", algo_crossover);
@@ -183,7 +197,7 @@ int main(int argc, char *argv[]){
 	configs += "Pos. Strategy:\t\t" + boost::lexical_cast<std::string>(prob_pos_strategy) + "\n";
 	configs += "Fitness Function:\t" + boost::lexical_cast<std::string>(prob_fitness_function) + "\n";
 	configs += "TimeNeuron Threshold:\t" + boost::lexical_cast<std::string>(prob_timeneuron_threshold) + "\n";
-	configs += "Maximum Time:\t" + boost::lexical_cast<std::string>(prob_maximum_time) + "\n";
+	configs += "Maximum Time:\t\t" + boost::lexical_cast<std::string>(prob_maximum_time) + "\n";
 
 	configs += "Integration Step:\t" + boost::lexical_cast<std::string>(integrator_timestep) + "\n";
 	configs += "Evolution Stuck:\t" + boost::lexical_cast<std::string>(evolution_stuck_threshold) + "\n";
@@ -244,12 +258,15 @@ int main(int argc, char *argv[]){
 						  0); 	// no roulette selection*/
 						
 //	algorithm::de algo(20, 0.7, 0.5, 2);
-
-
+	
 	////////////////////////////////////////////////
 	// Create the archipelag/islands
 	cout << "Creating an archipelago...";
-	archipelago arch = archipelago(prob, algo, islands, individuals);
+	ring_topology top;
+	MigrationScheme migS(top);
+	MigrationPolicy migP;	
+	Migration m(migS, migP);
+	archipelago arch = archipelago(prob, algo, islands, individuals, m);
 	cout << "Created!";
 
 
@@ -265,22 +282,30 @@ int main(int argc, char *argv[]){
 
 	max_log_fitness	= 0.0;		
 		
-	pre_evolve = true;		// generate random positions at first
+	pre_evolve = false;		// do NOT generate random positions at first
 	// run until we are quite good
-	while(best_fitness > -1.7/*i++ < 6/**/) { 
-		cout << "\r                                                      "
-			 << "                                                        ";
-		cout << "\rGeneration #" << i << " ["; cout.flush();
-		
+	while(best_fitness > -1.7 && i < 29999) { 
+		if(!less_output) {
+			cout << "\r                                                      "
+			     << "                                                    ";
+			cout << "\rGeneration #" << i << " ["; cout.flush();
+		}
+
 		max_log_fitness	= 0.0;		
 		arch.evolve();
 		arch.join();
 		i++;
 
-		// can the object be changed while here? after the join of the arch?!
-		// dunno ... test that!
-		cout << "] best: " << arch.best().get_fitness() << "~" << logging.best_value() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
-		// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
+		
+		if(!less_output) {
+			cout << "] best: " << arch.best().get_fitness() << "~" << logging.best_value() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+			// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
+			cout << "TEST: #ofIslands: " << arch.size() << " #0: size" << arch[0].size() << " best: " << arch[0].best().get_fitness() << endl;
+			cout << "TEST: Island" << arch[0] << endl;
+		}else {
+			cout << "\rG#" << i << "        "; cout.flush();
+		}
+		
 		
 		//////////////////////////////////////////
 		// logging
@@ -291,9 +316,7 @@ int main(int argc, char *argv[]){
 			// write to file
 			std::string h = "id_" + run_id + "_bestrun.dat";
 			myfile.open (h.c_str());
-//			myfile << "ID: " << run_id << endl;
 			myfile << configs << endl;//expected
-//			myfile << max_log_string << endl;			
 			myfile << logging << endl;
 			myfile.close();	
 			lasti = i-1;
@@ -307,9 +330,8 @@ int main(int argc, char *argv[]){
 			while(h.length() < 5) h = "0" + h;
 			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
 			myfile.open (s.c_str());
-//			myfile << "ID: " << run_id << endl;
 			myfile << configs << endl;
-			myfile << max_log_string << endl;
+			myfile << logging << endl;
 			myfile.close();	
 			//////////////////////////////////////////
 			
@@ -328,11 +350,11 @@ int main(int argc, char *argv[]){
 		cout.flush();		
 
 		// randomize positions if we seem to be stuck
-		if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
+/*		if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
 			pre_evolve = true;
 			lasti = i - 1;
 			last_fitness = 0.0;
-		}
+		}*/
 	}	
 	
 	// finished
