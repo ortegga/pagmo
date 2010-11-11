@@ -62,8 +62,10 @@ void usage(const char* name) {
 	printf("PaGMO Evolving Docking Simulator\n"
 		"usage: %s <config-file> <options>\n"
 			"with options:\n"
-			"  --load <file>   load a chromosome from <file> and perform a docking simulation run\n"
-			"  --help          display this help text\n"
+			"  --load <file>    load a chromosome from <file> and perform a docking simulation run\n"
+			"  --load-oc <file> load a <file> containing the optimal control strategy\n"
+			"  --noise <val>    set the noise in the integrator to ]-val, val[\n"
+			"  --help           display this help text\n"
 		"\n",
 		name
 	);
@@ -91,24 +93,26 @@ std::vector<double> load_chromosome_twodee(std::string fname) {
 	return chromosome;	
 }
 
-void evaluate_twodee(std::string file) {
+void run_chromosome(std::string file, problem::docking &prob) {
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
 	//	double start_cnd[] = { -1.615471, 0.0, 0.438620, 0.0, 0.0, 0.0 };	
-	ann_toolbox::multilayer_perceptron ann(7, 20, 3);
+	//  ann_toolbox::multilayer_perceptron ann(6, 10, 3);
 	std::vector<double> v = load_chromosome_twodee(file.c_str());  // "chromosome.log"
 
-	problem::docking prob = problem::docking(&ann, 8, problem::docking::SPOKE_POS/*FIXED_POS*/, 25, 0.1);
-	prob.set_start_condition(start_cnd, 6);	
-	prob.set_timeneuron_threshold(.99);
-	prob.set_log_genome(true);
-	prob.set_fitness_function(99);	// 10  = no attitude
+	// problem::docking prob = problem::docking(&ann, 8, problem::docking::FIXED_POS, 25, 0.1);
+	// prob.set_start_condition(start_cnd, 6);	
+	// prob.set_timeneuron_threshold(.99);
+	// prob.set_log_genome(true);
+	// prob.set_fitness_function(99);	// 10  = no attitude
 
 	// TESTING
 	cout << "Created the problem!" << endl;	
 	cout << "Calling the objfun_ ... " << endl;
-	max_log_fitness = 0;
+
+	max_log_fitness = 0.0;
+	
 	//prob.pre_evolution(pop);
 	prob.generate_starting_positions();
 	max_log_fitness = prob.objfun_(v);
@@ -121,9 +125,6 @@ void evaluate_twodee(std::string file) {
 	myfile.close();	
 	max_log_fitness = 0;
 
-
-	exit(0);
-	
 }
 
 int main(int argc, char *argv[]){
@@ -133,20 +134,56 @@ int main(int argc, char *argv[]){
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
+	double max_noise = 0.0;
 	
 	bool less_output = false;
-	
+	bool evaluate_chromosome = false, run_oc = false;
 	char *config_filename;
-	if ( argc == 2 ) config_filename = argv[1];
-	else if ( argc > 2){
-		int i = 1;
-		config_filename = argv[i];
-		for (i++; i < argc; i++) {
-			if (strcmp(argv[i], "--help") == 0) usage(argv[0]);
-			if (strcmp(argv[i], "--less") == 0) less_output = true; 
-//			else if (strcmp(argv[i], "--nogui") == 0) { gui = false; realtime = false; }
-//			else if (strcmp(argv[i], "--fast") == 0) { realtime = false; }
-			else printf("warning: unknown command line option '%s'\n", argv[i]);
+	std::string filename;	// for laoding stuff
+	
+		
+	///////////////////////////////////////
+	// Parse command line arguments
+ 	if ( argc >= 2){
+		for (int i = 1; i < argc; i++) {
+			// if any parameter is help we show the help and stop
+			if (strcmp(argv[i], "--help") == 0) usage(argv[0]);	
+			
+			// first parameter should be config file
+			if (i == 1) config_filename = argv[i];
+			// less switch to output less
+			else if (strcmp(argv[i], "--less") == 0) less_output = true; 
+			// load switch to load chromosome from a file
+			else if (strcmp(argv[i], "--load") == 0) {
+				if(run_oc) {
+					cout << "ERROR: can not combine --load with --load-oc"<< endl;
+					exit(0);
+				}
+				if(argc > i + 1) { 
+					evaluate_chromosome = true;
+					filename = argv[++i];
+					//cout << "T:" << i << ", " << filename << ", " << argc << endl;
+				} else { cout << "--load: missing a filename to load!" << endl; usage(argv[0]); }
+			}
+			// load-oc switch to load the AMPL oc from a file
+			else if (strcmp(argv[i], "--load-oc") == 0) {
+				if(evaluate_chromosome) {
+					cout << "ERROR: can not combine --load with --load-oc"<< endl;
+					exit(0);
+				}
+				if(argc > i + 1) { 
+					run_oc = true;
+					filename = argv[++i];
+				} else { cout << "--load-oc: missing a filename to load!" << endl; usage(argv[0]); }
+			}
+			// change the noise level in the integrator
+			else if(strcmp(argv[i], "--noise") == 0) {
+				if(argc > i + 1) { 
+					max_noise = boost::lexical_cast<double>(argv[++i]);
+				} else { cout << "--noise: missing a noise value!" << endl; usage(argv[0]); }
+			}
+			// the rest show warning!
+			else { printf("warning: unknown command line option '%s'\n", argv[i]); usage(argv[0]); }
 		}
 	} else config_filename = NULL;	
 	config_parser config(config_filename);
@@ -245,6 +282,8 @@ int main(int argc, char *argv[]){
 	
 	prob.set_time_step(integrator_timestep);
 	
+	prob.set_max_noise(max_noise);
+	
 	prob.set_vicinity_distance(vicinity_distance);
 	prob.set_vicinity_speed(vicinity_speed);
 	prob.set_vicinity_orientation(vicinity_orientation);
@@ -256,6 +295,13 @@ int main(int argc, char *argv[]){
 						0.0,
 						  2,	//random
 						  0); 	// no roulette selection*/
+
+
+
+	if(evaluate_chromosome) {
+		run_chromosome(filename, prob);
+		exit(0);
+	}
 						
 //	algorithm::de algo(20, 0.7, 0.5, 2);
 	

@@ -32,6 +32,7 @@
 
 #include "../../ann_toolbox/neural_network.h"
 #include "../../config.h"
+#include "../../rng.h"
 #include "base.h"
 
 typedef std::vector<double> state_type;
@@ -95,7 +96,8 @@ class __PAGMO_VISIBLE docking : public base {
 		void set_vicinity_distance(double );
 		void set_vicinity_speed(double );
 		void set_vicinity_orientation(double );
-						
+		void set_max_noise(double d) { max_noise = d; }
+								
 		/// The ODE system we want to integrate needs to be able to be called 
 		/// by the integrator. Here we use the Hill's equations.
 		void operator()( state_type &x , state_type &dxdt , double t ) const;
@@ -167,6 +169,8 @@ class __PAGMO_VISIBLE docking : public base {
 		double vicinity_speed;				// the maximum speed around the origin that we take as small enough
 		double vicinity_orientation;		// the needed orientation around the origin that we take as good enough
 		
+		double max_noise;
+		
 		double time_step; 					// for integrator		
 		
 		// Integrator / solver;
@@ -177,10 +181,15 @@ class DynamicSystem {
 	private: 
 		const docking *prob;
 		std::vector<double> outputs;		
+		/// Random number generator for double-precision floating point values.
+		mutable rng_double drng;
 	public:
-		DynamicSystem(const docking *in) : prob(in) {	}
-		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t );
-		void set_outputs(std::vector<double> );		
+		DynamicSystem(const docking *in) : prob(in), drng(static_rng_uint32()()) {	}
+		
+//		void load_noise(std::str file);
+		
+		void operator()( std::vector<double> &x , std::vector<double> &dxdt , double t);
+		void set_outputs(std::vector<double> );	
 };
 	
 }

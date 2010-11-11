@@ -46,7 +46,10 @@ config_parser::config_parser(char *fname) :
 }
 
 void config_parser::read_file() {
-	if(filename == NULL) return;
+	if(filename == NULL) {
+//		cout << "No filename specified!" << endl;
+		return;
+	}
 
 	fstream file;
 	file.open(filename, ios::in);

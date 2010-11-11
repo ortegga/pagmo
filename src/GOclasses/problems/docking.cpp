@@ -78,7 +78,8 @@ docking::docking(ann_toolbox::neural_network* ann_, size_t random_positions, siz
 	// for vicinity stopping
 	needed_count_at_goal = 5;
 	vicinity_distance = vicinity_speed = 0.1;
-	vicinity_orientation = M_PI/8;	
+	vicinity_orientation = M_PI/8;
+	max_noise = 0.0;
 }
 
 
@@ -613,6 +614,12 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 	double distance = sqrt(x * x + y * y);
 	std::vector<double> in = state;
 	in.push_back(distance);
+	double noise_x = 0.0, noise_y = 0.0;
+	if(prob->max_noise != 0.0) {
+		noise_x = (drng() * 2 * prob->max_noise) - prob->max_noise;
+		noise_y = (drng() * 2 * prob->max_noise) - prob->max_noise;
+//		std::cout << "Noise Test:" << noise_x << ", " << noise_y << std::endl << std::endl;
+	}
 	
 	// keep theta between -180° and +180°
 	if(theta < -M_PI) theta += 2 * M_PI;
@@ -626,9 +633,9 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 		ul = 0.0;*/
 	
 	dxdt[0] = vx;
-	dxdt[1] = 2 * nu * vy + 3 * nu * nu * x + (ul + ur) * cos(theta);
+	dxdt[1] = 2 * nu * vy + 3 * nu * nu * x + (ul + ur) * cos(theta) + noise_x;
 	dxdt[2] = vy;
-	dxdt[3] = -2 * nu * vx + (ul + ur) * sin(theta);
+	dxdt[3] = -2 * nu * vx + (ul + ur) * sin(theta) + noise_y;
 	dxdt[4] = omega;
 	dxdt[5] = (ul - ur) * 1/mR;
 	
