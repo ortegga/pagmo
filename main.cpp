@@ -47,6 +47,8 @@
 #include "src/logger.h"
 #include "src/config_toolbox/config_parser.h"
 
+#include <numeric>
+
 using namespace std;
 using namespace pagmo;
 
@@ -126,6 +128,86 @@ void run_chromosome(std::string file, problem::docking &prob) {
 	max_log_fitness = 0;
 
 }
+
+
+void run_optimal_control(std::string fname, problem::docking &prob) {
+	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
+	double start_cnd[] = { -2.0, 0.1, 2.0, 0.1, 0.0, 0.0 };
+//	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };	
+	
+	// read oc file
+	// the order is, :: time x vx z vz theta omega uL uR
+	fstream file;
+	file.open(fname.c_str(), ios::in);
+	if ( file.fail() ) {
+	    printf("Error opening %s - %s\n", fname.c_str(), strerror(errno));
+		exit(0);
+	}
+	char h[512];
+	std::string line;
+	double dbl[9]; // elements in line
+	std::vector<double> time, ul, ur;
+	// add for
+	while(! file.eof()) {
+		//file.getline(h, 512);
+		//line = h;
+		//boost::algorithm::trim(line);
+		//if((! line.empty()))) {
+		//	read_lines.push_back(line);
+		//}
+	    for (int i = 0; i < 9; i++) {
+	        file >> dbl[i];
+	    }
+		time.push_back(dbl[0]);
+		ul.push_back(dbl[7]);
+		ur.push_back(dbl[8]);
+	}
+    file.close();
+
+	double sum_of_time_diffs = 0.0;
+	double prev = time[0];
+	std::vector<double>::iterator j = time.begin();
+	for(j++; j != time.end(); ++j) {
+		sum_of_time_diffs += (*j) - prev;
+		prev = *j;
+	}
+
+//	cout << time.pop_back() << std::endl;
+	time.pop_back(); ul.pop_back(); ur.pop_back();
+
+	double integrator_timestep = sum_of_time_diffs / (time.size());
+	
+	cout << "TIME STEP --> " << integrator_timestep << "("<< time.size() << ")" << std::endl << std::endl;
+
+	fprintf(stderr, "Control loaded from %s (%f, %f, %f)\n", fname.c_str(), time.back(), ul.back(), ur.back());
+	
+	// redo timeing!!! 
+	// TODOD!!
+	
+	// TESTING
+	cout << "Created the problem!" << endl;	
+	cout << "Calling the objfun_ ... " << endl;
+
+	max_log_fitness = 0.0;
+
+	prob.set_time_step(integrator_timestep);
+	prob.set_vicinity_speed(prob.get_vicinity_speed() + 0.05);
+	prob.set_vicinity_distance(prob.get_vicinity_distance() + 0.17);
+	
+	prob.set_start_condition(start_cnd, 6);
+//	max_log_fitness = prob.objfun_oc(time, ul, ur);
+	max_log_fitness = prob.one_run_oc(max_log_string, ul, ur);	
+	cout << "\r=== OC fitness: " << max_log_fitness << endl;	
+	cout << max_log_string << endl;	
+
+	ofstream myfile;
+	myfile.open ("bestrun-oc.dat");
+	myfile << max_log_string << endl;
+	myfile.close();	
+	max_log_fitness = 0;
+
+}
+
 
 int main(int argc, char *argv[]){
 	// for evaluating twodee chromosome
@@ -300,6 +382,11 @@ int main(int argc, char *argv[]){
 
 	if(evaluate_chromosome) {
 		run_chromosome(filename, prob);
+		exit(0);
+	}
+	
+	if(run_oc) {
+		run_optimal_control(filename, prob);
 		exit(0);
 	}
 						

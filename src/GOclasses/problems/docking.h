@@ -97,6 +97,17 @@ class __PAGMO_VISIBLE docking : public base {
 		void set_vicinity_speed(double );
 		void set_vicinity_orientation(double );
 		void set_max_noise(double d) { max_noise = d; }
+		
+		
+		// getter methods
+		int	 get_fitness_function( void ) { return fitness_function; }
+		bool get_log_genome(void )	{ return log_genome; }
+	 	double get_timeneuron_threshold(void ) { return time_neuron_threshold; }
+		double get_time_step(void ) { return time_step; }
+		double get_vicinity_distance(void ) { return vicinity_distance; }
+		double get_vicinity_speed(void ) { return vicinity_speed; }
+		double get_vicinity_orientation(void ) { return vicinity_orientation; }
+		double get_max_noise(void) { return max_noise; }
 								
 		/// The ODE system we want to integrate needs to be able to be called 
 		/// by the integrator. Here we use the Hill's equations.
@@ -119,6 +130,9 @@ class __PAGMO_VISIBLE docking : public base {
 		const static size_t DONUT_FACING = 33;
 		const static size_t CLOUD_POS = 4;	
 		const static size_t FULL_GRID = 99;		
+		
+		
+		double 	one_run_oc(std::string &, const std::vector<double> &, const std::vector<double> &) const;
 		
 	private:
 		/// Before every evolution this function is called to reset the (randomly)

@@ -258,7 +258,6 @@ void docking::generate_random_positions_facing_origin(double r1, double r2) cons
 	}
 }
 
-
 void docking::generate_cloud_positions(double d, double angle, double rin) const {
         rng_double drng = rng_double(static_rng_uint32()());
         double r, theta, a, x, y;
@@ -491,6 +490,82 @@ double docking::one_run(std::string &log) const {
 	// PaGMO minimizes the objective function!! therefore the minus here
 	return -retval;
 }
+
+double docking::one_run_oc(std::string &log, const std::vector<double> &ul, const std::vector<double> &ur) const {	
+	log += "\tx\ty\ttheta : ul\tur\tt-neur\n";
+	log = "Optimal Control output: \n";	
+
+	
+	// Helper variables
+	double retval = 0.0;//, best_retval = 0.0;
+	double dt = time_step, t = 0.0;
+
+	// Integrator System
+	DynamicSystem sys(this);
+	// Create Integration Stepper
+	//odeint::ode_step_euler< std::vector<double>, double > stepper;	
+	odeint::ode_step_runge_kutta_4< std::vector<double>, double > stepper;
+
+	// initialize the inputs (= starting conditions) to the ANN and allocate the outputs 
+	std::vector<double> inputs = starting_condition, outputs, retvals;
+	double initial_distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]);	
+	double distance = initial_distance, speed;
+	double theta = 0.0, omega = 0.0;
+
+	size_t counter_at_goal = 0;
+	
+	char h[999];
+	sprintf(h, "%2.1f: %2.6f\t %2.6f\t %2.6f : %1.3f\t %1.3f \t \tDst/Theta/Speed: \t%f\t%f\t%f \tF: %.2f", 
+	 			0.0, inputs[0], inputs[2], inputs[4], 0.0, 0.0, //\t%1.4f 
+				distance, theta, speed, retval
+	);	
+	log = log + h + "\n";	
+
+	// run evaluation of the OC
+	int i = 0;
+	// start at 1 because we want to use the results for ul, ur in the next line
+	// as parameters for the integration here ...
+	for(t = 0.0, i = 1;i <= ul.size() /*+ 0.0001*/;t += dt, i++) {		
+
+		// Send to the ANN to compute the outputs
+		outputs.clear();
+		outputs.push_back(ul[i]);
+		outputs.push_back(ur[i]);	
+		sys.set_outputs(outputs);
+		
+		std::cout << "t" << t << " QQ: " << ul[i] << ":" << ur[i] << std::endl;
+
+		// Perform the integration step
+		stepper.next_step( sys, inputs, t, dt );
+
+			// now time is already dt-ed !!!
+
+		// evaluate the fitness
+		retvals = evaluate_fitness(inputs, outputs, initial_distance, t+dt);
+
+		retval 	= retvals[0];
+		distance= retvals[1];
+		speed 	= retvals[2];
+		theta 	= inputs[4];
+
+		////////////////////////////////
+		// LOGGING
+		// Log the result (for later output & plotting)
+		char h[999];
+		sprintf(h, "%2.6f: %2.6f\t %2.6f\t %2.6f : %1.3f\t %1.3f \t \tDst/Theta/Speed: \t%f\t%f\t%f \tF: %.2f (%d)", 
+		 			t+dt, inputs[0], inputs[2], inputs[4], outputs[0], outputs[1], //\t%1.4f 
+					distance, theta, speed, retval, counter_at_goal
+		);	
+	    log = log + h + "\n";
+
+		//	std::cout << h << std::endl;
+		////////////////////////////////		
+	}
+	
+	// PaGMO minimizes the objective function!! therefore the minus here
+	return -retval;
+}
+
 
 /// Scale the outputs of the ANN to be more physically useful in the integrator.
 /**
