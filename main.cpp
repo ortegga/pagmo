@@ -132,8 +132,8 @@ void run_chromosome(std::string file, problem::docking &prob) {
 
 void run_optimal_control(std::string fname, problem::docking &prob) {
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
-	double start_cnd[] = { -2.0, 0.1, 2.0, 0.1, 0.0, 0.0 };
-//	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };	
+//	double start_cnd[] = { -2.0, 0.1, 2.0, 0.1, 0.0, 0.0 };
+	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };	
 	
 	// read oc file
 	// the order is, :: time x vx z vz theta omega uL uR

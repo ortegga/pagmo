@@ -693,7 +693,7 @@ void DynamicSystem::operator()( state_type &state , state_type &dxdt , double t 
 	if(prob->max_noise != 0.0) {
 		noise_x = (drng() * 2 * prob->max_noise) - prob->max_noise;
 		noise_y = (drng() * 2 * prob->max_noise) - prob->max_noise;
-//		std::cout << "Noise Test:" << noise_x << ", " << noise_y << std::endl << std::endl;
+//		std::cout << std::endl << "Noise Test:" << noise_x << ", " << noise_y << std::endl << std::endl;
 	}
 	
 	// keep theta between -180° and +180°
