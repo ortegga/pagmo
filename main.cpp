@@ -332,6 +332,8 @@ int main(int argc, char *argv[]){
     configs += "Vicinity Distance:\t" + boost::lexical_cast<std::string>(vicinity_distance) + "\n";
     configs += "Vicinity Speed:\t\t" + boost::lexical_cast<std::string>(vicinity_speed) + "\n";
     configs += "Vicinity Orientation:\t" + boost::lexical_cast<std::string>(vicinity_orientation) + "\n";
+
+    configs += "Max Noise Level:\t\t" + boost::lexical_cast<std::string>(max_noise) + "\n";
 	configs += "-------------------------------------\n";
 	cout << configs;
 	///////////////////////////////////////////////////////////
