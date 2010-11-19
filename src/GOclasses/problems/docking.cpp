@@ -302,10 +302,13 @@ double docking::objfun_(const std::vector<double> &v) const {
 	if(v.size() != ann->get_number_of_weights()) {
 		pagmo_throw(value_error, "wrong number of weights in the chromosome");
 	}
+	ann->set_weights(v);
+	
 	std::string log = "", runlog = "";
 	char h[999] = "";
 	double average = 0.0;	
 	size_t i; 
+
 
 	///////////////////////////////////
 	// LOGGING
@@ -317,6 +320,7 @@ double docking::objfun_(const std::vector<double> &v) const {
 //	log += "\tx\tvx\ty\tvy\ttheta\tomega\tul\tur\tt-neuron\n";
 	log += "\tx\ty\ttheta : ul\tur\tt-neur\n";
 	////////////////////////////////
+		
 		
 	/*if(++cnt == 50) {
 		cnt = 0;

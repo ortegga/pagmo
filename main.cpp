@@ -95,14 +95,43 @@ std::vector<double> load_chromosome_twodee(std::string fname) {
 	return chromosome;	
 }
 
+std::vector<double> load_chromosome_pagmo(std::string fname) {
+	fstream file;
+	file.open(fname.c_str(), ios::in);
+	if ( file.fail() ) {
+	    printf("Error opening %s - %s\n", fname.c_str(), strerror(errno));
+		exit(0);
+	}
+    std::vector<double> chromosome;
+	char chars[5];
+	double dbl;
+
+	while (file >> dbl >> chars) {
+		// charsneeded to read the ,  between numbers
+		chromosome.push_back(dbl);
+    }
+    file.close();
+
+	fprintf(stderr, "Network weights loaded from %s\n", fname.c_str());
+	
+	
+	//std::copy(chromosome.begin(), chromosome.end(), std::ostream_iterator<double>(std::cout, ", "));
+	//cout << endl; 
+	
+	
+	return chromosome;	
+}
+
+
 void run_chromosome(std::string file, problem::docking &prob) {
 	// Starting Conditions:  x,  vx,  y,   vy,theta,omega
 	double start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
 	//	double start_cnd[] = { -1.615471, 0.0, 0.438620, 0.0, 0.0, 0.0 };	
 	//  ann_toolbox::multilayer_perceptron ann(6, 10, 3);
-	std::vector<double> v = load_chromosome_twodee(file.c_str());  // "chromosome.log"
-
+//	std::vector<double> v = load_chromosome_twodee(file.c_str());  // "chromosome.log"
+	std::vector<double> v = load_chromosome_pagmo(file.c_str());  // "chromosome.log"
+	
 	// problem::docking prob = problem::docking(&ann, 8, problem::docking::FIXED_POS, 25, 0.1);
 	// prob.set_start_condition(start_cnd, 6);	
 	// prob.set_timeneuron_threshold(.99);
@@ -113,19 +142,17 @@ void run_chromosome(std::string file, problem::docking &prob) {
 	cout << "Created the problem!" << endl;	
 	cout << "Calling the objfun_ ... " << endl;
 
-	max_log_fitness = 0.0;
-	
+
 	//prob.pre_evolution(pop);
 	prob.generate_starting_positions();
-	max_log_fitness = prob.objfun_(v);
-	cout << "\r=== Twodee fitness: " << max_log_fitness << endl;	
-	cout << max_log_string << endl;	
+	cout << "TESTING > " << prob.objfun_(v) << std::endl;
+	cout << "\r=== Loaded fitness: " << logging.best_value() << endl;	
+	cout << logging << endl;	
 
 	ofstream myfile;
 	myfile.open ("bestrun.dat");
-	myfile << max_log_string << endl;
+	myfile << logging << endl;
 	myfile.close();	
-	max_log_fitness = 0;
 
 }
 
