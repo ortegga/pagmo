@@ -72,12 +72,6 @@ base_island_ptr island::clone() const
 	return base_island_ptr(new island(*this));
 }
 
-// Thread safety attribute implementation.
-bool island::is_thread_blocking() const
-{
-	return (m_pop.problem().is_blocking() || m_algo->is_blocking());
-}
-
 void island::perform_evolution(const algorithm::base &algo, population &pop) const
 {
 	algo.evolve(pop);
@@ -89,3 +83,5 @@ std::string island::get_name() const
 }
 
 }
+
+BOOST_CLASS_EXPORT_IMPLEMENT(pagmo::island);

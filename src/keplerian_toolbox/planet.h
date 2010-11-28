@@ -25,13 +25,25 @@
 #ifndef PLANET_H
 #define PLANET_H
 
+#include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
+#include <string>
+#include <vector>
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "serialization.h"
+#endif
+
 #include "astro_constants.h"
 #include "epoch.h"
-#include <vector>
-#include <string>
-#include <boost/lexical_cast.hpp>
 
 namespace kep_toolbox{
+
+// Forward declaration.
+class planet;
+
+typedef boost::shared_ptr<planet> planet_ptr;
+
 
 /// A Generic Planet
 /**
@@ -59,7 +71,9 @@ public:
 		* \param[in] name C++ string containing the planet name. Default value is "Unknown"
 		*/
 	planet(const epoch& ref_epoch, const array6D& elem, const double & mu_central_body, const double &mu_self, const double &radius, const double &safe_radius, const std::string &name = "Unknown");
-
+	/// Polymorphic copy constructor.
+	virtual planet_ptr clone() const = 0;
+	virtual ~planet();
 	/** @name Getters */
 	//@{
 	/// Gets the planet position and velocity
@@ -152,8 +166,26 @@ protected:
 	* \param[in] name C++ string containing the planet name. Default value is "Unknown"
 	*/
 	void build_planet(const epoch& ref_epoch, const array6D& elem, const double & mu_central_body, const double &mu_self, const double & radius, const double & safe_radius, const std::string &name = "Unknown");
-	planet() {}
+	planet() {};
 private:
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+	friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & keplerian_elements;
+		ar & mean_motion;
+		ar & ref_mjd2000;
+		ar & radius;
+		ar & safe_radius;
+		ar & mu_self;
+		ar & mu_central_body;
+		ar & cached_epoch;
+		ar & cached_r;
+		ar & cached_v;
+		ar & m_name;
+	}
+#endif
 	array6D keplerian_elements;
 	double mean_motion;
 	double ref_mjd2000;
@@ -172,4 +204,9 @@ private:
 
 std::ostream &operator<<(std::ostream &s, const planet &body);
 } /// End of namespace kep_toolbox
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(kep_toolbox::planet);
+#endif
+
 #endif // PLANET_H

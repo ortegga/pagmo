@@ -25,6 +25,12 @@
 #ifndef SC_STATE_H
 #define SC_STATE_H
 
+#include <boost/lexical_cast.hpp>
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "../serialization.h"
+#endif
+
 #include "../astro_constants.h"
 
 namespace kep_toolbox {
@@ -42,7 +48,15 @@ class sc_state
 public:
 	/** @name Constructors*/
 	//@{
-	sc_state(){}
+	sc_state() {
+		position[0] = 0;
+		position[1] = 0;
+		position[2] = 0;
+		velocity[0] = 0;
+		velocity[1] = 0;
+		velocity[2] = 0;
+		mass = 0;
+	}
 
 	/// Constructor.
 	/**
@@ -105,14 +119,24 @@ public:
 	void set_mass(const double& mass_){ mass = mass_; }
 	//@}
 private:
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+	friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & position;
+		ar & velocity;
+		ar & mass;
+	}
+#endif
 	array3D position;
 	array3D velocity;
 	double mass;
 };
 inline std::ostream &operator<<(std::ostream &s, const sc_state &in ){
-	for (int i=0;i<3;i++) s << in.get_position()[i] << " ";
-	for (int i=0;i<3;i++) s << in.get_velocity()[i] << " ";
-	s << in.get_mass();
+	for (int i=0;i<3;i++) s << boost::lexical_cast<std::string>(in.get_position()[i]) << " ";
+	for (int i=0;i<3;i++) s << boost::lexical_cast<std::string>(in.get_velocity()[i]) << " ";
+	s << boost::lexical_cast<std::string>(in.get_mass());
 	return s;
 }
 }} //Namespaces

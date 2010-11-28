@@ -1,9 +1,14 @@
 #ifndef THROTTLE_H
 #define THROTTLE_H
 
-#include "../epoch.h"
-#include "../astro_constants.h"
 #include <numeric>
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "../serialization.h"
+#endif
+
+#include "../astro_constants.h"
+#include "../epoch.h"
 
 namespace kep_toolbox { namespace sims_flanagan{
 
@@ -18,7 +23,11 @@ namespace kep_toolbox { namespace sims_flanagan{
 
 class throttle {
 public:
-	throttle() {}
+	throttle():m_start(),m_end() {
+		m_value[0] = 0;
+		m_value[1] = 0;
+		m_value[2] = 0;
+	}
 
 	throttle(epoch _start, epoch _end, const array3D& _value)
 		: m_start(_start), m_end(_end), m_value(_value) {}
@@ -41,11 +50,21 @@ public:
 
 
 private:
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+	friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & m_start;
+		ar & m_end;
+		ar & m_value;
+	}
+#endif
 	epoch m_start;
 	epoch m_end;
 	array3D m_value;
 };
 
-}} //namespaces
+}} //Namespaces
 
 #endif

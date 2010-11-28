@@ -25,6 +25,9 @@
 #ifndef LEG_H
 #define LEG_H
 
+#include <boost/utility.hpp>
+#include <boost/type_traits/is_same.hpp>
+#include <iterator>
 #include <vector>
 #include "spacecraft.h"
 #include "../core_functions/array3D_operations.h"
@@ -33,6 +36,10 @@
 #include "../epoch.h"
 #include "throttle.h"
 #include "../exceptions.h"
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "../serialization.h"
+#endif
 
 namespace kep_toolbox {
 /// Sims-Flanagan transcription of low-thrust trajectories
@@ -67,7 +74,7 @@ public:
 	/**
 	 * Default constructor.
 	 */
-	leg() {}
+	leg():t_i(),x_i(),throttles(),t_f(),x_f(),sc(),mu(0) {}
 
 	/// Initialize a leg
 	/**
@@ -91,7 +98,7 @@ public:
 					it_type throttles_start,
 					it_type throttles_end,
 					const epoch& epoch_f, const sc_state& state_f,
-					double mu_)
+					double mu_, typename boost::enable_if<boost::is_same<typename std::iterator_traits<it_type>::value_type,throttle> >::type * = 0)
 	{
 		if (epoch_f.mjd2000() <= epoch_i.mjd2000())
 		{
@@ -108,6 +115,39 @@ public:
 			throw_value_error("Gravitational constant is less or equal to zero");
 		}
 		mu = mu_;
+	}
+	template<typename it_type>
+			void set_leg(const epoch& epoch_i, const sc_state& state_i,
+					it_type throttles_start,
+					it_type throttles_end,
+					const epoch& epoch_f, const sc_state& state_f,
+					double mu_, typename boost::enable_if<boost::is_same<typename std::iterator_traits<it_type>::value_type,double> >::type * = 0)
+	{
+// 		if (epoch_f.mjd2000() <= epoch_i.mjd2000())
+// 		{
+// 			throw_value_error("Final epoch is before initial epoch");
+// 		}
+		if (std::distance(throttles_start,throttles_end) % 3 || std::distance(throttles_start,throttles_end) <= 0) {
+			throw_value_error("The length of the throttles list must be positive and a multiple of 3");
+		}
+		if (mu_<=0)
+		{
+			throw_value_error("Gravitational constant is less or equal to zero");
+		}
+		mu = mu_;
+
+		t_i = epoch_i;
+		x_i=state_i;
+		t_f = epoch_f;
+		x_f=state_f;
+
+		const int throttles_vector_size = (throttles_end - throttles_start) / 3;
+		throttles.resize(throttles_vector_size);
+		const double seg_duration = (epoch_f.mjd() - epoch_i.mjd()) / throttles_vector_size;
+		for (int i = 0; i < throttles_vector_size; ++i) {
+			kep_toolbox::array3D tmp = {{ *(throttles_start + 3 * i), *(throttles_start + 3 * i + 1), *(throttles_start + 3 * i + 2) }};
+			throttles[i] = throttle(epoch(epoch_i.mjd() + seg_duration * i,epoch::MJD),epoch(epoch_i.mjd() + seg_duration * (i + 1),epoch::MJD),tmp);
+		}
 	}
 
 	/** @name Setters*/
@@ -284,10 +324,13 @@ public:
 			current_time_fwd = manouver_time;
 
 			for (int j=0;j<3;j++)
-				dv[j] = max_thrust / mfwd * thrust_duration * throttles[i].get_value()[j];
+
+			dv[j] = max_thrust / mfwd * thrust_duration * throttles[i].get_value()[j];
 			norm_dv = norm(dv);
 			sum(vfwd,vfwd,dv);
 			mfwd *= exp( -norm_dv/isp/ASTRO_G0 );
+			//Temporary solution to the creation of NaNs when mass gets too small (i.e. 0)
+			if (mfwd < 1) mfwd=1;
 		}
 
 		//Final state
@@ -382,6 +425,20 @@ public:
 	}
 
 private:
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+	friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & t_i;
+		ar & x_i;
+		ar & throttles;
+		ar & t_f;
+		ar & x_f;
+		ar & sc;
+		ar & mu;
+	}
+#endif
 	epoch t_i;
 	sc_state x_i;
 	std::vector<throttle> throttles;

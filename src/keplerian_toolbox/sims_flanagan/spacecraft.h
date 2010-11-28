@@ -25,6 +25,10 @@
 #ifndef SPACECRAFT_H
 #define SPACECRAFT_H
 
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "../serialization.h"
+#endif
+
 namespace kep_toolbox {
 
 /// Spacecraft
@@ -37,16 +41,27 @@ namespace kep_toolbox {
 class spacecraft
 {
 public:
-	spacecraft(){}
+	spacecraft():mass(0),thrust(0),isp(0) {}
 	spacecraft(const double &mass_, const double &thrust_, const double &isp_) : mass(mass_),thrust(thrust_),isp(isp_) {}
 	const double& get_mass() const {return mass;}
 	const double& get_thrust() const {return thrust;}
 	const double& get_isp() const {return isp;}
 private:
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+	friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & mass;
+		ar & thrust;
+		ar & isp;
+	}
+#endif
 	double mass;
 	double thrust;
 	double isp;
 };
-}
+
+} //Namespaces
 
 #endif // SPACECRAFT_H

@@ -26,7 +26,7 @@
 #define PROPAGATE_LAGRANGIAN_H
 
 #include<boost/bind.hpp>
-#include <boost/math/tools/roots.hpp>
+#include<boost/math/tools/roots.hpp>
 
 #include"../astro_constants.h"
 #include"../numerics/newton_raphson.h"
@@ -56,6 +56,9 @@ namespace kep_toolbox {
 template<class vettore3D>
 		void propagate_lagrangian(vettore3D& r0, vettore3D& v0, const double &t, const double &mu)
 {
+		vettore3D r0_copy = r0, v0_copy = v0;
+	try {
+
 	double R = sqrt(r0[0]*r0[0] + r0[1]*r0[1] + r0[2]*r0[2]);
 	double V = sqrt(v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2]);
 	double energy = (V*V/2 - mu/R);
@@ -75,7 +78,7 @@ template<class vettore3D>
 		std::pair<double, double> result;
 		boost::uintmax_t iter = ASTRO_MAX_ITER;
 		boost::math::tools::eps_tolerance<double> tol(64);
-		result = boost::math::tools::bracket_and_solve_root(boost::bind(kepDE,_1,DM,sigma0,sqrta,a,R),DM,2.0,true,tol,iter);
+                result = boost::math::tools::bracket_and_solve_root(boost::bind(kepDE,_1,DM,sigma0,sqrta,a,R),DE,2.0,true,tol,iter);
 		DE = (result.first + result.second) / 2;
 		double r = a + (R - a) * cos(DE) + sigma0 * sqrta * sin(DE);
 
@@ -88,7 +91,8 @@ template<class vettore3D>
 	else{	//Solve Kepler's equation, hyperbolic case
 		sqrta = sqrt(-a);
 		double DN = sqrt(-mu / pow(a,3)) * t;
-		double DH = DN; // TODO: find a better initial guess
+                double DH;
+                t > 0 ? DH = 1 : DH = -1; // TODO: find a better initial guess. I tried with 0 and D (both have numercial problems and result in exceptions)
 
 		//Solve Kepler Equation for hyperbolae in DH (hyperbolic anomaly difference)
 		//newton_raphson(DH,boost::bind(kepDH,_1,DN,sigma0,sqrta,a,R),boost::bind(d_kepDH,_1,sigma0,sqrta,a,R),100,ASTRO_TOLERANCE);
@@ -110,6 +114,16 @@ template<class vettore3D>
 	for (int i=0;i<3;i++){
 		r0[i] = F * r0[i] + G * v0[i];
 		v0[i] = Ft * temp[i] + Gt * v0[i];
+	}
+	
+	} catch (const std::exception& e) {
+                std::cout << "Numerical failiure in propagate_lagrangian.h!\n";
+                std::cout << "Exception thrown: " << e.what() << '\n';
+                std::cout << "Input data to propagate_lagrangian.h: " << std::endl;
+                std::cout << "r0: " << r0_copy << '\n';
+                std::cout << "v0: " << v0_copy << '\n';
+                std::cout << "t: " << t << '\n';
+                std::cout << "mu: " << mu << '\n';
 	}
 }
 }
