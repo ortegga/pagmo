@@ -90,7 +90,7 @@ class ALifeProblem(base):
         return "ALife"
     
     ## @return A copy of this problem, controlled by an agent with the same weights
-    def __copy__(self):
+    def __deepcopy__(self,memo):
         environment = ALifeEnvironment()
         robot = Robot(environment.world, environment.space, 
                       [random.randint(-100, 100), 150, 0])
@@ -158,7 +158,7 @@ class ALifeOnAPlane(base):
         return "ALifeOnAPlane"
     
     ## @return A copy of this problem, controlled by an agent with the same weights
-    def __copy__(self):
+    def __deepcopy__(self):
         p = ALifeOnAPlane()
         p.agent.set_weights(self.agent.get_weights())
         return p
