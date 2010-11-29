@@ -448,7 +448,7 @@ int main(int argc, char *argv[]){
 		
 	pre_evolve = false;		// do NOT generate random positions at first
 	// run until we are quite good
-	while(best_fitness > -1.7 && i < 49999) { 
+	while(best_fitness > -1.7 && i < 79999) { 
 		if(!less_output) {
 			cout << "\r                                                      "
 			     << "                                                    ";
