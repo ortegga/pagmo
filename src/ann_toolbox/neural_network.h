@@ -31,17 +31,18 @@
 #include <iostream>
 #include <string>
 #include "../cuda/cudatask.h"
+#include "../cuda/common.h"
 
 using namespace cuda;
 
 namespace ann_toolbox {
 
-    template <typename ty, size_t in_, size_t out_>
+    template <typename ty, size_t in_, size_t out_, typename pre_exec = nop_functor<ty> , typename post_exec = nop_functor<ty> >
 	class neural_network : public task<ty>
     {
     public:
-    neural_network(info & in, size_t individuals, size_t task_count): 
-	task<ty> ( in, individuals, task_count, out_) , 
+    neural_network(info & in, const std::string & name, size_t individuals, size_t task_count): 
+    task<ty> ( in, name, individuals, task_count, out_) , 
 	    m_weights(0)
 	    {
 	    }
@@ -80,6 +81,11 @@ namespace ann_toolbox {
 	    return false;
 	}
 
+	virtual bool get_weights(size_t individual, std::vector<ty> &weights)
+        {
+	    return task<ty>::get_individual_outputs (individual, param_weights, weights);
+	}
+
 	virtual bool get_outputs( size_t individual, int taskid, std::vector<ty> & outputs)
 	{
 	    return task<ty>::get_outputs (individual, taskid, param_outputs, outputs);
@@ -95,7 +101,6 @@ namespace ann_toolbox {
      
     protected:
      
-	const char*	  m_name;
 	size_t  m_weights;
      
     };

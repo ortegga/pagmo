@@ -16,7 +16,8 @@ namespace pagmo
 	    class integrator : public task<ty>
 	{
 	public:
-	    integrator (cuda::info & inf, size_t individuals, size_t task_count_) : cuda::task<ty>(inf, individuals, task_count_, 1), 
+	    integrator (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : 
+	    cuda::task<ty>(inf, name, individuals, task_count_, order), 
 		m_param_t(0),  m_param_dt(0), m_param_scale_limits(0)
 	    {
 	    }

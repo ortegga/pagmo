@@ -6,52 +6,60 @@
 
 #include "integrator.h"
 #include "../cuda/kernel.h"
+#include "../cuda/dataset.h"
 #include "../cuda/kernel_dims.h"
 #include "../cuda/logger.h"
 
 namespace pagmo
 {
-  namespace odeint
-  {
-
-    template <typename ty, typename system >
-      class ode_step_runge_kutta_4 : public integrator<ty, 6, system>
-      {
-      public:
-
+    namespace odeint
+    {
+	
+	template <typename ty, typename system, typename pre_exec=nop_functor<ty>, typename post_exec=nop_functor<ty> >
+	    class ode_step_runge_kutta_4 : public integrator<ty, 6, system>
+	{
+	public:
+	
 	typedef integrator<ty, 6, system > base;
-    
-	ode_step_runge_kutta_4 (cuda::info & inf, size_t individuals, size_t task_count_) : base(inf, individuals, task_count_)
-	  {
-	  }
+	
+	ode_step_runge_kutta_4 (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : base(inf, name, individuals, task_count_)
+	{
+	    this->set_shared_chunk(0, 0 , 6 + 2);//inputs + outputs for all individuals for all points
+	    this->set_global_chunk(0, 0 , 6 + 2);
+	    
+	}
 
 	bool launch()
 	{
-	  using namespace cuda;
-	  //InParams
-	  dataset<ty> * pX = this->get_dataset(this->param_x);
-	  dataset<ty> * pO = this->get_dataset(this->param_o);
+	    using namespace cuda;
+	    //InParams
+	    typename dataset<ty>::ptr pX = this->get_dataset(this->param_x);
+	    typename dataset<ty>::ptr pO = this->get_dataset(this->param_o);
 
-	  if (!pX || !pO)
+	    if (!pX || !pO)
 	    {
-	      CUDA_LOG_ERR("Could not find a dataset", 0);
-	      return false;
+		CUDA_LOG_ERR(this->m_name, " Could not find a dataset ", 0);
+		CUDA_LOG_ERR(this->m_name, " inputs " , pX);
+		CUDA_LOG_ERR(this->m_name, " outputs ",  pO);
+		return false;
 	    }
 	  
-	  //TODO handle shared memory and different individuals
-	  size_t shared_data_size = pX->get_byte_size() + pO->get_byte_size();
-	  size_t global_data_size = shared_data_size;
+	    block_complete_dimensions dims (&this->m_info, this->get_profile(), this->m_name);
 
-	  block_complete_dimensions dims (&this->m_info, this->get_profile());
-
-	  runge_kutta_integrate<ty, system>(*pX->get_data()  , *pO->get_data(), this->m_param_t, this->m_param_dt,this->m_param_scale_limits, &dims);
-
-	  return true;
-
+	    CUDA_LOG_WARN(this->m_name, "block_complete_dimensions", &dims);
+	    cudaError_t err =  runge_kutta_integrate<ty, system, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), this->m_param_t, 
+										      this->m_param_dt,this->m_param_scale_limits, &dims);
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(this->m_name, " Launch fail ", err);
+		return false;
+	    }
+	    return true;
+		
 	}
 
-      };
+	};
 
-  }
+    }
 }
 #endif

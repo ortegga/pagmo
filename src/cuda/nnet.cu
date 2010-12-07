@@ -3,27 +3,30 @@
 #include "stdio.h"
 #include "cudainfo.h"
 #include "nnet.h"
+#include "common.cu"
 #include "kernel_dims.h"
+
 
 
 template <typename cuda_type>
 struct sigmoid_functor 
 {
-  __device__ __forceinline__ cuda_type operator ()( cuda_type val)
-  {
-    return 1.0f/(1 + exp(-val));
-  }
+    __device__ __forceinline__ cuda_type operator ()( cuda_type val)
+	{
+	    return 1.0f/(1 + exp(-val));
+	}
 };
 
 template <typename cuda_type>
 struct linear_functor 
 {
-  __device__ __forceinline__ cuda_type operator () ( cuda_type val)
-  {
-    //Needs to be a better way to do this
-    return val > 0.0f ? 1.0f : 0.0f;
-  }
+    __device__ __forceinline__ cuda_type operator () ( cuda_type val)
+	{
+	    //Needs to be a better way to do this
+	    return val > 0.0f ? 1.0f : 0.0f;
+	}
 };
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -32,148 +35,148 @@ struct linear_functor
 // continuous memory in I, O, W. Need to compute netid as
 // indivId*points+pointid
 
-template <typename cuda_type>
-__device__ void load_to_shared(cuda_type * shared, cuda_type * global, size_t size)
-{
-  size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
-  for (int i=0; i < segment ; ++i)
-    {
-      if (i*segment + threadIdx.x < size)
-	shared [i*segment + threadIdx.x] = global[blockIdx.x*size +  i*segment + threadIdx.x];
-    }
-}
-
 
 //calculate correct offsets
 extern __shared__ char compute_layer_shared_mem [];
 
 
-template <typename cuda_type, typename activ_type >
+template <typename cuda_type, typename pre_exec, typename activ_type >
 __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,  
 					cuda_type *Y, size_t inputs, size_t outputs,
 					size_t tasks_per_block, 
 					size_t individuals, size_t points, 
+					pre_exec pre = pre_exec(),
 					activ_type activator = activ_type()) 
 {
 
-  size_t netsize = (inputs + 1)*outputs;
-  size_t block_individuals = tasks_per_block / (points * outputs);
+    size_t netsize = (inputs + 1)*outputs;
+    size_t block_individuals = tasks_per_block / (points * outputs);
 
 
-  //0. load shared memory with inputs and weights. 
-  cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
-  load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
+    //0. load shared memory with inputs and weights. 
+    cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
+    load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
 
-  cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
-  load_to_shared<cuda_type>(Xs, X, inputs*block_individuals*points);
+    cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
+    load_to_shared<cuda_type>(Xs, X, inputs*block_individuals*points);
 
-  __syncthreads();
+    __syncthreads();
 
-  //Add check for last block that will be running less than normal threads
-  if (threadIdx.x < tasks_per_block)
+    //Add check for last block that will be running less than normal threads
+    if (threadIdx.x < tasks_per_block)
     {
-      size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
-      size_t taskid = tx / outputs;
-      size_t yid = tx % outputs;
-      size_t individ = tx / (outputs*points);
-      size_t sha_individ = threadIdx.x / (outputs*points);
-      size_t sha_taskid = threadIdx.x / (outputs);   
-      //1. load in the bias
-      cuda_type value = Ws[netsize*sha_individ + (inputs + 1)*yid + inputs];
+	size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
+	size_t taskid = tx / outputs;
+	size_t yid = tx % outputs;
+	//size_t individ = tx / (outputs*points);
+	size_t sha_individ = threadIdx.x / (outputs*points);
+	size_t sha_taskid = threadIdx.x / outputs;   
+	//1. load in the bias
+	cuda_type value = pre(Ws[netsize*sha_individ + (inputs + 1)*yid + inputs]);
 
-      //2. Add the weights * inputs.
-      for (int i=0; i < inputs; ++i)
+	//2. Add the weights * inputs.
+	for (int i=0; i < inputs; ++i)
 	{
-	  value += Xs[inputs*sha_taskid+i]*Ws[ netsize*sha_individ + (inputs + 1)*yid + i];
+	    value += pre(Xs[inputs*sha_taskid+i])*pre(Ws[ netsize*sha_individ + (inputs + 1)*yid + i]);
 	}
 
-      //3. save to output
-      Y[taskid*outputs+yid] = activator ( value );     
+	//3. save to output
+	Y[taskid*outputs+yid] = activator ( value );     
     }
 };
 
 template <typename cuda_type>
 static void print_parameters(cuda_type *X, cuda_type *W,  cuda_type *Y, size_t inputs, cuda::kernel_dimensions * dims_)
 {
-  printf("%d\n", dims_);
-  printf("cu_compute_layer with \nX = %x\n W = %x\n Y = %x\n inputs = %d,\n task_size = %d\n tasks_per_block = %d\n individuals = %d\n points=%d\n", 
-	 (size_t)X, (size_t)W, (size_t)Y, inputs, dims_->get_task_size(), dims_->get_tasks_per_block(), 
+    /*printf("%x\n", dims_);
+    printf("cu_compute_layer with \nX = %x\n W = %x\n Y = %x\n inputs = %d,\n task_size = %d\n tasks_per_block = %d\n individuals = %d\n points=%d\n", 
+	   (size_t)X, (size_t)W, (size_t)Y, inputs, dims_->get_task_size(), dims_->get_tasks_per_block(), 
+	   dims_->get_individuals(), dims_->get_points());*/
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// kernel interface functions
+
+template <typename cuda_type, typename pre_exec, typename activ_type>
+cudaError_t cu_compute_layer(cuda_type *X, cuda_type *W,  cuda_type *Y, size_t inputs, cuda::kernel_dimensions * dims_)
+{
+    print_parameters(X, W, Y, inputs, dims_);
+    cu_compute_layer_kernel<cuda_type, pre_exec, activ_type> 
+	<<<dims_->get_grid_dims(),
+	dims_->get_block_dims(), 
+	dims_->get_shared_mem_size()>>>
+	(X, W, Y, inputs, dims_->get_task_size(), 
+	 dims_->get_tasks_per_block(), 
+	 dims_->get_individuals(), 
+	 dims_->get_points());
+    cudaThreadSynchronize();
+    return cudaGetLastError();
+}
+
+template <>
+cudaError_t cu_compute_layer<float, nop_functor<float>, linear_functor<float> >(float *X, float *W,  float *Y, size_t inputs, cuda::kernel_dimensions * dims_)
+{
+    print_parameters(X, W, Y, inputs, dims_);
+    cu_compute_layer_kernel<float, nop_functor<float>, linear_functor <float> >
+	<<<dims_->get_grid_dims(),
+	dims_->get_block_dims(), 
+	dims_->get_shared_mem_size()>>>
+	(X, W, Y, inputs, dims_->get_task_size(),
+	 dims_->get_tasks_per_block(), 
+	 dims_->get_individuals(),
+	 dims_->get_points());
+    cudaThreadSynchronize();
+    return cudaGetLastError();
+}
+
+template <>
+cudaError_t cu_compute_layer<float, nop_functor<float>, sigmoid_functor<float> > (float *X, float *W,  float *Y, size_t inputs, cuda::kernel_dimensions * dims_)
+{
+
+    print_parameters(X, W, Y, inputs, dims_);
+    cu_compute_layer_kernel<float, nop_functor<float>, sigmoid_functor<float> >
+	<<<dims_->get_grid_dims(),
+	dims_->get_block_dims(), 
+	dims_->get_shared_mem_size()>>>
+	(X, W, Y, inputs, dims_->get_task_size(), 
+	 dims_->get_tasks_per_block(), 
 	 dims_->get_individuals(), dims_->get_points());
-}
-
-template <typename cuda_type, typename activ_type>
-__host__ void cu_compute_layer(cuda_type *X, cuda_type *W,  cuda_type *Y, size_t inputs, cuda::kernel_dimensions * dims_)
-{
-  print_parameters(X, W, Y, inputs, dims_);
-  cu_compute_layer_kernel<cuda_type, activ_type> 
-    <<<dims_->get_grid_dims(),
-    dims_->get_block_dims(), 
-    dims_->get_shared_mem_size()>>>
-    (X, W, Y, inputs, dims_->get_task_size(), 
-     dims_->get_tasks_per_block(), 
-     dims_->get_individuals(), 
-     dims_->get_points());
-  cudaThreadSynchronize();
+    cudaThreadSynchronize();
+    return cudaGetLastError();
 }
 
 template <>
-__host__ void cu_compute_layer<float, linear_functor<float> >(float *X, float *W,  float *Y, size_t inputs, cuda::kernel_dimensions * dims_)
+cudaError_t cu_compute_layer<double, nop_functor<double>, linear_functor<double> > (double *X, double *W,  double *Y, size_t inputs, cuda::kernel_dimensions * dims_)
 {
-  print_parameters(X, W, Y, inputs, dims_);
-  cu_compute_layer_kernel<float, linear_functor <float> >
-    <<<dims_->get_grid_dims(),
-    dims_->get_block_dims(), 
-    dims_->get_shared_mem_size()>>>
-    (X, W, Y, inputs, dims_->get_task_size(),
-     dims_->get_tasks_per_block(), 
-     dims_->get_individuals(),
-     dims_->get_points());
-  cudaThreadSynchronize();
+    print_parameters(X, W, Y, inputs, dims_);
+    cu_compute_layer_kernel<double, nop_functor<double>, linear_functor<double> >
+	<<<dims_->get_grid_dims(),
+	dims_->get_block_dims(), 
+	dims_->get_shared_mem_size()>>>
+	(X, W, Y, inputs, dims_->get_task_size(),
+	 dims_->get_tasks_per_block(), 
+	 dims_->get_individuals(),
+	 dims_->get_points());
+    cudaThreadSynchronize();
+    return cudaGetLastError();
 }
 
 template <>
-__host__ void cu_compute_layer<float, sigmoid_functor<float> > (float *X, float *W,  float *Y, size_t inputs, cuda::kernel_dimensions * dims_)
-{
-
-  print_parameters(X, W, Y, inputs, dims_);
-  cu_compute_layer_kernel<float, sigmoid_functor<float> >
-    <<<dims_->get_grid_dims(),
-    dims_->get_block_dims(), 
-    dims_->get_shared_mem_size()>>>
-    (X, W, Y, inputs, dims_->get_task_size(), 
-     dims_->get_tasks_per_block(), 
-     dims_->get_individuals(), dims_->get_points());
-  cudaThreadSynchronize();
-}
-
-template <>
-__host__ void cu_compute_layer<double, linear_functor<double> > (double *X, double *W,  double *Y, size_t inputs, cuda::kernel_dimensions * dims_)
-{
-  print_parameters(X, W, Y, inputs, dims_);
-  cu_compute_layer_kernel<double, linear_functor<double> >
-    <<<dims_->get_grid_dims(),
-    dims_->get_block_dims(), 
-    dims_->get_shared_mem_size()>>>
-    (X, W, Y, inputs, dims_->get_task_size(),
-     dims_->get_tasks_per_block(), 
-     dims_->get_individuals(),
-     dims_->get_points());
-  cudaThreadSynchronize();
-}
-
-template <>
-__host__ void cu_compute_layer<double, sigmoid_functor<double> > (double *X, double *W,  double *Y, 
+cudaError_t  cu_compute_layer<double, nop_functor<double>, sigmoid_functor<double> > (double *X, double *W,  double *Y, 
 								  size_t inputs, cuda::kernel_dimensions * dims_)
 {
-  print_parameters(X, W, Y, inputs, dims_);
-  cu_compute_layer_kernel<double, sigmoid_functor<double> >
-    <<<dims_->get_grid_dims(),
-    dims_->get_block_dims(), 
-    dims_->get_shared_mem_size()>>>
-    (X, W, Y, inputs, dims_->get_task_size(), 
-     dims_->get_tasks_per_block(), 
-     dims_->get_individuals(),
-     dims_->get_points());
+    print_parameters(X, W, Y, inputs, dims_);
+    cu_compute_layer_kernel<double, nop_functor<double>, sigmoid_functor<double> >
+	<<<dims_->get_grid_dims(),
+	dims_->get_block_dims(), 
+	dims_->get_shared_mem_size()>>>
+	(X, W, Y, inputs, dims_->get_task_size(), 
+	 dims_->get_tasks_per_block(), 
+	 dims_->get_individuals(),
+	 dims_->get_points());
+    cudaThreadSynchronize();
+    return cudaGetLastError();
 }
 
 

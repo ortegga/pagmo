@@ -155,6 +155,7 @@ IF(ENABLE_CUDA)
   SET(ANN_FILES
     cuda/kernel.cu
     cuda/nnet.cu
+    #cuda/common.cu
     #problem/docking.cu
     "${ANN_FILES}")
 

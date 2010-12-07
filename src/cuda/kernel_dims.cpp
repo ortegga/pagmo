@@ -1,6 +1,7 @@
-#include "kernel_dims.h"
+
 #include "cudatask.h"
 #include "cudainfo.h"
+#include "kernel_dims.h"
 #include "pagmo_cuda.h"
 
 namespace cuda
@@ -38,20 +39,20 @@ namespace cuda
 
     bool kernel_dimensions::check_problems()
     {
-	const cudaDeviceProp * props = m_inf->get_prop();
+	//const cudaDeviceProp * props = m_inf->get_prop();
 	if (!check_shared_mem())
 	{
-	    CUDA_LOG_ERR("shared mem requirements exceed device capability", 0);
+	    CUDA_LOG_ERR("kernel_dimensions", "shared mem requirements exceed device capability", 0);
 	    return false;
 	}
 	if (!check_task_size())
 	{
-	    CUDA_LOG_ERR("task cannot fit in a block", 0);
+	    CUDA_LOG_ERR("kernel_dimensions", "task cannot fit in a block", 0);
 	    return false;
 	}
 	if (check_global_mem())
 	{
-	    CUDA_LOG_ERR("task cannot fit in global memory", 0);
+	    CUDA_LOG_ERR("kernel_dimensions", "task cannot fit in global memory", 0);
 	    return false;
 	}
 	return true;

@@ -11,8 +11,8 @@ namespace cuda
     class kernel_dimensions
     {
     public:
-	kernel_dimensions (info * inf, task_profile * prof) :  
-	m_inf(inf), m_prof(prof)
+	kernel_dimensions (info * inf, task_profile * prof, const std::string & name) :  
+	m_inf(inf), m_prof(prof), m_name(name)
 	{      
       
 	}
@@ -69,10 +69,16 @@ namespace cuda
 	    return m_prof->points;
 	}
 
+/*	virtual std::string to_string()
+	{
+	    
+	}*/
+
     protected:
 
 	info * m_inf;
 	task_profile * m_prof;
+	std::string m_name;
     
     };
 
@@ -84,10 +90,10 @@ namespace cuda
     class block_complete_dimensions : public kernel_dimensions
     {
     public:
-	block_complete_dimensions (cuda::info * inf, task_profile * prof): 
-	kernel_dimensions(inf, prof), m_block_count(0),  m_block_size(0), m_block_shared_mem(0),m_indivs_per_block(0)
+	block_complete_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
+	kernel_dimensions(inf, prof, name), m_block_count(0),  m_block_size(0), m_block_shared_mem(0),m_indivs_per_block(0)
 	{
-	    std::cout<<"block_complete_dimensions::block_complete_dimensions"<<std::endl;
+//	    std::cout<<"block_complete_dimensions::block_complete_dimensions"<<std::endl;
 	    refresh();
 	}
 
@@ -113,7 +119,6 @@ namespace cuda
 
 	virtual bool refresh()
 	{
-	    size_t jobs = m_prof->get_job_count();
 	    const cudaDeviceProp * props = m_inf->get_prop();	    
 
 	    size_t block_size = 1;
@@ -133,28 +138,28 @@ namespace cuda
 	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
 	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
 
-	    std::cout<<"m_block_count "<<m_block_count<<std::endl;
+/*	    std::cout<<"m_block_count "<<m_block_count<<std::endl;
 	    std::cout<<"m_indivs_per_block "<<m_indivs_per_block<<std::endl;
 	    std::cout<<"m_prof->get_total_indiv_shared_chunk "<<m_prof->get_total_indiv_shared_chunk()<<std::endl;
 	    std::cout<<"m_prof->get_individual_job_count()"<<m_prof->get_individual_job_count()<<std::endl;
-	    std::cout<<"Kernel dimensions "<<m_block_size<<" "<<m_block_count<<" "<<m_block_shared_mem<<" "<<m_indivs_per_block<<std::endl;
+	    std::cout<<"Kernel dimensions "<<m_block_size<<" "<<m_block_count<<" "<<m_block_shared_mem<<" "<<m_indivs_per_block<<std::endl;*/
 	    return true;
 	}
     protected:
 
 	// use the block size that maximizes shared memory use
 	//TODO add some code to make sure individual chunks lie in the same block
-	size_t use_shared_mem_suggestion( const cudaDeviceProp * props, task_profile * prof)
+	size_t use_shared_mem_suggestion( const cudaDeviceProp * , task_profile * )
 	{
 	    return 200000;
 	}
 
 	size_t use_thread_suggestion(const cudaDeviceProp * props, task_profile * prof)
 	{
-	    size_t indiv_jobs =  prof->get_individual_job_count();
-	    size_t minval = props->maxThreadsPerBlock;
-	    size_t minind = 0;
-	    size_t i = props->warpSize;
+	    int indiv_jobs =  prof->get_individual_job_count();
+	    int minval = props->maxThreadsPerBlock;
+	    int minind = 0;
+	    int i = props->warpSize;
 
 	    for (; i <= props->maxThreadsPerBlock; i=i<<1 )
 	    {
@@ -164,7 +169,8 @@ namespace cuda
 		    minind = i;
 		}
 	    }
-	    std::cout<<"warp size suggestion: " <<minind <<" for "<<indiv_jobs<<" jobs"<<std::endl;
+	    CUDA_LOG_INFO(m_name, " warp size suggestion: ", minind);
+	    CUDA_LOG_INFO(m_name, " job count ", indiv_jobs);
 	    return minind;
       
 	}
@@ -180,8 +186,8 @@ namespace cuda
     class learning_dimensions : public kernel_dimensions
     {
     public:
-    learning_dimensions(cuda::info * inf, task_profile * prof) : 
-	kernel_dimensions (inf, prof), 
+    learning_dimensions(cuda::info * inf, task_profile * prof, const std::string & name) : 
+	kernel_dimensions (inf, prof, name), 
 	    m_duration("learning dimensions timer") , m_started(false)
 	{
 	    refresh();
@@ -216,6 +222,13 @@ namespace cuda
 	bool m_started;
     };
 
+
+
+/*    ostream & operator << (ostream & os, kernel_dimensions & dims)
+    {
+	
+    }
+*/
 }
 
 #endif

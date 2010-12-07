@@ -3,6 +3,7 @@
 
 #include "cudatask.h"
 #include "kernel.h"
+#include "kernel_dims.h"
 
 
 using namespace cuda;
@@ -12,7 +13,7 @@ namespace pagmo
 {
     namespace fitness
     {
-	template <typename ty, typename preprocessor>
+	template <typename ty, typename pre_exec = nop_functor<ty> , typename post_exec = nop_functor<ty> >
 	    class evaluate_fitness_task : public task <ty>
 	{ 
 	public:
@@ -28,22 +29,27 @@ namespace pagmo
 		cristos_twodee_fitness3
 	    };
 
-	evaluate_fitness_task(info & inf, fitness_type type , size_t individuals, 
+	evaluate_fitness_task(info & inf, const std::string & name, fitness_type type , size_t individuals, 
 			      size_t taskCount, ty vicinity_distance, 
 			      ty vicinity_speed, ty max_docking_time ) : 
-	    task<ty>::task(inf, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
-		m_inputs (6), m_outputs (3), 
+	task<ty>::task(inf, name, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
+		m_inputs (6), m_outputs (3), m_fitness(4), 
 		m_vicinity_distance(vicinity_distance), 
 		m_vicinity_speed(vicinity_speed), 
 		m_max_docking_time(max_docking_time),
 		m_tdt(0)
-		{}
+		{
+		    
+		    this->set_shared_chunk(0, 0 , m_inputs + m_outputs);
+		    this->set_global_chunk(0, 0 , m_inputs + m_outputs + m_fitness);
+		}
 
 	    enum
 	    {
-		param_states = 0,
+		param_inputs = 0,
 		param_outputs = 1, 
-		param_init_distance = 2
+		param_init_distance = 2,
+		param_fitness = 3
 	    };
 
 	    void set_time(ty t)
@@ -52,54 +58,77 @@ namespace pagmo
 	    }
 
 
-	    virtual bool set_initial_distance(int taskid, const std::vector<ty> & distance)
+	    //<TODO> use point inputs instead
+	    virtual bool set_initial_distance(size_t id, size_t pt, const ty & distance)
+	    {
+		std::vector<ty> d; d.push_back(distance);
+		return this->set_initial_distance (id, pt, d);
+	    }
+
+	    virtual bool set_initial_distance(size_t id, size_t pt, const std::vector<ty> & distance)
 	    {
 		if (distance.size() == 1)
 		{
-		    return task<ty>::set_inputs (taskid, param_init_distance, distance, 1);
+		    return task<ty>::set_inputs (id, pt, param_init_distance, distance, 1);
 		}
 		return false;
 	    }
 
-	    virtual bool set_inputs(int taskid, const std::vector<ty> & inputs)
+	    virtual bool set_inputs(size_t id, size_t pt, const std::vector<ty> & inputs)
 	    {
 		if (inputs.size() == m_inputs)
 		{
-		    return task<ty>::set_inputs (taskid, param_states, inputs, m_inputs);
+		    return task<ty>::set_inputs (id, pt, param_inputs, inputs, m_inputs);
 		}
 		return false;
 	    }
 
-	    virtual bool get_outputs( int taskid, std::vector<ty> & outputs)
+	    virtual bool set_outputs(size_t id, size_t pt, const std::vector<ty> & outputs)
 	    {
-		return task<ty>::get_outputs (taskid, param_outputs, outputs);
+		if (outputs.size() == m_outputs)
+		{
+		    return task<ty>::set_inputs (id, pt, param_outputs, outputs, m_outputs);
+		}
+		return false;
+	    }
+
+	    virtual bool get_fitness( size_t id, size_t pt, std::vector<ty> & fitness)
+	    {
+		return task<ty>::get_outputs (id, pt, param_fitness, fitness);
 	    }
 
 	    virtual bool prepare_outputs()
 	    {
-		return task<ty>::prepare_dataset(param_outputs, m_outputs);
+		return task<ty>::prepare_dataset(param_fitness, 1);
 	    }
 
-	    virtual bool launch() 
+	    virtual bool launch()
 	    {
 
-		dataset<ty> * pState = this->get_dataset(param_states);
-		dataset<ty> * pOutData = this->get_dataset(param_outputs);
-		dataset<ty> * pInitDistance = this->get_dataset(param_init_distance);
+		typename dataset<ty>::ptr pState = this->get_dataset(param_inputs);
+		typename dataset<ty>::ptr pOutData = this->get_dataset(param_outputs);
+		typename dataset<ty>::ptr pFitness = this->get_dataset(param_fitness);
+		typename dataset<ty>::ptr pInitDistance = this->get_dataset(param_init_distance);
 
-		if (!(pState && pOutData && pInitDistance))
+		if (!(pState && pOutData && pFitness && pInitDistance))
 		{
-		    std::cout <<" Could not find a dataset"<<std::endl;
-		    std::cout <<pState << " "<<pOutData << " "<<pInitDistance<<std::endl;
+
+		    CUDA_LOG_ERR(this->m_name, " Could not find a dataset ", 0);
+		    CUDA_LOG_ERR(this->m_name, " state " , pState);
+		    CUDA_LOG_ERR(this->m_name, " outdata ",  pOutData);
+		    CUDA_LOG_ERR(this->m_name, " fitness ",  pFitness);
+		    CUDA_LOG_ERR(this->m_name, " initial distance ",  pInitDistance);
 		    return false;
 		}
 
-		block_complete_dimensions dims(&this->m_info, this->get_profile());
+		block_complete_dimensions dims(&this->m_info, this->get_profile(), this->m_name);
 
+		cudaError_t err = cudaSuccess;
 		switch (m_fitness_type)
 		{
 		case  minimal_distance:
-		    cu_compute_fitness_mindis<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), pOutData->get_task_size(), &dims); 
+		    err = cu_compute_fitness_mindis<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(), *pFitness->get_data(), 
+									     *pInitDistance->get_data(), pOutData->get_task_size(), &dims); 
 		    break;				
 		    /*case  minimal_distance_speed_theta:
 		      cu_compute_fitness_mindis_theta<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), width, g, b);
@@ -127,13 +156,20 @@ namespace pagmo
 		default:
 		    return false;
 		};
+
+		if (err != cudaSuccess)
+		{
+		    CUDA_LOG_ERR(this->m_name, " launch fail ", err);
+		    return false;
+		}
 		return true;
 	    }
 	protected:
 
-	    size_t m_fitness_type;
-	    unsigned int  m_inputs;
-	    unsigned int  m_outputs;
+	    const size_t m_fitness_type;
+	    const size_t  m_inputs;
+	    const size_t  m_outputs;
+	    const size_t  m_fitness;
 	    ty m_vicinity_distance;
 	    ty m_vicinity_speed;
 	    ty m_max_docking_time;

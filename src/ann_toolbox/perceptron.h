@@ -41,14 +41,14 @@ namespace ann_toolbox {
      * classifier. 
      * More info: http://en.wikipedia.org/wiki/Perceptron
      */	
-    template <typename ty, size_t in_, size_t out_, typename activ_type>
+    template <typename ty, size_t in_, size_t out_, typename pre_exec, typename activ_type>
 	class perceptron : public neural_network <ty, in_, out_> {
     public:
 
 	typedef neural_network<ty, in_, out_> base;
     
-    perceptron(cuda::info & in, size_t individuals, size_t task_count) : 
-	neural_network<ty, in_, out_>::neural_network(in, individuals, task_count)
+    perceptron(cuda::info & in, const std::string & name, size_t individuals, size_t task_count) : 
+	neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count)
 	{
 	    this->m_weights = (in_ + 1) * out_;
 	    this->set_shared_chunk(0, this->m_weights, in_);
@@ -67,14 +67,26 @@ namespace ann_toolbox {
 
 	    if (!(pInput && pWeights && pOutData))
 	    {
-		CUDA_LOG_ERR("Could not find a dataset", 0);
+		CUDA_LOG_ERR(this->m_name, " Could not find a dataset ", 0);
+		CUDA_LOG_ERR(this->m_name, " inputs " , pInput);
+		CUDA_LOG_ERR(this->m_name, " weights ",  pWeights);
+		CUDA_LOG_ERR(this->m_name, " outputs ",  pOutData);
+
 		return false;
 	    }
       
-	    block_complete_dimensions dims (&this->m_info, this->get_profile());
-      
-	    cu_compute_layer<ty,activ_type >(*pInput->get_data(), *pWeights->get_data(), 
-					     *pOutData->get_data(),  pInput->get_task_size(), &dims);
+	    block_complete_dimensions dims (&this->m_info, this->get_profile(), this->m_name);
+
+	    cudaError_t err;
+	    err = cu_compute_layer<ty, pre_exec, activ_type >(*pInput->get_data(), *pWeights->get_data(), 
+							      *pOutData->get_data(),  pInput->get_task_size(), &dims);
+
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(this->m_name, " Launch fail ", err);
+		return false;
+	    }
+	    
 	    return true;
 	}
 

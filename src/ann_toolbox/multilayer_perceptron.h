@@ -41,13 +41,15 @@
 //Contains an aux task which handles the input to hidden evaluation.
 namespace ann_toolbox {
 	
-    template <typename ty , size_t in_, size_t hid_, size_t out_, typename activ_type>
+    template <typename ty , size_t in_, size_t hid_, size_t out_, typename pre_exec1 = nop_functor<ty>, typename pre_exec2 = nop_functor<ty>, 
+	typename activ_type1 = sigmoid_functor<ty>, typename activ_type2 = sigmoid_functor<ty> >
+
 	class multilayer_perceptron : public neural_network<ty, in_, out_> 
     {
     public:
 
-    multilayer_perceptron(cuda::info & in, size_t individuals, size_t task_count) : 
-	neural_network<ty, in_, out_>::neural_network(in, individuals, task_count), 
+    multilayer_perceptron(cuda::info & in, const std::string & name, size_t individuals, size_t task_count) : 
+    neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count), 
 	    m_hidden_task(individuals, task_count, hid_)
 	    {
 
@@ -94,7 +96,7 @@ namespace ann_toolbox {
 	
 	virtual bool prepare_outputs()
 	{
-	    return base::prepare_outputs() &&  
+	    return base::prepare_outputs() &&  this->prepare_dataset(base::param_output_weights, m_hidden_weights) && 
 		this->prepare_dataset(base::param_hiddens, hid_);
 	}
 
@@ -102,28 +104,44 @@ namespace ann_toolbox {
 	{
 
 
-	    dataset<ty> * pOutData = this->get_dataset(base::param_outputs);
-	    dataset<ty> * pInput = this->get_dataset(base::param_inputs);
-	    dataset<ty> * pHidden = this->get_dataset(base::param_hiddens);
-	    dataset<ty> * pWeights = this->get_dataset(base::param_weights);
-	    dataset<ty> * pOutputWeights = this->get_dataset(base::param_output_weights);
+	    typename dataset<ty>::ptr pOutData = this->get_dataset(base::param_outputs);
+	    typename dataset<ty>::ptr pInput = this->get_dataset(base::param_inputs);
+	    typename dataset<ty>::ptr pHidden = this->get_dataset(base::param_hiddens);
+	    typename dataset<ty>::ptr pWeights = this->get_dataset(base::param_weights);
+	    typename dataset<ty>::ptr pOutputWeights = this->get_dataset(base::param_output_weights);
 
 	    if (!(pInput && pWeights && pHidden && pOutData && pOutputWeights))
 	    {
-		std::cout <<"failure"<<pInput <<" "<< pWeights<<" "<<pHidden<<" "<<pOutputWeights<<" "<<pOutData<<std::endl;
+		CUDA_LOG_ERR(this->m_name, " Could not find a dataset ", 0);
+		CUDA_LOG_ERR(this->m_name, " inputs " , pInput);
+		CUDA_LOG_ERR(this->m_name, " weights ",  pWeights);
+		CUDA_LOG_ERR(this->m_name, " second layer inputs ",  pHidden);
+		CUDA_LOG_ERR(this->m_name, " second layer weights ",  pOutputWeights);
+		CUDA_LOG_ERR(this->m_name, " outputs ",  pOutData);
 		return false;
 	    }
 
-	    block_complete_dimensions dims1 (&this->m_info, &(this->m_hidden_task));
+	    block_complete_dimensions dims1 (&this->m_info, &(this->m_hidden_task), this->m_name);
 
-	    cu_compute_layer<ty, activ_type>(*pInput->get_data(), *pWeights->get_data(), *pHidden->get_data(),  
-					     pInput->get_task_size(), &dims1);
+	    cudaError_t err;
+	    err = cu_compute_layer<ty, pre_exec1, activ_type1>(*pInput->get_data(), *pWeights->get_data(), *pHidden->get_data(),  
+							       pInput->get_task_size(), &dims1);
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(this->m_name, "Launch fail ", err);
+		return false;
+	    }
+	    block_complete_dimensions dims2 (&this->m_info, this->get_profile(), this->m_name);
 
-      
-	    block_complete_dimensions dims2 (&this->m_info, this->get_profile());
+	    err = cu_compute_layer<ty, pre_exec2, activ_type2>(*pHidden->get_data(), *pOutputWeights->get_data(), *pOutData->get_data(),  
+							       pHidden->get_task_size(), & dims2);
 
-	    cu_compute_layer<ty, activ_type>(*pHidden->get_data(), *pOutputWeights->get_data(), *pOutData->get_data(),  
-					     pHidden->get_task_size(), & dims2);
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(this->m_name, " Second Launch fail ", err);
+		return false;
+	    }
+
 	    return true;
 	}
     protected:

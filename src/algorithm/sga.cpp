@@ -34,6 +34,7 @@
 #include "../exceptions.h"
 #include "../population.h"
 #include "../problem/base.h"
+#include "../problem/cuda_problem.h"
 #include "../types.h"
 #include "base.h"
 #include "sga.h"
@@ -95,6 +96,7 @@ void sga::evolve(population &pop) const
 {
 	// Let's store some useful variables.
 	const problem::base &prob = pop.problem();
+	const problem::cuda_problem * cuda_prob = static_cast<const problem::cuda_problem *> (&prob);
 	const problem::base::size_type D = prob.get_dimension(), Di = prob.get_i_dimension(), prob_c_dimension = prob.get_c_dimension(), prob_f_dimension = prob.get_f_dimension();
 	const decision_vector &lb = prob.get_lb(), &ub = prob.get_ub();
 	const population::size_type NP = pop.size();
@@ -296,8 +298,11 @@ void sga::evolve(population &pop) const
 			}
 		}
 
+		//<TODO> we need a new implementation for this part
 		//4 - Evaluate Xnew
-		for (pagmo::population::size_type i = 0; i < NP;i++) {
+		if (!cuda_prob)
+		{
+		    for (pagmo::population::size_type i = 0; i < NP;i++) {
 			prob.objfun(fit[i],Xnew[i]);
 			dummy = Xnew[i];
 			std::transform(dummy.begin(), dummy.end(), pop.get_individual(i).cur_x.begin(), dummy.begin(),std::minus<double>());
@@ -305,9 +310,16 @@ void sga::evolve(population &pop) const
 			pop.set_x(i,Xnew[i]);
 			pop.set_v(i,dummy);
 			if (prob.compare_fitness(fit[i], bestfit)) {
-				bestfit = fit[i];
-				bestX = Xnew[i];
+			    bestfit = fit[i];
+			    bestX = Xnew[i];
 			}
+		    }
+		}
+		else
+		{
+		    //<KKAL>
+		    cuda_prob->objfun(pop);
+		    cuda_prob->fittest(bestfit, bestX);
 		}
 
 		//5 - Reinsert best individual every m_elitism generations

@@ -49,197 +49,204 @@ typedef float float_type;
 
 int main(int argc, char *argv[])
 {
-	float start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+    float start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
-	char *config_filename;
-	if ( argc >= 2 ) config_filename = argv[1];
-	else	config_filename = NULL;	
+    char *config_filename;
+    if ( argc >= 2 ) config_filename = argv[1];
+    else	config_filename = NULL;	
 	
-	/////////////////////////////////
-	// Definitions
-	const int ann_input_neurons  = 7;
-	const int ann_hidden_neurons = 11;
-	const int ann_output_neurons = 2;
+    /////////////////////////////////
+    // Definitions
+    const int ann_input_neurons  = 7;
+    const int ann_hidden_neurons = 11;
+    const int ann_output_neurons = 2;
 	
-	int prob_positions = 1;
-	int prob_pos_strategy = problem::docking<float_type>::CLOUD_POS;
-	int prob_fitness_function = 99;
-	int prob_timeneuron_threshold = 99;
-	//int prob_maximum_time = 25;
-	int prob_maximum_time = 1;
+    int prob_positions = 1;
+    int prob_pos_strategy = problem::docking<float_type>::CLOUD_POS;
+    int prob_fitness_function = 99;
+    int prob_timeneuron_threshold = 99;
+    //int prob_maximum_time = 25;
+    int prob_maximum_time = 1;
 
-	float integrator_timestep = 0.1;
-	int evolution_stuck_threshold = 11;
+    float integrator_timestep = 0.1f;
+    int evolution_stuck_threshold = 11;
 	
-	int algo_generations = 11;
-	int algo_crossover = 90;
-	int algo_mutation = 30;
-	int algo_elitism = 1;
+    int algo_generations = 11;
+    int algo_crossover = 90;
+    int algo_mutation = 30;
+    int algo_elitism = 1;
                                 		
-	int islands = 1;
-	//int individuals = 33;
-	int individuals = 5;
+    int islands = 1;
+    //int individuals = 33;
+    int individuals = 5;
 
-	float vicinity_distance = 0.1;
-	float vicinity_speed = 0.1;
-	float vicinity_orientation = 0.1;
+    float vicinity_distance = 0.1;
+    float vicinity_speed = 0.1;
+    float vicinity_orientation = 0.1;
 	
 	
-	time_t seconds = time (NULL);
-	std::string run_id = boost::lexical_cast<std::string>(seconds);
-	//////////////////////////////////////////
+    time_t seconds = time (NULL);
+    std::string run_id = boost::lexical_cast<std::string>(seconds);
+    //////////////////////////////////////////
 	
-	/////////////////////////////////////////
-	// Print all values!
-	string configs = "";
-	configs += "Run Information: ID=" + boost::lexical_cast<std::string>(run_id) + "\n";
-	configs += "Input Neurons:\t\t" + boost::lexical_cast<std::string>(ann_input_neurons) + "\n";
-	configs += "Hidden Neurons:\t\t" + boost::lexical_cast<std::string>(ann_hidden_neurons) + "\n";
-	configs += "Output Neurons:\t\t" + boost::lexical_cast<std::string>(ann_output_neurons) + "\n";
+    /////////////////////////////////////////
+    // Print all values!
+    string configs = "";
+    configs += "Run Information: ID=" + boost::lexical_cast<std::string>(run_id) + "\n";
+    configs += "Input Neurons:\t\t" + boost::lexical_cast<std::string>(ann_input_neurons) + "\n";
+    configs += "Hidden Neurons:\t\t" + boost::lexical_cast<std::string>(ann_hidden_neurons) + "\n";
+    configs += "Output Neurons:\t\t" + boost::lexical_cast<std::string>(ann_output_neurons) + "\n";
 	
-	configs += "Positions: \t\t" + boost::lexical_cast<std::string>(prob_positions) + "\n";
-	configs += "Pos. Strategy:\t\t" + boost::lexical_cast<std::string>(prob_pos_strategy) + "\n";
-	configs += "Fitness Function:\t" + boost::lexical_cast<std::string>(prob_fitness_function) + "\n";
-	configs += "TimeNeuron Threshold:\t" + boost::lexical_cast<std::string>(prob_timeneuron_threshold) + "\n";
-	configs += "Maximum Time:\t" + boost::lexical_cast<std::string>(prob_maximum_time) + "\n";
+    configs += "Positions: \t\t" + boost::lexical_cast<std::string>(prob_positions) + "\n";
+    configs += "Pos. Strategy:\t\t" + boost::lexical_cast<std::string>(prob_pos_strategy) + "\n";
+    configs += "Fitness Function:\t" + boost::lexical_cast<std::string>(prob_fitness_function) + "\n";
+    configs += "TimeNeuron Threshold:\t" + boost::lexical_cast<std::string>(prob_timeneuron_threshold) + "\n";
+    configs += "Maximum Time:\t" + boost::lexical_cast<std::string>(prob_maximum_time) + "\n";
 
-	configs += "Integration Step:\t" + boost::lexical_cast<std::string>(integrator_timestep) + "\n";
-	configs += "Evolution Stuck:\t" + boost::lexical_cast<std::string>(evolution_stuck_threshold) + "\n";
+    configs += "Integration Step:\t" + boost::lexical_cast<std::string>(integrator_timestep) + "\n";
+    configs += "Evolution Stuck:\t" + boost::lexical_cast<std::string>(evolution_stuck_threshold) + "\n";
 
-	configs += "Generations:\t\t" + boost::lexical_cast<std::string>(algo_generations) + "\n";
-	configs += "Crossover Rate:\t\t" + boost::lexical_cast<std::string>(algo_crossover/100.0) + "\n";
-	configs += "Mutation Rate:\t\t" + boost::lexical_cast<std::string>(algo_mutation/100.0) + "\n";
-	configs += "Elitism:\t\t" + boost::lexical_cast<std::string>(algo_elitism) + "\n";
+    configs += "Generations:\t\t" + boost::lexical_cast<std::string>(algo_generations) + "\n";
+    configs += "Crossover Rate:\t\t" + boost::lexical_cast<std::string>(algo_crossover/100.0) + "\n";
+    configs += "Mutation Rate:\t\t" + boost::lexical_cast<std::string>(algo_mutation/100.0) + "\n";
+    configs += "Elitism:\t\t" + boost::lexical_cast<std::string>(algo_elitism) + "\n";
 
-	configs += "Islands:\t\t" + boost::lexical_cast<std::string>(islands) + "\n";
+    configs += "Islands:\t\t" + boost::lexical_cast<std::string>(islands) + "\n";
     configs += "Individuals:\t\t" + boost::lexical_cast<std::string>(individuals) + "\n";
 
     configs += "Vicinity Distance:\t" + boost::lexical_cast<std::string>(vicinity_distance) + "\n";
     configs += "Vicinity Speed:\t\t" + boost::lexical_cast<std::string>(vicinity_speed) + "\n";
     configs += "Vicinity Orientation:\t" + boost::lexical_cast<std::string>(vicinity_orientation) + "\n";
-	configs += "-------------------------------------\n";
-	cout << configs;
-	///////////////////////////////////////////////////////////
+    configs += "-------------------------------------\n";
+    cout << configs;
+    ///////////////////////////////////////////////////////////
 	
-	// MultiLayer Perceptron
+    // MultiLayer Perceptron
 
-	cuda::info inf;
-	std::cout<<inf;
+    cuda::info inf;
+//    std::cout<<inf;
 
-	ann_toolbox::multilayer_perceptron
-	  <float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons, sigmoid_functor<float> >  
-	  ann(inf, individuals, prob_positions);
+    ann_toolbox::multilayer_perceptron
+	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons >  
+	ann(inf,"multilayer perceptron",  individuals, prob_positions);
 
-	problem::docking<float_type>::integrator integ(inf, individuals, prob_positions);
-	////////////////////////////////////////////////
-	// Define the problem						positions, strategy, 				max_time, max_thrust
-	problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
-	prob.set_start_condition(start_cnd, 6);	
-	prob.set_log_genome(true);
+    problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
+    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator",  problem::docking<float_type>::fitness_type::minimal_distance,
+						    individuals, prob_positions, vicinity_distance, vicinity_speed, prob_maximum_time);
+    ////////////////////////////////////////////////
+    // Define the problem						positions, strategy, 				max_time, max_thrust
+    problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, &fitt, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 
-	prob.set_fitness_function(prob_fitness_function);
-	prob.set_timeneuron_threshold(prob_timeneuron_threshold/100.0);
+    std::cout<<"initializing tasks"<<std::endl;
+    prob.initialize_tasks();
+    prob.set_start_condition(start_cnd, 6);	
+    prob.set_log_genome(true);
+
+    prob.set_fitness_function(prob_fitness_function);
+    prob.set_timeneuron_threshold(prob_timeneuron_threshold/100.0);
 	
-	prob.set_time_step(integrator_timestep);
+    prob.set_time_step(integrator_timestep);
 	
-	prob.set_vicinity_distance(vicinity_distance);
-	prob.set_vicinity_speed(vicinity_speed);
-	prob.set_vicinity_orientation(vicinity_orientation);
-			
-	algorithm::sga algo(algo_generations, 	// Generations
-						algo_crossover/100.0,	// CR
-						algo_mutation/100.0,	// Mutation	
-						algo_elitism );/*, 	// Elitism
-						0.0,
-						  2,	//random
-						  0); 	// no roulette selection*/
+    prob.set_vicinity_distance(vicinity_distance);
+    prob.set_vicinity_speed(vicinity_speed);
+    prob.set_vicinity_orientation(vicinity_orientation);
+
+
+    std::cout<<"creating algorithms"<<std::endl;
+    algorithm::sga algo(algo_generations, 	// Generations
+			algo_crossover/100.0,	// CR
+			algo_mutation/100.0,	// Mutation	
+			algo_elitism );/*, 	// Elitism
+					 0.0,
+					 2,	//random
+					 0); 	// no roulette selection*/
 						
 //	algorithm::de algo(20, 0.7, 0.5, 2);
 
 
-	////////////////////////////////////////////////
-	// Create the archipelag/islands
-	cout << "Creating an archipelago...";
-	archipelago arch = archipelago(prob, algo, islands, individuals);
-	cout << "Created!";
+    ////////////////////////////////////////////////
+    // Create the archipelag/islands
+    cout << "Creating an archipelago...";
+    archipelago arch = archipelago(prob, algo, islands, individuals);
+    cout << "Created!";
 
 
-	///////////////////////////////////////////////
-	// Start evolution
-	cout << "\rStarting evolution ...          ID: " << run_id << "            " << endl;	
+    ///////////////////////////////////////////////
+    // Start evolution
+    cout << "\rStarting evolution ...          ID: " << run_id << "            " << endl;	
 	
-	ofstream myfile;
-	int i = 0, lasti = 0;
-	float best_fitness = 99.9;	// minimizing!!
-	float last_fitness = 99.9;
+    ofstream myfile;
+    int i = 0, lasti = 0;
+    float best_fitness = 99.9;	// minimizing!!
+    float last_fitness = 99.9;
 	
 
-	pre_evolve = true;		// generate random positions at first
-	// run until we are quite good
-	//	while(best_fitness > -1.7) 
-	  { 
-		cout << "\r                                                          "
-			 << "                                                            ";
-		cout << "\rGeneration #" << i << " ["; cout.flush();
+    pre_evolve = true;		// generate random positions at first
+    // run until we are quite good
+    //	while(best_fitness > -1.7) 
+    { 
+	cout << "\r                                                          "
+	     << "                                                            ";
+	cout << "\rGeneration #" << i << " ["; cout.flush();
 		
-		max_log_fitness	= 0.0;		
-		arch.evolve();
-		arch.join();
-		i++;
+	max_log_fitness	= 0.0;		
+	arch.evolve();
+	arch.join();
+	i++;
 
-		//		cout << "] best: " << arch.best().get_fitness() << ": " 
-		     cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+	//		cout << "] best: " << arch.best().get_fitness() << ": " 
+	cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
 			
-		//////////////////////////////////////////
-		// logging
-		if(max_log_fitness < best_fitness) {
-			best_fitness = max_log_fitness;	
-			cout << "\r=== Best increased @ #" << i-1 << ": " << max_log_fitness << endl;
+	//////////////////////////////////////////
+	// logging
+	if(max_log_fitness < best_fitness) {
+	    best_fitness = max_log_fitness;	
+	    cout << "\r=== Best increased @ #" << i-1 << ": " << max_log_fitness << endl;
 
-			// write to file
-			std::string h = "id_" + run_id + "_bestrun.dat";
-			myfile.open (h.c_str());
+	    // write to file
+	    std::string h = "id_" + run_id + "_bestrun.dat";
+	    myfile.open (h.c_str());
 //			myfile << "ID: " << run_id << endl;
-			myfile << configs << endl;//expected
-			myfile << max_log_string << endl;
-			myfile.close();	
-			lasti = i-1;
+	    myfile << configs << endl;//expected
+	    myfile << max_log_string << endl;
+	    myfile.close();	
+	    lasti = i-1;
 			
-			// save good ones
-			//good_ones.push_back(arch.best());
-		}
-		if(max_log_fitness < last_fitness) {	
-			last_fitness = max_log_fitness;
-			std::string h = boost::lexical_cast<std::string>(i-1);
-			while(h.length() < 5) h = "0" + h;
-			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
-			myfile.open (s.c_str());
+	    // save good ones
+	    //good_ones.push_back(arch.best());
+	}
+	if(max_log_fitness < last_fitness) {	
+	    last_fitness = max_log_fitness;
+	    std::string h = boost::lexical_cast<std::string>(i-1);
+	    while(h.length() < 5) h = "0" + h;
+	    std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
+	    myfile.open (s.c_str());
 //			myfile << "ID: " << run_id << endl;
-			myfile << configs << endl;
-			myfile << max_log_string << endl;
-			myfile.close();	
-			//////////////////////////////////////////
-			lasti = i-1;
+	    myfile << configs << endl;
+	    myfile << max_log_string << endl;
+	    myfile.close();	
+	    //////////////////////////////////////////
+	    lasti = i-1;
 			
-			// try to put it online!
-			std::string cmd = "curl -H \"Expect: \" -F \"file=@";
-			cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
-			cmd += " -o tmp.out";
-			int ret = system (cmd.c_str());	
+	    // try to put it online!
+	    std::string cmd = "curl -H \"Expect: \" -F \"file=@";
+	    cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
+	    cmd += " -o tmp.out";
+//	    int ret = system (cmd.c_str());	
 			
-		}
-		cout.flush();		
+	}
+	cout.flush();		
 
-		// randomize positions if we seem to be stuck
-		if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
-			pre_evolve = true;
-			lasti = i - 1;
-			last_fitness = 0.0;
-		}
-	}	
+	// randomize positions if we seem to be stuck
+	if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
+	    pre_evolve = true;
+	    lasti = i - 1;
+	    last_fitness = 0.0;
+	}
+    }	
 	
-	// finished
-	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;
+    // finished
+    cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;
 
-	return 0;
+    return 0;
 }

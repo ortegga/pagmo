@@ -4,6 +4,7 @@
 #include <map>
 #include "dataset.h"
 #include "logger.h"
+#include "boost/foreach.hpp"
 
 
 namespace cuda
@@ -83,26 +84,73 @@ namespace cuda
 	size_t regs_per_thread;
     };
 
+
+//////////////////////////////////////////////////////////////////////////////
+    template <typename cuda_type>
+      class task;
+
+    template <typename cuda_type>
+	class task_queue;
+    
+    template <typename cuda_type>
+	class task_predecessor_mappings
+    {
+    public:
+	typedef std::map<size_t, size_t> precondition_datamap_type;
+	typedef std::map<task<cuda_type> *, precondition_datamap_type * >  task_precondition_map;
+
+	void add_mapping(task<cuda_type> * t, size_t second, size_t first)
+	{
+	    if (m_pretasks.find(t) == m_pretasks.end())
+	    {
+		precondition_datamap_type *mapping = new precondition_datamap_type();
+		(*mapping)[first] = second;
+		m_pretasks[t] =  mapping;
+	    }
+	    else
+	    {
+		(*m_pretasks[t])[first] = second;
+	    }
+	}
+	class Ftor 
+	{
+	public:
+	    void operator () (std::pair<const task<cuda_type> *, precondition_datamap_type *> & p)
+	    {
+		delete p.second;
+	    }
+	};
+	~task_predecessor_mappings() 
+	{
+	    typename task_precondition_map::iterator iter;
+	    for (iter = m_pretasks.begin(); iter != m_pretasks.end(); ++iter)
+	    {
+		delete iter->second;
+	    }
+	}
+    protected:
+	friend class task<cuda_type>;
+	task_precondition_map m_pretasks;
+    };
+
+//////////////////////////////////////////////////////////////////////////////
+    
+
     template <typename cuda_type>
 	class task
     {
     public:
 
-	typedef std::map <size_t, dataset<cuda_type>* > datamap;
+	typedef std::map <size_t, typename dataset<cuda_type>::ptr > datamap;
 
-    task(info & in, size_t individuals, size_t task_count, size_t task_size) : 
-	m_info(in), m_profile(individuals, task_count, task_size)
+    task(info & in, const std::string & name, size_t individuals, size_t task_count, size_t task_size) : 
+	m_info(in), m_name(name), m_stage(0), m_profile(individuals, task_count, task_size)
 	{
 	
 	}
 
 	virtual ~task()
 	{
-	    typename datamap::iterator iter;
-	    for (iter = m_data.begin(); iter != m_data.end(); ++iter)
-	    {
-		delete iter->second;
-	    }
 	    m_data.clear();
 	}
 
@@ -120,7 +168,7 @@ namespace cuda
 	    }
 	    else
 	    {
-		CUDA_LOG_ERR(" set_input id is not valid ", pt);
+		CUDA_LOG_ERR(m_name, " set_input id is not valid ", pt);
 	    }
 	    return false;
 	}
@@ -139,7 +187,7 @@ namespace cuda
 	    }
 	    else
 	    {
-		CUDA_LOG_ERR(" set_input id is not valid ", indiv);
+		CUDA_LOG_ERR(m_name, " set_input id is not valid ", indiv);
 	    }
 	    return false;
 	}
@@ -159,7 +207,7 @@ namespace cuda
 	    }
 	    else
 	    {
-		CUDA_LOG_ERR(" set_input id is not valid ", realid);
+		CUDA_LOG_ERR(m_name, " set_input id is not valid ", realid);
 	    }
 	    return false;
 	}
@@ -170,8 +218,8 @@ namespace cuda
 	    size_t realid = individual*m_profile.points + id;
 	    if (!has_data(parameterid) || !is_valid(element, realid))
 	    {
-		CUDA_LOG_ERR(" get_outputs failed id:", id);
-		CUDA_LOG_ERR(" get_outputs failed parameterid:", parameterid);
+		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
+		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
 		return false;
 	    }
 	    return get_data(realid, parameterid, outputs);
@@ -182,8 +230,8 @@ namespace cuda
 	    outputs.clear();
 	    if (!has_data(parameterid) || !is_valid(individual, id))
 	    {
-		CUDA_LOG_ERR(" get_outputs failed id:", id);
-		CUDA_LOG_ERR(" get_outputs failed parameterid:", parameterid);
+		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
+		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
 		return false;
 	    }
 	    return get_data(id, parameterid, outputs);
@@ -194,8 +242,8 @@ namespace cuda
 	    outputs.clear();
 	    if (!has_data(parameterid) || !is_valid(point, id))
 	    {
-		CUDA_LOG_ERR(" get_outputs failed id:", id);
-		CUDA_LOG_ERR(" get_outputs failed parameterid:", parameterid);
+		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
+		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
 		return false;
 	    }
 	    return get_data(id, parameterid, outputs);
@@ -205,10 +253,10 @@ namespace cuda
 	{
 	    if (!has_data(parameter))
 	    {
-		CUDA_LOG_WARN(" prepare_dataset creating dataset:", parameter);
+		CUDA_LOG_WARN(m_name, " prepare_dataset creating dataset:", parameter);
 		return create_data(parameter, size, element, false);
 	    }
-	    CUDA_LOG_WARN(" prepare_dataset dataset already exists:", parameter);
+	    CUDA_LOG_WARN(m_name, " prepare_dataset dataset already exists:", parameter);
 	    return false;
 	}
 
@@ -216,10 +264,10 @@ namespace cuda
 	{
 	    if (!has_data(parameter))
 	    {
-		CUDA_LOG_WARN(" prepare_individual_dataset creating dataset:", parameter);
+		CUDA_LOG_WARN(m_name, " prepare_individual_dataset creating dataset:", parameter);
 		return create_data(parameter, size, individual, false);
 	    }
-	    CUDA_LOG_WARN(" prepare_individual_dataset dataset already exists:", parameter);
+	    CUDA_LOG_WARN(m_name, " prepare_individual_dataset dataset already exists:", parameter);
 	    return false;
 	}
 
@@ -227,15 +275,15 @@ namespace cuda
 	{
 	    if (!has_data(parameter))
 	    {
-		CUDA_LOG_WARN(" prepare_point_dataset creating dataset:", parameter);
+		CUDA_LOG_WARN(m_name, " prepare_point_dataset creating dataset:", parameter);
 		return create_data(parameter, size, point, false);
 	    }
-	    CUDA_LOG_WARN(" prepare_point_dataset dataset already exists:", parameter);
+	    CUDA_LOG_WARN(m_name, " prepare_point_dataset dataset already exists:", parameter);
 	    return false;
 	}
 
 
-	virtual bool assign_data (size_t parameterid, dataset<cuda_type> * pdata, bool force = false)
+	virtual bool assign_data (size_t parameterid, typename dataset<cuda_type>::ptr  pdata, bool force = false)
 	{
 	    if (force || !has_data(parameterid)) 
 	    {
@@ -244,23 +292,27 @@ namespace cuda
 	    }
 	    else
 	    {
-		CUDA_LOG_ERR("Could not assign_data parameterid:", parameterid);
+		CUDA_LOG_ERR(m_name, "Could not assign_data parameterid:", parameterid);
 		return false;
 	    }
 	}
 
-	dataset<cuda_type> * get_dataset (size_t parameterid)
+	typename dataset<cuda_type>::ptr  get_dataset (size_t parameterid)
 	{
 	    if (m_data.find(parameterid) != m_data.end())
 	    {
 		return m_data[parameterid];
 	    }
-	    return NULL;
+	    return typename dataset<cuda_type>::ptr();
 	}
       
 	bool has_data(size_t parameterid)
 	{
-	    return get_dataset(parameterid) != NULL;
+	    if (get_dataset(parameterid))
+	    {
+		return true;
+	    }
+	    return false;
 	}
       
 	size_t get_tasksize() 
@@ -271,6 +323,68 @@ namespace cuda
 	size_t get_individuals() 
 	{
 	    return m_profile.individuals;
+	}
+
+	void add_association(task<cuda_type> * precon_task, size_t prev_output, size_t curr_input)
+	{
+	    m_preconditions.add_mapping(precon_task,prev_output, curr_input);
+	}
+
+
+/*
+	class Ftor 
+	{
+	public:
+	    void operator () (std::pair<const task<cuda_type> *, precondition_datamap_type *> & p)
+	    {
+		delete p.second;
+	    }
+	};
+	~task_predecessor_mappings() 
+	{
+	    typename task_precondition_map::iterator iter;
+	    for (iter = m_pretasks.begin(); iter != m_pretasks.end(); ++iter)
+	    {
+		delete iter->second;
+	    }
+	}
+    protected:
+	friend class task_queue<cuda_type>;
+	task_precondition_map m_pretasks;
+ */
+	bool execute_associations()
+	{
+	    typename task_predecessor_mappings<cuda_type>::task_precondition_map::iterator iter;
+	    for (iter = m_preconditions.m_pretasks.begin();iter != m_preconditions.m_pretasks.end(); ++iter)
+	    {
+		typename task_predecessor_mappings<cuda_type>::precondition_datamap_type * sub_cond =  iter->second;
+		task<cuda_type> * t = iter->first;
+		typename task_predecessor_mappings<cuda_type>::precondition_datamap_type::iterator iter1 = sub_cond->begin();
+		for (;iter1 != sub_cond->end(); ++iter1)
+		{
+		    typename dataset<cuda_type>::ptr d = t->get_dataset(iter1->second);
+		    CUDA_LOG_INFO(m_name, " retrieved ptr ", d);
+		    if(!assign_data(iter1->first, d, true))
+		    {
+			CUDA_LOG_ERR(m_name, "could not assign data " , d);
+			return false;
+		    }
+		}
+	    }
+	    return true;
+	}
+
+	size_t stage ()
+	{
+	    return m_stage;
+	}
+	void reset_stage()
+	{
+	    m_stage = 0;
+	}
+	void next_stage()
+	{
+	    ++m_stage;
 	}
 
 	virtual bool launch () = 0;
@@ -320,9 +434,10 @@ namespace cuda
 
 	virtual bool get_data (size_t taskid, size_t parameterid, std::vector<cuda_type> & data)
 	{
-	    dataset<cuda_type> * pData = get_dataset(parameterid);
+	    typename dataset<cuda_type>::ptr pData = get_dataset(parameterid);
 	    if (!pData)
 	    {
+		CUDA_LOG_ERR(m_name, "failed to get data ", parameterid);
 		return false;
 	    }
 
@@ -341,7 +456,7 @@ namespace cuda
 	virtual bool set_data (size_t taskid, size_t parameterid, 
 			       const std::vector<cuda_type> & data)
 	{
-	    dataset<cuda_type> * pData = get_dataset(parameterid);
+	    typename dataset<cuda_type>::ptr pData = get_dataset(parameterid);
 	    if (!pData || pData->get_task_size() != data.size())
 	    {
 		return false;
@@ -375,7 +490,7 @@ namespace cuda
 	    if (!has_data(parameterid)) 
 	    {
 	       	instances = get_element_count(settype);
-		dataset<cuda_type> * s = new dataset<cuda_type>(m_info, instances, stride, bHost);
+		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, instances, stride, bHost));
 		m_data[parameterid] = s;
 		return true;
 	    }
@@ -385,10 +500,13 @@ namespace cuda
 	    }
 	}
 
-
+	friend class task_queue<cuda_type>;
 	datamap m_data;
 	info & m_info;
+	std::string m_name;
+	size_t m_stage;
 	task_profile m_profile;
+	task_predecessor_mappings<cuda_type> m_preconditions;
     };
 }
 
