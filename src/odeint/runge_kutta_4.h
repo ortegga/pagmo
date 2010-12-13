@@ -24,7 +24,7 @@ namespace pagmo
 	
 	ode_step_runge_kutta_4 (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : base(inf, name, individuals, task_count_)
 	{
-	    this->set_shared_chunk(0, 0 , 6 + 2);//inputs + outputs for all individuals for all points
+	    this->set_shared_chunk(0, 0 , 24 + 6 + 2);//inputs + outputs for all individuals for all points plus 6 for each k of the rk method
 	    this->set_global_chunk(0, 0 , 6 + 2);
 	    
 	}
@@ -47,7 +47,7 @@ namespace pagmo
 	    block_complete_dimensions dims (&this->m_info, this->get_profile(), this->m_name);
 
 	    CUDA_LOG_WARN(this->m_name, "block_complete_dimensions", &dims);
-	    cudaError_t err =  runge_kutta_integrate<ty, system, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), this->m_param_t, 
+	    cudaError_t err =  runge_kutta_integrate<ty, system, scale_functor<ty>, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), this->m_param_t, 
 										      this->m_param_dt,this->m_param_scale_limits, &dims);
 	    if (err != cudaSuccess)
 	    {

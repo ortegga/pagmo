@@ -13,6 +13,7 @@
 #include "../cuda/kernel.h"
 #include "../cuda/fitness_tasks.h"
 #include "../ann_toolbox/neural_network.h"
+#include "../rng.h"
 
 
 namespace pagmo 
@@ -25,7 +26,7 @@ namespace pagmo
 	public:
 
 	    typedef ann_toolbox::neural_network <fty, 7, 2 >  neural_network;
-	    typedef hills_dynamical_system<fty, scale_functor<fty> > dynamic_system;
+	    typedef hills_dynamical_system<fty > dynamic_system;
 	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system > integrator;
 	    typedef fitness::evaluate_fitness_task<fty > fitness_type;
 
@@ -138,6 +139,200 @@ namespace pagmo
 		generate_starting_positions();
 	    }
 
+	    
+// generating the starting positions
+// depends on the strategy chosen
+// TODO: check if we really are independent of attitude (4/6 in this function)
+	    void generate_starting_positions() const 
+	    {
+		// Fixed positions
+		if(pre_evolution_strategy == docking::FIXED_POS) 
+		{
+		    // depending on the ann->get_number_of_inputs() we use 4 or 6
+		    // i.e. (we use the attitude or not)
+		    if(random_starting_positions >= 1) 
+		    {
+			fty cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    }
+
+		    if(random_starting_positions >= 2) 
+		    {
+			fty cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    }
+		
+		    if(random_starting_positions >= 3) 
+		    {
+			fty cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0 };		
+			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    }
+		
+
+/*		// DEBUG
+		std::cout << "XY@: " << random_start[0][0] << "," << random_start[0][2] << ","<< random_start[0][4];
+		std::cout << " XY@: " << random_start[1][0] << "," << random_start[1][2] << ","<< random_start[1][4];
+		std::cout << " XY@: " << random_start[2][0] << "," << random_start[2][2] << ","<< random_start[2][4];
+		std::cout << std::endl;*/		
+		    return;
+		}
+	
+		switch(pre_evolution_strategy) 
+		{
+		case SPOKE_POS:
+		    // generate starting positions one every (360/n) degree
+		    generate_spoke_positions(2.0, 2.0);
+		    break;
+		
+		case RAND_POS:
+		    // generate complete random starting positions (in doughnut)
+		    generate_random_positions(1.8, 2.0);
+		    break;
+
+		case DONUT_FACING:
+		    // generate complete random starting positions (in doughnut)
+		    generate_random_positions_facing_origin(1.8, 2.0);
+		    break;
+		
+		case CLOUD_POS:
+		    generate_cloud_positions(2.0, M_PI, 0.1);
+		    break;
+		
+		case SPOKE_POS_HALF:
+		    // generate starting positions one every 360/n° 
+		    // -1 ==> means only in the negative x axis!
+		    generate_spoke_positions(1.8, 2.0, -1);
+		    break;	
+
+		case SPOKE_8_POS:
+		    // generate starting positions random_starting_positions/m every (360/m)°
+		    generate_multi_spoke_positions(1.8, 2.0, 8);
+		    break;	
+		
+		case FULL_GRID:
+		    generate_full_grid_positions(5, 5);
+		    break;
+	
+		}	
+	    }
+
+	    void generate_multi_spoke_positions(fty r1, fty r2, int spokes ) const 
+	    {
+		rng_double drng = rng_double(rng_uint32()());
+		fty r, theta, x, y;	
+	
+		for(fty a = 0; random_start.size() < random_starting_positions; a += (2*M_PI)/spokes) {
+		    r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		    x = r * cos(a);
+		    y = r * sin(a);
+		    theta = drng() * 2 * M_PI;	// theta between 0-2Pi
+		    // Start Condt:  x,  vx, y,  vy, theta, omega
+		    fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		    random_start.push_back(std::vector<fty> (cnd, cnd + 6)); //ann->get_number_of_inputs()
+		}
+
+	    }
+	    void generate_spoke_positions(fty r1, fty r2, int half = 0) const 
+	    {
+		rng_double drng = rng_double(rng_uint32()());
+		fty r, theta, x, y;	
+	
+		for(fty a = 0; random_start.size() < random_starting_positions; a += (2*M_PI)/random_starting_positions) {
+		    r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		    x = r * cos(a);
+		    // if we select a half the points should be in that half!
+		    if( (half == -1 && x > 0.0) || 
+			(half == 1  && x < 0.0)  )  x = -x;		 
+		    y = r * sin(a);
+		    theta = drng() * 2 * M_PI;	// theta between 0-2Pi
+		    // Start Condt:  x,  vx, y,  vy, theta, omega
+		    fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		    random_start.push_back(std::vector<fty> (cnd, cnd + 6)); //ann->get_number_of_inputs()
+		    //	printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+		    //		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+		}
+
+	    }
+
+	    void generate_random_positions(fty r1, fty r2) const 
+	    {
+		rng_double drng = rng_double(rng_uint32()());
+		fty r, a, theta, x, y;	
+	
+		while(random_start.size() < random_starting_positions) {
+		    r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		    a = drng() * 2 * M_PI;	// alpha between 0-2Pi
+		    x = r * cos(a);
+		    y = r * sin(a);
+		    theta = drng() * 2 * M_PI;	// theta between 0-2Pi
+		    // Start Condt:  x,  vx, y,  vy, theta, omega
+		    fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		    random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    //	printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+		    //		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+		}
+	    }
+
+	    void generate_random_positions_facing_origin(fty r1, fty r2) const 
+	    {
+		rng_double drng = rng_double(rng_uint32()());
+		fty r, a, theta, x, y;	
+	
+		while(random_start.size() < random_starting_positions) {
+		    r = r1 + (r2-r1) * drng();	// radius between 1.5 and 2
+		    a = drng() * 2 * M_PI;	// alpha between 0-2Pi
+		    x = r * cos(a);
+		    y = r * sin(a);
+		    theta = atan2(-y, -x);	// theta is facing 0/0
+		    if(theta < 0) theta += 2 * M_PI;
+		
+		    // Start Condt:  x,  vx, y,  vy, theta, omega
+		    fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		    random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    //	printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+		    //		random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+		}
+	    }
+
+
+	    void generate_cloud_positions(fty d, fty angle, fty rin) const {
+		rng_double drng = rng_double(rng_uint32()());
+		fty r, theta, a, x, y;
+
+		fty x_start = d * cos(angle);
+		fty y_start = d * sin(angle);
+
+		while(random_start.size() < random_starting_positions) {
+		    r = rin * drng();       // between 0 and rin
+		    a = drng() * 2 * M_PI;  // alpha between 0-2Pi
+		    x = x_start + r * cos(a);
+		    y = y_start + r * sin(a);
+		    theta = drng() * 2 * M_PI;      // theta between 0-2Pi
+		    // Start Condt:  x,  vx, y,  vy, theta, omega
+		    fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+		    random_start.push_back(std::vector<fty> (cnd, cnd + 6));
+		    //      printf("\tPos%2d:%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", i+1,
+		    //              random_start[i][0], random_start[i][1], random_start[i][2], random_start[i][3], random_start[i][4], random_start[i][5]);
+		}
+	    }
+
+	    void generate_full_grid_positions(int h, int v) const {
+		fty r, theta, x, y;	
+		fty minx = -2, maxx = 2;
+		fty miny = -2, maxy = 2;	
+		for(int i = 0; i < h; i++) {
+		    x = i * (maxx-minx) / (h - 1) + minx;
+		    for(int j = 0; j < v; j++) {
+			y = j * (maxy-miny) / (v - 1) + miny;
+			theta = 0;//drng() * 2 * M_PI;	// theta between 0-2Pi
+			// Start Condt:  x,  vx, y,  vy, theta, omega
+			fty cnd[] = { x, 0.0, y, 0.0, theta, 0.0 };
+			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
+		    }
+		}
+
+	    }
+
 	    void objfun_impl(population & pop) const
 	    {
 		population::size_type size = pop.size();
@@ -203,7 +398,6 @@ namespace pagmo
 		    {
 			return;
 		    }
-		    std::cout<<"-----"<<std::endl;
 		}
 		
 		/////////////////////////////////////////////////////////////////////////
@@ -217,12 +411,15 @@ namespace pagmo
 		    //necessary if we're working with floats while pagmo works with doubles
 		    std::vector<fty> wv;
 		    ann->get_weights(s,wv);
-		    indiv.cur_x.clear();
-		    indiv.cur_x.insert(indiv.cur_x.begin(),wv.begin(),wv.end());
+		    decision_vector d;
+		    d.insert(d.begin(), wv.begin(), wv.end());
+		    pop.set_x(s, d);
+		    decision_vector dv = d;
+		    std::transform(dv.begin(), dv.end(), indiv.cur_x.begin(), dv.begin(),std::minus<double>());
+		    pop.set_v(s, dv);
 
 		    std::vector<fty> out;
 		    fty result = 0; 
-		    std::cout<<"fty result = 0"<<std::endl;
 		    for(size_t i = 0;i < random_start.size();i++) 
 		    {	
 			out.clear();
@@ -231,10 +428,10 @@ namespace pagmo
 			    std::cout<<"failed to retrieve fitness results"<<std::endl;
 			    return;
 			}
-			std::cout<<"out"<<out.size()<<std::endl;
 			result += out[0];
 		    }
 		    result /= random_start.size();
+		    CUDA_LOG_INFO("docking", " result of launch is ", result);
 		    indiv.cur_f[0] = result;
 		    if ( first || base::compare_fitness(indiv.cur_f, max_fit)) {
 			max_fit = indiv.cur_f;
@@ -243,35 +440,7 @@ namespace pagmo
 		    }
 		}
 		std::cout<<max_fit<<std::endl;
-		//std::string logg;
-		//f[0] = all_run(logg);	
-		//std::cout<<"Fitness value: "<<f[0]<<std::endl;
 	    }	    
-
-	    /// Generate starting positions for the run of the individuals.
-	    void generate_starting_positions() const
-	    {
-		if (random_start.empty())
-		{
-		    if(random_starting_positions >= 1) 
-		    {
-			fty cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
-			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
-		    }
-
-		    if(random_starting_positions >= 2) 
-		    {
-			fty cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
-			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
-		    }
-		
-		    if(random_starting_positions >= 3) 
-		    {
-			fty cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0 };		
-			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
-		    }
-		}
-	    }
 				
 	    /// Constants for 
 	    enum 

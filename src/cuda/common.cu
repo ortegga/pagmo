@@ -50,4 +50,20 @@ __device__ __forceinline__ void load_to_shared(ty * shared, ty * global, size_t 
     }
 }
 
+template <typename ty, typename ftor >
+__device__ __forceinline__ void cuda_copy (ty * to, ty * from, size_t size, ftor f = ftor() )
+{
+    for (int i=0; i < size ; ++i)
+    {
+	to [i] = f(from[i]);
+    }
+}
 
+template <typename ty, typename ftor >
+__device__ __forceinline__ void cuda_copy1 (ty * to, ty * from, ty param, size_t size, ftor f = ftor() )
+{
+    for (int i=0; i < size ; ++i)
+    {
+	to [i] = f(from[i], param);
+    }
+}

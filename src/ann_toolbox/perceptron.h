@@ -56,7 +56,9 @@ namespace ann_toolbox {
 	}
 
 
-	~perceptron() {}
+	~perceptron() 
+	{
+	}
 
 	bool launch() 
 	{

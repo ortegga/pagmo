@@ -69,11 +69,6 @@ namespace cuda
 	    return m_prof->points;
 	}
 
-/*	virtual std::string to_string()
-	{
-	    
-	}*/
-
     protected:
 
 	info * m_inf;
@@ -93,7 +88,6 @@ namespace cuda
 	block_complete_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
 	kernel_dimensions(inf, prof, name), m_block_count(0),  m_block_size(0), m_block_shared_mem(0),m_indivs_per_block(0)
 	{
-//	    std::cout<<"block_complete_dimensions::block_complete_dimensions"<<std::endl;
 	    refresh();
 	}
 
@@ -109,7 +103,7 @@ namespace cuda
 
 	virtual size_t get_shared_mem_size()
 	{
-	    return m_block_shared_mem;
+	    return m_block_shared_mem * sizeof(float);
 	}
 
 	virtual size_t get_tasks_per_block()
@@ -133,16 +127,8 @@ namespace cuda
 		m_block_size = block_size;
 
 	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
-      
-	    // Assuming equal threads go in all the blocks.
 	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
 	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
-
-/*	    std::cout<<"m_block_count "<<m_block_count<<std::endl;
-	    std::cout<<"m_indivs_per_block "<<m_indivs_per_block<<std::endl;
-	    std::cout<<"m_prof->get_total_indiv_shared_chunk "<<m_prof->get_total_indiv_shared_chunk()<<std::endl;
-	    std::cout<<"m_prof->get_individual_job_count()"<<m_prof->get_individual_job_count()<<std::endl;
-	    std::cout<<"Kernel dimensions "<<m_block_size<<" "<<m_block_count<<" "<<m_block_shared_mem<<" "<<m_indivs_per_block<<std::endl;*/
 	    return true;
 	}
     protected:
@@ -221,14 +207,6 @@ namespace cuda
 	cuda::timer m_duration;
 	bool m_started;
     };
-
-
-
-/*    ostream & operator << (ostream & os, kernel_dimensions & dims)
-    {
-	
-    }
-*/
 }
 
 #endif

@@ -7,28 +7,28 @@
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
-template <typename ty, typename preprocesor, typename pre_exec = nop_functor<ty>, typename post_exec = nop_functor<ty> >
+template <typename ty, typename preprocesor = nop_functor<ty>, typename pre_exec = nop_functor<ty>, typename post_exec = nop_functor<ty> >
     struct hills_dynamical_system ;
 
-typedef hills_dynamical_system <float, scale_functor<float>, nop_functor<float>, nop_functor<float> > hills_dynamical_sys_float;
-typedef hills_dynamical_system <double, scale_functor<double>, nop_functor<float>, nop_functor<double> > hills_dynamical_sys_double;
+typedef hills_dynamical_system <float, nop_functor<float>, nop_functor<float>, nop_functor<float> > hills_dynamical_sys_float;
+typedef hills_dynamical_system <double, nop_functor<double>, nop_functor<float>, nop_functor<double> > hills_dynamical_sys_double;
 
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename cuda_type, typename dynamicalsystem, typename pre_exec, typename post_exec>
+template <typename cuda_type, typename dynamicalsystem, typename o_pre_exec, typename pre_exec, typename post_exec>
     cudaError_t runge_kutta_integrate (cuda_type  * X , cuda_type * O, cuda_type t , cuda_type dt , 
 				cuda_type max_val, cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, nop_functor<float>, nop_functor<float> > 
+cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, scale_functor<float>, nop_functor<float>, nop_functor<float> > 
     (float  * X , float * O, 
      float t , float dt , float max_val, 
      cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, nop_functor<float>, nop_functor<float> > 
+cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, scale_functor<double>, nop_functor<double>, nop_functor<double> > 
     (double  * X , double * O, double t ,
      double dt , double max_val, 
      cuda::kernel_dimensions * dimensions_);
