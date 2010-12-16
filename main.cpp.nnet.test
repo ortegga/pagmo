@@ -18,7 +18,7 @@ using namespace cuda;
 #define CUDA_TY float
 
 //typedef ann_toolbox::multilayer_perceptron<CUDA_TY, 2, 3, 2, linear_functor <CUDA_TY>  >  multilayer_nnet;
-typedef ann_toolbox::perceptron<CUDA_TY, 3, 3, linear_functor <CUDA_TY>  >  multilayer_nnet;
+typedef ann_toolbox::perceptron<CUDA_TY, 3, 3, nop_functor<CUDA_TY>, linear_functor <CUDA_TY>  >  multilayer_nnet;
 
 int load_subtask( int individualid, int taskid, multilayer_nnet * pNet);
 int print_subtask(int individualid, int taskid, multilayer_nnet * pNet);
@@ -31,11 +31,11 @@ int main( int argc, char **argv )
   std::cout << inf << std::endl;
 
   unsigned int taskCount = 10;
-  unsigned int individuals = 3;
+  unsigned int individuals = 20;
 
   //task might need to know the complete type of the subtasks.
 
-  multilayer_nnet perc(inf, individuals, taskCount);
+  multilayer_nnet perc(inf, "test network", individuals, taskCount);
   //Timer scope
   {
     scoped_timer tim("multilayer nnet cumulative timer");
@@ -83,10 +83,10 @@ int load_subtask(int individualid, int taskid, multilayer_nnet * pNet)
 	  //  std::cout<<j+1+taskid<<" ";
 	  W.push_back(j + 1 + individualid);
 	}
-      std::cout<<pNet->set_weights(individualid, W)<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
+      std::cout<<pNet->set_weights(data_item::individual_data(0,individualid), W)<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
     }
 
-  std::cout<<pNet->set_inputs(individualid, taskid, X)<<" "<<taskid<<" "<<individualid<<std::endl;
+  std::cout<<pNet->set_inputs(data_item::point_data(0,individualid, taskid), X)<<" "<<taskid<<" "<<individualid<<std::endl;
 
   if(!individualid && !taskid)
     std::cout<<pNet->prepare_outputs()<<std::endl;
@@ -115,7 +115,7 @@ int print_subtask(int individualid, int taskid, multilayer_nnet * pNet)
 
   O.clear();
   
-  if(!pNet->get_outputs(individualid, taskid, O))
+  if(!pNet->get_outputs(data_item::point_data(0,individualid, taskid), O))
     {
       std::cout<<" Error: could not get data"<<std::endl;
       return 0;

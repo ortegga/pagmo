@@ -74,7 +74,8 @@ namespace cuda
 	info * m_inf;
 	task_profile * m_prof;
 	std::string m_name;
-    
+    public:	
+	typedef  boost::shared_ptr<kernel_dimensions > ptr;    
     };
 
 
@@ -126,8 +127,11 @@ namespace cuda
 	    else
 		m_block_size = block_size;
 
+	    /*m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+	      m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);*/
 	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
-	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
+	    CUDA_LOG_INFO(m_name, "m_indivs_per_block ", m_indivs_per_block);
+	    CUDA_LOG_INFO(m_name, "m_prof->get_individual_job_count() ", m_prof->get_individual_job_count());
 	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
 	    return true;
 	}
@@ -135,9 +139,18 @@ namespace cuda
 
 	// use the block size that maximizes shared memory use
 	//TODO add some code to make sure individual chunks lie in the same block
-	size_t use_shared_mem_suggestion( const cudaDeviceProp * , task_profile * )
+	size_t use_shared_mem_suggestion( const cudaDeviceProp * props, task_profile * prof)
 	{
+	    /*const unsigned int indiv_shared = prof->get_total_indiv_shared_chunk();
+	    const unsigned int block_shared = props->get_block_shared_mem();
+	    size_t result;
+	    if (block_shared < indiv_shared)
+	    {
+		return 0;
+	    }
+	    result = block_shared % indiv_shared;*/
 	    return 200000;
+	    
 	}
 
 	size_t use_thread_suggestion(const cudaDeviceProp * props, task_profile * prof)
@@ -158,6 +171,13 @@ namespace cuda
 	    CUDA_LOG_INFO(m_name, " warp size suggestion: ", minind);
 	    CUDA_LOG_INFO(m_name, " job count ", indiv_jobs);
 	    return minind;
+	    /*const int indiv_jobs =  prof->get_individual_job_count();
+	    const int individuals = prof->individuals();
+	    int ub = props->maxThreadsPerBlock >> 1;
+	    int lb = props->warpSize << 1;
+
+	    start -= start % indiv_jobs;
+	    return start;*/
       
 	}
 

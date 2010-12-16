@@ -349,7 +349,7 @@ namespace pagmo
 		    //necessary if we're working with floats while pagmo works with doubles
 		    std::vector<fty> wv;
 		    wv.insert(wv.begin(),wi.begin(),wi.end());
-		    ann->set_weights(s,wv);
+		    ann->set_weights(data_item::individual_data(0,s),wv);
 
 		    for(size_t i = 0;i < random_start.size();i++) 
 		    {	
@@ -359,9 +359,9 @@ namespace pagmo
 			    fty initial_distance = inputs[0] * inputs[0] + inputs[1] * inputs[1];
 			    if (inputs.size() != ann->get_number_of_inputs())
 				inputs.push_back(initial_distance);
-			    fitness_task->set_initial_distance(s, i, initial_distance);
+			    fitness_task->set_initial_distance(data_item::point_data(0, s, i), initial_distance);
 			}
-			if(!ann->set_inputs(s,i,inputs))
+			if(!ann->set_inputs(data_item::point_data(0, s, i),inputs))
 			{
 	    		    CUDA_LOG_ERR("docking"," failed to set inputs ",inputs.size());
 			    return ;
@@ -410,9 +410,14 @@ namespace pagmo
 
 		    //necessary if we're working with floats while pagmo works with doubles
 		    std::vector<fty> wv;
-		    ann->get_weights(s,wv);
+		    ann->get_weights(data_item::individual_data(0,s),wv);
 		    decision_vector d;
 		    d.insert(d.begin(), wv.begin(), wv.end());
+		    for (int i=0; i < d.size(); ++i)
+		    {
+			std::cout<<" "<<d[i];
+		    }
+		    std::cout<<std::endl;
 		    pop.set_x(s, d);
 		    decision_vector dv = d;
 		    std::transform(dv.begin(), dv.end(), indiv.cur_x.begin(), dv.begin(),std::minus<double>());
@@ -423,7 +428,7 @@ namespace pagmo
 		    for(size_t i = 0;i < random_start.size();i++) 
 		    {	
 			out.clear();
-			if(!fitness_task->get_fitness(s, i, out))
+			if(!fitness_task->get_fitness(data_item::point_data(0, s, i), out))
 			{
 			    std::cout<<"failed to retrieve fitness results"<<std::endl;
 			    return;

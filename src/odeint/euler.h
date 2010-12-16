@@ -20,6 +20,9 @@ namespace pagmo
     
 	    euler_integrator (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : base(inf, name, individuals, task_count_)
 	    {
+		//this->set_shared_chunk(0, 0 , 24 + 6 + 2);
+		//this->set_global_chunk(0, 0 , 6 + 2)
+		this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
 	    }
 
 	    bool launch()
@@ -38,13 +41,8 @@ namespace pagmo
 		}
 	  
 		//TODO handle shared memory and different individuals
-		size_t shared_data_size = pX->get_byte_size() + pO->get_byte_size(); //pInput->get_task_byte_size() + pWeights->get_task_byte_size();
-		size_t global_data_size = shared_data_size;
-
-		block_complete_dimensions dims (this->m_inf, pX->get_tasksize(), this->m_task_count, shared_data_size, global_data_size, this->m_name);
-
 		cudaError_t err =  euler_integrate<ty, system, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), m_param_t, m_param_dt,pX->get_tasksize(), 
-										    m_param_scale_limits, task_data_size, &dims);
+										    m_param_scale_limits, task_data_size, this->m_dims.get());
 		
 		if (err != cudaSuccess)
 		{
@@ -54,6 +52,8 @@ namespace pagmo
 		return true;
 
 	    }
+	protected:
+	    kernel_dimensions::ptr m_dims;
 
 	};
 

@@ -135,33 +135,26 @@ ENDIF(ENABLE_IPOPT)
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/")
 # ODE Toolbox
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/odeint/")
-SET(ANN_FILES 
-#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/ctrnn.cpp
-#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
-#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp
-#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
-#  ${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/perceptron.cpp
+SET(GPGPU_FILES 
 )
 
 IF(ENABLE_CUDA)
   INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/cuda/")
-  SET(ANN_FILES 
+  SET(GPGPU_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudainfo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/logger.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/cudatimer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/kernel_dims.cpp
-    "${ANN_FILES}" )
+    "${GPGPU_FILES}" )
 
-  SET(ANN_FILES
+  SET(GPGPU_FILES
     cuda/kernel.cu
     cuda/nnet.cu
-    #cuda/common.cu
-    #problem/docking.cu
-    "${ANN_FILES}")
+    "${GPGPU_FILES}")
 
-  CUDA_ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+  CUDA_ADD_LIBRARY(gpgpulib ${GPGPU_FILES})
 ELSE(ENABLE_CUDA)
-  ADD_LIBRARY(ann_toolbox ${ANN_FILES})
+  #ADD_LIBRARY(ann_toolbox ${ANN_FILES})
 ENDIF(ENABLE_CUDA)
 
 

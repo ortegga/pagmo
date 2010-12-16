@@ -20,6 +20,7 @@ namespace cuda
 	bool load(unsigned int devid);
 	unsigned int get_maxthreadcount();
 	unsigned int get_warpsize();
+	unsigned int get_block_shared_mem();
 	friend std::ostream &operator<<(std::ostream &, const deviceinfo &);
 	cudaDeviceProp * get_prop() 
 	{ 
@@ -42,6 +43,7 @@ namespace cuda
 	deviceinfo* get_at(unsigned int index);
 	unsigned int get_maxthreadcount();
 	unsigned int get_warpsize();
+	unsigned int get_block_shared_mem();
 	bool set_device(unsigned int index);
 	deviceinfo * get_device();
 	cudaDeviceProp *  get_prop() 

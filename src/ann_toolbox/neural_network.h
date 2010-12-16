@@ -64,37 +64,37 @@ namespace ann_toolbox {
 	unsigned int get_number_of_outputs() const	{ return out_; }
 	unsigned int get_number_of_weights() const	{ return m_weights; }
 
-	virtual bool set_inputs(size_t individual, size_t taskid, const std::vector<ty> & inputs)
+	virtual bool set_inputs(const data_item & item, const std::vector<ty> & inputs)
 	{
 	    if (inputs.size() == get_number_of_inputs())
 	    {
-		return task<ty>::set_inputs (individual, taskid, param_inputs, inputs, get_number_of_inputs());
+		return task<ty>::set_inputs (item, param_inputs, inputs, get_number_of_inputs());
 	    }
 	    return false;
 	}
-	virtual bool set_weights(size_t individual, const std::vector<ty> &weights)
+	virtual bool set_weights(const data_item & item, const std::vector<ty> &weights)
 	{
 	    if (weights.size() == get_number_of_weights())
 	    {
-		return task<ty>::set_individual_inputs (individual, param_weights, weights, get_number_of_weights());
+		return task<ty>::set_inputs (item, param_weights, weights, get_number_of_weights());
 	    }
 	    return false;
 	}
 
-	virtual bool get_weights(size_t individual, std::vector<ty> &weights)
+	virtual bool get_weights(const data_item & item, std::vector<ty> &weights)
         {
-	    return task<ty>::get_individual_outputs (individual, param_weights, weights);
+	    return task<ty>::get_outputs (item, param_weights, weights);
 	}
 
-	virtual bool get_outputs( size_t individual, int taskid, std::vector<ty> & outputs)
+	virtual bool get_outputs( const data_item & item, std::vector<ty> & outputs)
 	{
-	    return task<ty>::get_outputs (individual, taskid, param_outputs, outputs);
+	    return task<ty>::get_outputs (item, param_outputs, outputs);
 	}
      
 	virtual bool prepare_outputs()
 	{ 
 	    int size = get_number_of_output_nodes();
-	    return task<ty>::prepare_dataset(param_outputs, size);
+	    return task<ty>::prepare_dataset(data_item::point_mask,param_outputs, size);
 	}
      
 	virtual bool launch() = 0;

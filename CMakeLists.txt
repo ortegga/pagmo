@@ -295,7 +295,7 @@ ENDIF(BUILD_PYGMO)
 # Link main to pagmo_static library.
 IF(BUILD_MAIN)
   ADD_EXECUTABLE(main main.cpp)
-  TARGET_LINK_LIBRARIES(main pagmo_static ann_toolbox ${MANDATORY_LIBRARIES})
+  TARGET_LINK_LIBRARIES(main pagmo_static gpgpulib ${MANDATORY_LIBRARIES})
 ENDIF(BUILD_MAIN)
 
 IF(ENABLE_TESTS)

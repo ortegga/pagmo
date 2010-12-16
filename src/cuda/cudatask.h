@@ -10,10 +10,22 @@
 namespace cuda
 {
 
+    struct task_item
+    {
+    public:
+    task_item(size_t is, size_t in, size_t p) : island(is), individual(in), point(p) 
+	    {
+		
+	    }
+	size_t island;
+	size_t individual;
+	size_t point;
+    };
+
     struct task_profile
     {
-    task_profile(size_t individuals_, size_t points_,  size_t task_size_)
-    :individuals(individuals_),points(points_), task_size(task_size_),
+    task_profile(size_t islands_, size_t individuals_, size_t points_,  size_t task_size_)
+    :islands(islands_),individuals(individuals_),points(points_), task_size(task_size_),
 	    individual_chunk (0), point_chunk(0), task_chunk(0), 
 	    indiv_global_chunk(0), point_global_chunk(0), 
 	    task_global_chunk(0)
@@ -63,19 +75,20 @@ namespace cuda
 		task_chunk = t;
 	    }
 
-
-
 	//sample size
+	size_t islands;
 	size_t individuals;
 	size_t points;
 	size_t task_size;   
 
 	//shared memory chunks
+	size_t island_chunk;
 	size_t individual_chunk;
 	size_t point_chunk;
 	size_t task_chunk;
 
 	//global chunks
+	size_t island_global_chunk;
 	size_t indiv_global_chunk;
 	size_t point_global_chunk;
 	size_t task_global_chunk;
@@ -144,7 +157,7 @@ namespace cuda
 	typedef std::map <size_t, typename dataset<cuda_type>::ptr > datamap;
 
     task(info & in, const std::string & name, size_t individuals, size_t task_count, size_t task_size) : 
-	m_info(in), m_name(name), m_stage(0), m_profile(individuals, task_count, task_size)
+	m_info(in), m_name(name), m_stage(0), m_profile(1, individuals, task_count, task_size)
 	{
 	
 	}
@@ -154,134 +167,40 @@ namespace cuda
 	    m_data.clear();
 	}
 
-
-	// sets the inputs for each point. So we only need point ids
-	virtual bool set_point_inputs(size_t pt, size_t parameter, const std::vector<cuda_type> & inputs, size_t size)
-	{
-	    if (is_valid(point, pt))
-	    {
-		if (!has_data(parameter))
-		{
-		    create_data(parameter, size, point, false);
-		}
-		return set_data(pt, parameter, inputs);
-	    }
-	    else
-	    {
-		CUDA_LOG_ERR(m_name, " set_input id is not valid ", pt);
-	    }
-	    return false;
-	}
-
-	// sets the inputs for each individual. 
-
-	virtual bool set_individual_inputs(size_t indiv, size_t parameter, const std::vector<cuda_type> & inputs, size_t size)
-	{
-	    if (is_valid(individual, indiv))
-	    {
-		if (!has_data(parameter))
-		{
-		    create_data(parameter, size, individual, false);
-		}
-		return set_data(indiv, parameter, inputs);
-	    }
-	    else
-	    {
-		CUDA_LOG_ERR(m_name, " set_input id is not valid ", indiv);
-	    }
-	    return false;
-	}
-
 	// sets the inputs for each instance (point x individual)
-	virtual bool set_inputs(size_t indiv, size_t pt, size_t parameter, const std::vector<cuda_type> & inputs, size_t size)
-	{
-	    size_t realid = indiv*m_profile.points + pt;
-
-	    if (is_valid(element, realid))
-	    {
-		if (!has_data(parameter))
-		{
-		    create_data(parameter, size, element, false);
-		}
-		return set_data(realid, parameter, inputs);
-	    }
-	    else
-	    {
-		CUDA_LOG_ERR(m_name, " set_input id is not valid ", realid);
-	    }
-	    return false;
-	}
-
-	virtual bool get_outputs( size_t individual, size_t id, size_t parameterid, std::vector<cuda_type> & outputs)
-	{
-	    outputs.clear();
-	    size_t realid = individual*m_profile.points + id;
-	    if (!has_data(parameterid) || !is_valid(element, realid))
-	    {
-		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
-		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
-		return false;
-	    }
-	    return get_data(realid, parameterid, outputs);
-	}
-
-	virtual bool get_individual_outputs( size_t id, size_t parameterid, std::vector<cuda_type> & outputs)
-	{
-	    outputs.clear();
-	    if (!has_data(parameterid) || !is_valid(individual, id))
-	    {
-		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
-		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
-		return false;
-	    }
-	    return get_data(id, parameterid, outputs);
-	}
-
-	virtual bool get_point_outputs( size_t id, size_t parameterid, std::vector<cuda_type> & outputs)
-	{
-	    outputs.clear();
-	    if (!has_data(parameterid) || !is_valid(point, id))
-	    {
-		CUDA_LOG_ERR(m_name, " get_outputs failed id:", id);
-		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
-		return false;
-	    }
-	    return get_data(id, parameterid, outputs);
-	}
-
-	virtual bool  prepare_dataset(size_t parameter, size_t size)
+	virtual bool set_inputs(const data_item & item, size_t parameter, const std::vector<cuda_type> & inputs, size_t size)
 	{
 	    if (!has_data(parameter))
 	    {
-		CUDA_LOG_WARN(m_name, " prepare_dataset creating dataset:", parameter);
-		return create_data(parameter, size, element, false);
+		data_dimensions dims = create_data_dims(item.m_type);
+		create_data(parameter, size, dims, false);
+	    }
+	    return set_data(item, parameter, inputs);
+	}
+
+	virtual bool get_outputs( const data_item &  item, size_t parameterid, std::vector<cuda_type> & outputs)
+	{
+	    outputs.clear();
+	    if (!has_data(parameterid))
+	    {
+		CUDA_LOG_ERR(m_name, " get_outputs failed id:", item);
+		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
+		return false;
+	    }
+	    return get_data(item, parameterid, outputs);
+	}
+
+	virtual bool  prepare_dataset(data_item::type type, size_t parameter, size_t size)
+	{
+	    if (!has_data(parameter))
+	    {
+		CUDA_LOG_INFO(m_name, " prepare_dataset creating dataset:", parameter);		
+		data_dimensions dims = create_data_dims(type);
+		return create_data(parameter, size, dims, false);
 	    }
 	    CUDA_LOG_WARN(m_name, " prepare_dataset dataset already exists:", parameter);
 	    return false;
 	}
-
-	virtual bool  prepare_individual_dataset(size_t parameter, size_t size)
-	{
-	    if (!has_data(parameter))
-	    {
-		CUDA_LOG_WARN(m_name, " prepare_individual_dataset creating dataset:", parameter);
-		return create_data(parameter, size, individual, false);
-	    }
-	    CUDA_LOG_WARN(m_name, " prepare_individual_dataset dataset already exists:", parameter);
-	    return false;
-	}
-
-	virtual bool  prepare_point_dataset(size_t parameter, size_t size)
-	{
-	    if (!has_data(parameter))
-	    {
-		CUDA_LOG_WARN(m_name, " prepare_point_dataset creating dataset:", parameter);
-		return create_data(parameter, size, point, false);
-	    }
-	    CUDA_LOG_WARN(m_name, " prepare_point_dataset dataset already exists:", parameter);
-	    return false;
-	}
-
 
 	virtual bool assign_data (size_t parameterid, typename dataset<cuda_type>::ptr  pdata, bool force = false)
 	{
@@ -331,27 +250,6 @@ namespace cuda
 	}
 
 
-/*
-	class Ftor 
-	{
-	public:
-	    void operator () (std::pair<const task<cuda_type> *, precondition_datamap_type *> & p)
-	    {
-		delete p.second;
-	    }
-	};
-	~task_predecessor_mappings() 
-	{
-	    typename task_precondition_map::iterator iter;
-	    for (iter = m_pretasks.begin(); iter != m_pretasks.end(); ++iter)
-	    {
-		delete iter->second;
-	    }
-	}
-    protected:
-	friend class task_queue<cuda_type>;
-	task_precondition_map m_pretasks;
- */
 	bool execute_associations()
 	{
 	    typename task_predecessor_mappings<cuda_type>::task_precondition_map::iterator iter;
@@ -392,30 +290,6 @@ namespace cuda
     protected:
 
 
-	enum datatype
-	{
-	    unknown = 0,
-	    point,
-	    individual,
-	    element
-	};
-
-
-
-	bool is_valid(datatype t, size_t id)
-	{
-	    switch (t)
-	    {
-	    case individual:
-		return id < m_profile.individuals;
-	    case point:
-		return id < m_profile.points;
-	    case element:
-	    default:
-		return id < m_profile.get_task_count();
-	    }
-	}
-
 	void set_global_chunk(size_t individual_chunk, size_t point_chunk, size_t task_chunk)
 	{
 	    m_profile.set_global_chunk(individual_chunk, point_chunk, task_chunk);
@@ -432,7 +306,7 @@ namespace cuda
 	    return & m_profile;
 	}
 
-	virtual bool get_data (size_t taskid, size_t parameterid, std::vector<cuda_type> & data)
+	virtual bool get_data (const data_item& item, size_t parameterid, std::vector<cuda_type> & data)
 	{
 	    typename dataset<cuda_type>::ptr pData = get_dataset(parameterid);
 	    if (!pData)
@@ -443,7 +317,7 @@ namespace cuda
 
 	    data.clear();
 	    cuda_type * temp = new cuda_type[pData->get_task_size()];
-	    bool bSuccess = pData->get_values(taskid, temp);
+	    bool bSuccess = pData->get_values(item, temp);
 	    if (bSuccess)
 	    {
 		data.insert(data.begin(),temp, temp + pData->get_task_size());
@@ -453,7 +327,7 @@ namespace cuda
 	}
 
 
-	virtual bool set_data (size_t taskid, size_t parameterid, 
+	virtual bool set_data (const data_item & item, size_t parameterid, 
 			       const std::vector<cuda_type> & data)
 	{
 	    typename dataset<cuda_type>::ptr pData = get_dataset(parameterid);
@@ -464,33 +338,17 @@ namespace cuda
 
 	    cuda_type * temp = new cuda_type[pData->get_task_size()];
 	    std::copy(data.begin(), data.end(), temp);
-	    bool bSuccess = pData->set_values(taskid, temp);
+	    bool bSuccess = pData->set_values(item, temp);
 	    delete temp;
 	    return bSuccess;
 	}
 
-	size_t get_element_count(datatype settype)
-	{
-	    switch (settype)
-	    {
-	    case individual:
-		return m_profile.individuals;
-	    case point:
-		return m_profile.points;
-	    case element:
-	    default:
-		return m_profile.get_task_count();
-	    }
-	}
-
-	virtual bool create_data(size_t parameterid, size_t stride, datatype settype, bool bHost)
+	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, bool bHost)
 	{
 
-	    size_t instances = 0;
 	    if (!has_data(parameterid)) 
 	    {
-	       	instances = get_element_count(settype);
-		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, instances, stride, bHost));
+		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, bHost));
 		m_data[parameterid] = s;
 		return true;
 	    }
@@ -498,6 +356,12 @@ namespace cuda
 	    {
 		return false;
 	    }
+	}
+
+	data_dimensions create_data_dims (const data_item::type & type)
+	{
+	    data_dimensions dims( m_profile.islands, m_profile.individuals, m_profile.points, type);
+	    return dims;
 	}
 
 	friend class task_queue<cuda_type>;

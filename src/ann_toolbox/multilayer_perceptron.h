@@ -62,15 +62,18 @@ namespace ann_toolbox {
 		this->set_shared_chunk(0, this->m_hidden_weights , hid_);
 		this->set_global_chunk(0, this->m_hidden_weights , hid_ + out_);
 
+		this->m_dims1 = kernel_dimensions::ptr(new block_complete_dimensions (&this->m_info, &(this->m_hidden_task), this->m_name));
+		this->m_dims2 = kernel_dimensions::ptr(new block_complete_dimensions  (&this->m_info, this->get_profile(), this->m_name));
+
 	    }
 	typedef neural_network<ty, in_, out_> base;
 
-	virtual bool get_hidden( size_t individual, size_t taskid, std::vector<ty> & outputs)
+	virtual bool get_hidden( const data_item & item, std::vector<ty> & outputs)
 	{
-	    return task<ty>::get_outputs (individual, taskid, base::param_hiddens, outputs);
+	    return task<ty>::get_outputs (item, base::param_hiddens, outputs);
 	}
     
-	virtual bool set_weights(int individual, const std::vector<ty> &chromosome)
+	virtual bool set_weights(const data_item & item, const std::vector<ty> &chromosome)
 	{
 	    if (chromosome.size() == this->get_number_of_weights())
 	    {
@@ -85,8 +88,8 @@ namespace ann_toolbox {
 		    second_segment.push_back(chromosome[i]);
 		}
 
-		return task<ty>::set_individual_inputs (individual, this->param_weights, first_segment, first_segment.size()) && 
-		    task<ty>::set_individual_inputs (individual, this->param_output_weights, second_segment, second_segment.size());
+		return task<ty>::set_inputs (item, this->param_weights, first_segment, first_segment.size()) && 
+		    task<ty>::set_inputs (item, this->param_output_weights, second_segment, second_segment.size());
 	    }
 	    return false;
 	}
@@ -102,7 +105,6 @@ namespace ann_toolbox {
 
 	bool launch() 
 	{
-
 
 	    typename dataset<ty>::ptr pOutData = this->get_dataset(base::param_outputs);
 	    typename dataset<ty>::ptr pInput = this->get_dataset(base::param_inputs);
@@ -121,11 +123,9 @@ namespace ann_toolbox {
 		return false;
 	    }
 
-	    block_complete_dimensions dims1 (&this->m_info, &(this->m_hidden_task), this->m_name);
-
 	    cudaError_t err;
 	    err = cu_compute_layer<ty, pre_exec1, activ_type1>(*pInput->get_data(), *pWeights->get_data(), *pHidden->get_data(),  
-							       pInput->get_task_size(), &dims1);
+							       pInput->get_task_size(), this->m_dims1.get());
 	    if (err != cudaSuccess)
 	    {
 		CUDA_LOG_ERR(this->m_name, "Launch fail ", err);
@@ -134,7 +134,7 @@ namespace ann_toolbox {
 	    block_complete_dimensions dims2 (&this->m_info, this->get_profile(), this->m_name);
 
 	    err = cu_compute_layer<ty, pre_exec2, activ_type2>(*pHidden->get_data(), *pOutputWeights->get_data(), *pOutData->get_data(),  
-							       pHidden->get_task_size(), & dims2);
+							       pHidden->get_task_size(), this->m_dims2.get());
 
 	    if (err != cudaSuccess)
 	    {
@@ -147,6 +147,8 @@ namespace ann_toolbox {
     protected:
 	size_t m_hidden_weights;
 	task_profile m_hidden_task;
+        kernel_dimensions::ptr m_dims1;
+        kernel_dimensions::ptr m_dims2;
     };
 
 

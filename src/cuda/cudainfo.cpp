@@ -70,6 +70,13 @@ namespace cuda
 	    return get_at(m_activedev)->get_maxthreadcount();
 	return 0;
     }
+    
+    unsigned int info::get_block_shared_mem()
+    {
+	if (get_count())
+	    return get_at(m_activedev)->get_block_shared_mem();
+	return 0;
+    }
 
     unsigned int info::get_warpsize()
     {
@@ -107,6 +114,11 @@ namespace cuda
     unsigned int deviceinfo::get_maxthreadcount()
     {
 	return m_prop.multiProcessorCount * 8 * m_prop.warpSize;
+    }
+
+    unsigned int deviceinfo::get_block_shared_mem()
+    {
+	return m_prop.sharedMemPerBlock ;
     }
 
     unsigned int deviceinfo::get_warpsize()

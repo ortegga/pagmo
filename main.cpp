@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     int algo_elitism = 1;
                                 		
     int islands = 1;
-    int individuals = 33;
-    //int individuals = 5;
+    //int individuals = 33;
+    int individuals = 5;
 
     float vicinity_distance = 0.1;
     float vicinity_speed = 0.1;

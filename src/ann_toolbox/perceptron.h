@@ -53,6 +53,7 @@ namespace ann_toolbox {
 	    this->m_weights = (in_ + 1) * out_;
 	    this->set_shared_chunk(0, this->m_weights, in_);
 	    this->set_global_chunk(0, this->m_weights, in_ + out_);
+	    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));
 	}
 
 
@@ -63,9 +64,9 @@ namespace ann_toolbox {
 	bool launch() 
 	{
 
-	    dataset<ty> * pOutData = this->get_dataset(base::param_outputs);
-	    dataset<ty> * pInput = this->get_dataset(base::param_inputs);
-	    dataset<ty> * pWeights = this->get_dataset(base::param_weights);
+	    typename dataset<ty>::ptr pOutData = this->get_dataset(base::param_outputs);
+	    typename dataset<ty>::ptr pInput = this->get_dataset(base::param_inputs);
+	    typename dataset<ty>::ptr pWeights = this->get_dataset(base::param_weights);
 
 	    if (!(pInput && pWeights && pOutData))
 	    {
@@ -76,12 +77,10 @@ namespace ann_toolbox {
 
 		return false;
 	    }
-      
-	    block_complete_dimensions dims (&this->m_info, this->get_profile(), this->m_name);
 
 	    cudaError_t err;
 	    err = cu_compute_layer<ty, pre_exec, activ_type >(*pInput->get_data(), *pWeights->get_data(), 
-							      *pOutData->get_data(),  pInput->get_task_size(), &dims);
+							      *pOutData->get_data(),  pInput->get_task_size(), this->m_dims.get());
 
 	    if (err != cudaSuccess)
 	    {
@@ -91,6 +90,8 @@ namespace ann_toolbox {
 	    
 	    return true;
 	}
+    protected:
+	kernel_dimensions::ptr m_dims;
 
     };
 

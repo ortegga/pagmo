@@ -26,7 +26,7 @@ namespace pagmo
 	{
 	    this->set_shared_chunk(0, 0 , 24 + 6 + 2);//inputs + outputs for all individuals for all points plus 6 for each k of the rk method
 	    this->set_global_chunk(0, 0 , 6 + 2);
-	    
+	    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
 	}
 
 	bool launch()
@@ -43,12 +43,8 @@ namespace pagmo
 		CUDA_LOG_ERR(this->m_name, " outputs ",  pO);
 		return false;
 	    }
-	  
-	    block_complete_dimensions dims (&this->m_info, this->get_profile(), this->m_name);
-
-	    CUDA_LOG_WARN(this->m_name, "block_complete_dimensions", &dims);
 	    cudaError_t err =  runge_kutta_integrate<ty, system, scale_functor<ty>, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), this->m_param_t, 
-										      this->m_param_dt,this->m_param_scale_limits, &dims);
+													 this->m_param_dt,this->m_param_scale_limits, this->m_dims.get());
 	    if (err != cudaSuccess)
 	    {
 		CUDA_LOG_ERR(this->m_name, " Launch fail ", err);
@@ -57,6 +53,8 @@ namespace pagmo
 	    return true;
 		
 	}
+	protected:
+	kernel_dimensions::ptr m_dims;
 
 	};
 

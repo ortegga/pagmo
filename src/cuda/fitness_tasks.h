@@ -42,6 +42,7 @@ namespace pagmo
 		    
 		    this->set_shared_chunk(0, 0 , m_inputs + m_outputs);
 		    this->set_global_chunk(0, 0 , m_inputs + m_outputs + m_fitness);
+		    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
 		}
 
 	    enum
@@ -128,7 +129,7 @@ namespace pagmo
 		{
 		case  minimal_distance:
 		    err = cu_compute_fitness_mindis<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(), *pFitness->get_data(), 
-									     *pInitDistance->get_data(), pOutData->get_task_size(), &dims); 
+									     *pInitDistance->get_data(), pOutData->get_task_size(), this->m_dims.get()); 
 		    break;				
 		    /*case  minimal_distance_speed_theta:
 		      cu_compute_fitness_mindis_theta<ty, preprocessor>(*pState->get_data(),*pOutData->get_data(), width, g, b);
@@ -174,6 +175,7 @@ namespace pagmo
 	    ty m_vicinity_speed;
 	    ty m_max_docking_time;
 	    ty m_tdt;
+  	    kernel_dimensions::ptr m_dims;
 
 	};
     }

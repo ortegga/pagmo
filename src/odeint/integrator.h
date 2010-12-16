@@ -32,27 +32,27 @@ namespace pagmo
 		param_o
 	    };
 
-	    virtual bool set_inputs(size_t individual, size_t taskid, const std::vector<ty> & inputs)
+	    virtual bool set_inputs(const data_item & item, const std::vector<ty> & inputs)
 	    {
 		if (inputs.size() == get_size())
 		{
-		    return task<ty>::set_inputs (individual, taskid, this->param_x, inputs, get_size());
+		    return task<ty>::set_inputs (item, this->param_x, inputs, get_size());
 		}
 		return false;
 	    }
 
-	    virtual bool set_dynamical_inputs(size_t individual, size_t taskid, const std::vector<ty> & inputs)
+	    virtual bool set_dynamical_inputs(const data_item & item, const std::vector<ty> & inputs)
 	    {
 		if (inputs.size() == 2)//<TODO> incomplete type
 		{
-		    return cuda::task<ty>::set_inputs (individual, taskid, this->param_o, inputs, 2);
+		    return cuda::task<ty>::set_inputs (item, this->param_o, inputs, 2);
 		}
 		return false;
 	    }
 
-	    virtual bool get_outputs( size_t individual, size_t taskid, std::vector<ty> & outputs)
+	    virtual bool get_outputs( const data_item & item, std::vector<ty> & outputs)
 	    {
-		return task<ty>::get_outputs (individual, taskid, this->param_x, outputs);
+		return task<ty>::get_outputs (item, this->param_x, outputs);
 	    }
      
 	    virtual bool prepare_outputs()

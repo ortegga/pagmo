@@ -58,11 +58,17 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
 
     //0. load shared memory with inputs and weights. 
-/*    cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
-    load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
-
+    cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
     cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
+
+    load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
     load_to_shared<cuda_type>(Xs, X, inputs*block_individuals*points);
+    /*if (threadIdx.x < tasks_per_block && individ < individuals)
+    {
+	cuda_copy<cuda_type, pre_exec>(&Ws[(inputs+1)*threadIdx.x],&W[(inputs+1)*tx], inputs+1);
+	cuda_copy<cuda_type, pre_exec>(&Xs[inputs*threadIdx.x],&X[inputs*tx],inputs);
+	} */
+
 
     __syncthreads();
 
@@ -83,9 +89,9 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 	    value += pre(Xs[inputs*sha_taskid+i])*pre(Ws[ netsize*sha_individ + (inputs + 1)*yid + i]);
 	}
 	//3. save to output
-	Y[taskid*outputs+yid] = activator ( value );     
-	}*/
-};
+	Y[taskid*outputs+yid] = value;//activator ( value );     
+    }
+}
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
