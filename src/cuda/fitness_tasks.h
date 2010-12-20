@@ -60,47 +60,47 @@ namespace pagmo
 
 
 	    //<TODO> use point inputs instead
-	    virtual bool set_initial_distance(size_t id, size_t pt, const ty & distance)
+	    virtual bool set_initial_distance(const data_item & item, const ty & distance)
 	    {
-		std::vector<ty> d; d.push_back(distance);
-		return this->set_initial_distance (id, pt, d);
+		std::vector<ty> d(1,distance);
+		return this->set_initial_distance (item, d);
 	    }
 
-	    virtual bool set_initial_distance(size_t id, size_t pt, const std::vector<ty> & distance)
+	    virtual bool set_initial_distance(const data_item & item, const std::vector<ty> & distance)
 	    {
 		if (distance.size() == 1)
 		{
-		    return task<ty>::set_inputs (id, pt, param_init_distance, distance, 1);
+		    return task<ty>::set_inputs (item, param_init_distance, distance, 1);
 		}
 		return false;
 	    }
 
-	    virtual bool set_inputs(size_t id, size_t pt, const std::vector<ty> & inputs)
+	    virtual bool set_inputs(const data_item & item, const std::vector<ty> & inputs)
 	    {
 		if (inputs.size() == m_inputs)
 		{
-		    return task<ty>::set_inputs (id, pt, param_inputs, inputs, m_inputs);
+		    return task<ty>::set_inputs (item, param_inputs, inputs, m_inputs);
 		}
 		return false;
 	    }
 
-	    virtual bool set_outputs(size_t id, size_t pt, const std::vector<ty> & outputs)
+	    virtual bool set_outputs(const data_item & item, const std::vector<ty> & outputs)
 	    {
 		if (outputs.size() == m_outputs)
 		{
-		    return task<ty>::set_inputs (id, pt, param_outputs, outputs, m_outputs);
+		    return task<ty>::set_inputs (item, param_outputs, outputs, m_outputs);
 		}
 		return false;
 	    }
 
-	    virtual bool get_fitness( size_t id, size_t pt, std::vector<ty> & fitness)
+	    virtual bool get_fitness( const data_item & item, std::vector<ty> & fitness)
 	    {
-		return task<ty>::get_outputs (id, pt, param_fitness, fitness);
+		return task<ty>::get_outputs (item,  param_fitness, fitness);
 	    }
 
 	    virtual bool prepare_outputs()
 	    {
-		return task<ty>::prepare_dataset(param_fitness, 1);
+		return task<ty>::prepare_dataset(data_item::point_mask, param_fitness, 1);
 	    }
 
 	    virtual bool launch()

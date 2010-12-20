@@ -50,7 +50,7 @@ namespace ann_toolbox {
 
     multilayer_perceptron(cuda::info & in, const std::string & name, size_t individuals, size_t task_count) : 
     neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count), 
-	    m_hidden_task(individuals, task_count, hid_)
+    m_hidden_task(1, individuals, task_count, hid_)
 	    {
 
 		this->m_hidden_weights = (in_ + 1) * hid_ ;
@@ -99,8 +99,8 @@ namespace ann_toolbox {
 	
 	virtual bool prepare_outputs()
 	{
-	    return base::prepare_outputs() &&  this->prepare_dataset(base::param_output_weights, m_hidden_weights) && 
-		this->prepare_dataset(base::param_hiddens, hid_);
+	    return base::prepare_outputs() &&  this->prepare_dataset(data_item::point_mask, base::param_output_weights, m_hidden_weights) && 
+		this->prepare_dataset(data_item::point_mask, base::param_hiddens, hid_);
 	}
 
 	bool launch() 

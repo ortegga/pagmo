@@ -83,6 +83,7 @@ int load_subtask(int individualid, int taskid, multilayer_nnet * pNet)
 	  //  std::cout<<j+1+taskid<<" ";
 	  W.push_back(j + 1 + individualid);
 	}
+      std::cout<<"Setting weights for individual "<<individualid<<std::endl;
       std::cout<<pNet->set_weights(data_item::individual_data(0,individualid), W)<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
     }
 
@@ -98,6 +99,7 @@ int print_subtask(int individualid, int taskid, multilayer_nnet * pNet)
 {
 
   std::vector<CUDA_TY> O;
+
 
   /*  if(!pNet->get_hidden(individual, taskid, O))
       {

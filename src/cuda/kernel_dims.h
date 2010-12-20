@@ -11,8 +11,21 @@ namespace cuda
     class kernel_dimensions
     {
     public:
-	kernel_dimensions (info * inf, task_profile * prof, const std::string & name) :  
-	m_inf(inf), m_prof(prof), m_name(name)
+
+	enum completeness
+	{
+	    point = 1, 
+	    individual = 2,
+	    island = 3
+	};
+
+	kernel_dimensions (info * inf, task_profile * prof,
+			   completeness c, 
+			   const std::string & name) :  
+	m_inf(inf), 
+	    m_prof(prof), 
+	    m_name(name),
+	    m_completeness(c)
 	{      
       
 	}
@@ -69,24 +82,165 @@ namespace cuda
 	    return m_prof->points;
 	}
 
+	size_t get_indivisible_task_size()
+	{
+	    switch(m_completeness)
+	    {
+	    case island:
+		return m_prof->get_job_count();
+	    case individual:
+		
+		return m_prof->get_individual_job_count();
+	    case point: 
+		return m_prof->get_task_size();
+	    default:
+		return 0;
+	    };
+	}
+
     protected:
 
 	info * m_inf;
 	task_profile * m_prof;
 	std::string m_name;
+	completeness m_completeness;
     public:	
 	typedef  boost::shared_ptr<kernel_dimensions > ptr;    
     };
 
 
 
-    // Each block contains an integer number of individuals (which cant be subdivided further)
-    // smallest sized blocks that maximize occupancy
+
+    class adhoc_dimensions : public kernel_dimensions
+    {
+    public:
+	adhoc_dimensions (cuda::info * inf, task_profile * prof, size_t block_size, kernel_dimensions::completeness c, const std::string & name): 
+	kernel_dimensions(inf, prof, c, name), m_block_count(0),  m_block_size(block_size), m_block_shared_mem(0),m_indivs_per_block(1)
+	{
+	    refresh();
+	}
+
+	virtual dim3 get_block_dims()
+	{
+	    return dim3(m_block_size,1,1);
+	}
+
+	virtual dim3 get_grid_dims()
+	{
+	    return dim3(m_block_count,1,1);
+	}
+
+	virtual size_t get_shared_mem_size()
+	{
+	    return m_block_shared_mem * sizeof(float);
+	}
+
+	virtual size_t get_tasks_per_block()
+	{
+	    return m_indivs_per_block * m_prof->get_individual_job_count();
+	}
+
+
+	virtual bool refresh()
+	{
+	    const cudaDeviceProp * props = m_inf->get_prop();	    
+
+	    size_t indiv_jobs = m_prof->get_individual_job_count();
+	    
+	    if (m_block_size % props->warpSize)
+	    {
+		CUDA_LOG_WARN(m_name, " adhoc kernel dimensions dont match warp size, occupancy is not optimal ", m_block_size);
+	    }
+
+	    if ( indiv_jobs / m_block_size == 0)
+	    {
+		CUDA_LOG_ERR(m_name, " block size is too small for job", m_block_size);
+		return false;
+	    }
+
+	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
+	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
+
+	    CUDA_LOG_INFO(m_name, "m_indivs_per_block ", m_indivs_per_block);
+	    return true;
+	}
+    protected:
+
+	size_t m_block_count;
+	size_t m_block_size;
+	size_t m_block_shared_mem;
+	size_t m_indivs_per_block;
+	bool force_warp_size;
+    
+    };
+
+
 
     class block_complete_dimensions : public kernel_dimensions
     {
     public:
-	block_complete_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
+
+	block_complete_dimensions (cuda::info * inf, task_profile * prof, const std::string & name, kernel_dimensions::completeness c = kernel_dimensions::individual): 
+	kernel_dimensions(inf, prof, c, name), m_block_count(0),  m_block_size(0), m_block_shared_mem(0),m_indivs_per_block(0)
+	{
+	    refresh();
+	}
+
+	virtual dim3 get_block_dims()
+	{
+	    return dim3(m_block_size,1,1);
+	}
+
+	virtual dim3 get_grid_dims()
+	{
+	    return dim3(m_block_count,1,1);
+	}
+
+	virtual size_t get_shared_mem_size()
+	{
+	    return m_block_shared_mem * sizeof(float);
+	}
+
+	virtual size_t get_tasks_per_block()
+	{
+	    return m_indivs_per_block * m_prof->get_individual_job_count();
+	}
+
+	virtual bool refresh()
+	{
+	    const cudaDeviceProp * props = m_inf->get_prop();	    
+
+	    m_block_count = m_prof->individuals;
+	    m_indivs_per_block = m_prof->individuals / m_block_count;
+	    m_block_size = m_indivs_per_block * m_prof->get_individual_job_count();
+	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
+
+	    CUDA_LOG_INFO(m_name, "m_indivs_per_block ", m_indivs_per_block);
+	    CUDA_LOG_INFO(m_name, "m_prof->get_individual_job_count() ", m_prof->get_individual_job_count());
+	    return true;
+	}
+    protected:
+
+	// use the block size that maximizes shared memory use
+	//TODO add some code to make sure individual chunks lie in the same block
+
+	size_t m_block_count;
+	size_t m_block_size;
+	size_t m_block_shared_mem;
+	size_t m_indivs_per_block;
+    
+    };
+
+
+
+    // Each block contains an integer number of individuals (which cant be subdivided further)
+    // smallest sized blocks that maximize occupancy
+#if 0
+    class xxxxxblock_complete_dimensions : public kernel_dimensions
+    {
+    public:
+	xxxxxblock_complete_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
 	kernel_dimensions(inf, prof, name), m_block_count(0),  m_block_size(0), m_block_shared_mem(0),m_indivs_per_block(0)
 	{
 	    refresh();
@@ -127,12 +281,13 @@ namespace cuda
 	    else
 		m_block_size = block_size;
 
-	    /*m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
-	      m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);*/
 	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
+	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
+
 	    CUDA_LOG_INFO(m_name, "m_indivs_per_block ", m_indivs_per_block);
 	    CUDA_LOG_INFO(m_name, "m_prof->get_individual_job_count() ", m_prof->get_individual_job_count());
-	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
 	    return true;
 	}
     protected:
@@ -155,7 +310,7 @@ namespace cuda
 
 	size_t use_thread_suggestion(const cudaDeviceProp * props, task_profile * prof)
 	{
-	    int indiv_jobs =  prof->get_individual_job_count();
+	    /*int indiv_jobs =  prof->get_individual_job_count();
 	    int minval = props->maxThreadsPerBlock;
 	    int minind = 0;
 	    int i = props->warpSize;
@@ -170,14 +325,27 @@ namespace cuda
 	    }
 	    CUDA_LOG_INFO(m_name, " warp size suggestion: ", minind);
 	    CUDA_LOG_INFO(m_name, " job count ", indiv_jobs);
-	    return minind;
-	    /*const int indiv_jobs =  prof->get_individual_job_count();
+	    return minind;*/
+
+	    //TODO
+	    // greater than dev.m_prop.multiProcessorCount
+            //A minimum of 64 threads per block should be used, but only if there are  multiple concurrent blocks per multiprocessor.
+	    //Between 128 and 256 threads per block is a better choice and a good initial range for experimentation with different block sizes.
+
+
+	    const int indiv_jobs =  prof->get_individual_job_count();
 	    const int individuals = prof->individuals();
-	    int ub = props->maxThreadsPerBlock >> 1;
+	    int start = props->maxThreadsPerBlock /  props->multiProcessorCount;
+
+	    if (ub % indiv_jobs != 0)
+	    {
+		//CUDA_LOG_WARN();
+	    }
+	    
 	    int lb = props->warpSize << 1;
 
 	    start -= start % indiv_jobs;
-	    return start;*/
+	    return start;
       
 	}
 
@@ -227,6 +395,7 @@ namespace cuda
 	cuda::timer m_duration;
 	bool m_started;
     };
+#endif
 }
 
 #endif

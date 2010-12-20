@@ -36,7 +36,7 @@ namespace cuda
 
 	static data_item individual_data(size_t island, size_t individual)
 	    {
-		return data_item(island,individual,1,individual_mask);
+		return data_item(island,individual,0,individual_mask);
 	    }
 	static data_item point_data(size_t island, size_t individual, size_t point)
 	    {
@@ -45,7 +45,7 @@ namespace cuda
 
 	static data_item point_only_data(size_t island, size_t point)
 	    {
-		return data_item(island,1, point, point_only_mask);
+		return data_item(island,0, point, point_only_mask);
 	    }
 
 	friend std::ostream & operator << (std::ostream & os, const data_item & it)
@@ -87,24 +87,23 @@ namespace cuda
 
 	size_t serialize(const data_item & item)
 	{
-	    /*size_t result = 0;
+	    size_t result = 0;
 	    if (m_type & island_type)
 	    {
 		result += item.island;
-		result *=  individual;
 	    }
 
 	    if (m_type & individual_type)
 	    {
+		result *=  individual;
 		result += item.individual;
-		result *= point;
 	    }
 	    if (m_type & point_type)
 	    {
+		result *= point;
 		result += item.point;
 	    }
-	    return result;*/
-	    return ((item.island * individual) + item.individual)*point + item.point;
+	    return result;
 	}
     };
 
@@ -120,7 +119,7 @@ namespace cuda
 	{
 	    cudaError_t err;
 	    
-	    CUDA_LOG_INFO("","Data size: ", m_count);
+	    CUDA_LOG_INFO("", "Data size: ", m_count);
 	    size_t size = get_byte_size();
 	    if (m_host)
 	    {
@@ -156,6 +155,7 @@ namespace cuda
 	{
 
 	    CUDA_LOG_INFO("","set dataset values for task: ", item);
+	    CUDA_LOG_INFO("","serialized: ", m_count.serialize(item));
 	    cudaError_t err = cudaMemcpy(&m_data[get_serial(item)], sub_data , 
 					 m_size * sizeof(cuda_type), cudaMemcpyHostToDevice);
 	    if (err != cudaSuccess)

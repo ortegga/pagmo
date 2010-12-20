@@ -93,6 +93,11 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
     }
 }
 
+__global__ void foo()
+{
+    
+}
+
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
     printf("%x\n", dims_);
@@ -151,7 +156,7 @@ cudaError_t cu_compute_layer<float, nop_functor<float>, sigmoid_functor<float> >
 	(X, W, Y, inputs, dims_->get_task_size(), 
 	 dims_->get_tasks_per_block(), 
 	 dims_->get_individuals(), dims_->get_points());
-    cudaThreadSynchronize();
+	 cudaThreadSynchronize();
     return cudaGetLastError();
 }
 

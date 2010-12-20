@@ -10,18 +10,6 @@
 namespace cuda
 {
 
-    struct task_item
-    {
-    public:
-    task_item(size_t is, size_t in, size_t p) : island(is), individual(in), point(p) 
-	    {
-		
-	    }
-	size_t island;
-	size_t individual;
-	size_t point;
-    };
-
     struct task_profile
     {
     task_profile(size_t islands_, size_t individuals_, size_t points_,  size_t task_size_)
@@ -48,6 +36,10 @@ namespace cuda
 	size_t get_individual_job_count()
 	    {
 		return task_size * points;
+	    }
+	size_t get_task_size()
+	    {
+		return task_size;
 	    }
 
 	size_t get_total_indiv_shared_chunk()
