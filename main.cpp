@@ -36,12 +36,13 @@
 #include "src/algorithm/sga.h"
 #include "src/problem/docking.h"
 #include "src/ann_toolbox/multilayer_perceptron.h"
+#include "src/ann_toolbox/perceptron.h"
 
 using namespace std;
 using namespace pagmo;
 
 extern std::string max_log_string = "";
-extern float  max_log_fitness = 99.0;
+extern double  max_log_fitness = 99.0;
 extern bool pre_evolve = false;
 
 typedef float float_type;
@@ -77,8 +78,8 @@ int main(int argc, char *argv[])
     int algo_elitism = 1;
                                 		
     int islands = 1;
-    //int individuals = 33;
-    int individuals = 5;
+    //int individuals = 10;
+    int individuals = 10;
 
     float vicinity_distance = 0.1;
     float vicinity_speed = 0.1;
@@ -127,7 +128,7 @@ int main(int argc, char *argv[])
 //    std::cout<<inf;
 
     ann_toolbox::multilayer_perceptron
-	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons >  
+	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons,  adhoc_dimensions<256>,  adhoc_dimensions<256> >  
 	ann(inf,"multilayer perceptron",  individuals, prob_positions);
 
     problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
@@ -138,7 +139,7 @@ int main(int argc, char *argv[])
     problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, &fitt, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 
     std::cout<<"initializing tasks"<<std::endl;
-    prob.initialize_tasks();
+    //prob.initialize_tasks();
     prob.set_start_condition(start_cnd, 6);	
     prob.set_log_genome(true);
 
@@ -160,8 +161,6 @@ int main(int argc, char *argv[])
 					 0.0,
 					 2,	//random
 					 0); 	// no roulette selection*/
-						
-//	algorithm::de algo(20, 0.7, 0.5, 2);
 
 
     ////////////////////////////////////////////////
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
 
     pre_evolve = true;		// generate random positions at first
     //run until we are quite good
-    //while(best_fitness > -1.7) 
+    while(best_fitness > -1.7) 
     { 
 	cout << "\r                                                          "
 	     << "                                                            ";
@@ -194,7 +193,7 @@ int main(int argc, char *argv[])
 	arch.join();
 	i++;
 
-	//		cout << "] best: " << arch.best().get_fitness() << ": " 
+	//cout << "] best: " << arch.best().get_fitness() << ": " 
 	cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
 			
 	//////////////////////////////////////////

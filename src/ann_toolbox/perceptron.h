@@ -41,7 +41,7 @@ namespace ann_toolbox {
      * classifier. 
      * More info: http://en.wikipedia.org/wiki/Perceptron
      */	
-    template <typename ty, size_t in_, size_t out_, typename pre_exec, typename activ_type>
+    template <typename ty, size_t in_, size_t out_, typename kernel_dims1 = block_complete_dimensions , typename pre_exec = nop_functor<ty> , typename activ_type = sigmoid_functor<ty> >
 	class perceptron : public neural_network <ty, in_, out_> {
     public:
 
@@ -51,9 +51,9 @@ namespace ann_toolbox {
 	neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count)
 	{
 	    this->m_weights = (in_ + 1) * out_;
-	    this->set_shared_chunk(0, this->m_weights, in_);
-	    this->set_global_chunk(0, this->m_weights, in_ + out_);
-	    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));
+	    this->set_shared_chunk(0, this->m_weights * sizeof(ty) , in_ * sizeof(ty) );
+	    this->set_global_chunk(0, this->m_weights * sizeof(ty) , (in_ + out_) * sizeof(ty) );
+	    this->m_dims = kernel_dimensions::ptr( new kernel_dims1 (&this->m_info, this->get_profile(), this->m_name));
 	}
 
 

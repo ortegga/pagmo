@@ -41,7 +41,9 @@
 //Contains an aux task which handles the input to hidden evaluation.
 namespace ann_toolbox {
 	
-    template <typename ty , size_t in_, size_t hid_, size_t out_, typename pre_exec1 = nop_functor<ty>, typename pre_exec2 = nop_functor<ty>, 
+    template <typename ty , size_t in_, size_t hid_, size_t out_, 
+	typename kernel_dims1 = block_complete_dimensions, typename kernel_dims2 = block_complete_dimensions, 
+	typename pre_exec1 = nop_functor<ty>, typename pre_exec2 = nop_functor<ty>, 
 	typename activ_type1 = sigmoid_functor<ty>, typename activ_type2 = sigmoid_functor<ty> >
 
 	class multilayer_perceptron : public neural_network<ty, in_, out_> 
@@ -56,14 +58,14 @@ namespace ann_toolbox {
 		this->m_hidden_weights = (in_ + 1) * hid_ ;
 		this->m_weights  = this->m_hidden_weights + (hid_ + 1) * out_;
 
-		this->m_hidden_task.set_shared_chunk(0, this->m_weights , in_);
-		this->m_hidden_task.set_global_chunk(0, this->m_weights , in_ + hid_);
+		this->m_hidden_task.set_shared_chunk(0, this->m_weights  * sizeof(ty) , in_ * sizeof(ty) );
+		this->m_hidden_task.set_global_chunk(0, this->m_weights  * sizeof(ty) , (in_ + hid_) * sizeof(ty) );
 
-		this->set_shared_chunk(0, this->m_hidden_weights , hid_);
-		this->set_global_chunk(0, this->m_hidden_weights , hid_ + out_);
+		this->set_shared_chunk(0, this->m_hidden_weights  * sizeof(ty) , hid_ * sizeof(ty) );
+		this->set_global_chunk(0, this->m_hidden_weights  * sizeof(ty) , (hid_ + out_) * sizeof(ty) );
 
-		this->m_dims1 = kernel_dimensions::ptr(new block_complete_dimensions (&this->m_info, &(this->m_hidden_task), this->m_name));
-		this->m_dims2 = kernel_dimensions::ptr(new block_complete_dimensions  (&this->m_info, this->get_profile(), this->m_name));
+		this->m_dims1 = kernel_dimensions::ptr(new kernel_dims1 (&this->m_info, &(this->m_hidden_task), this->m_name));
+		this->m_dims2 = kernel_dimensions::ptr(new kernel_dims2  (&this->m_info, this->get_profile(), this->m_name));
 
 	    }
 	typedef neural_network<ty, in_, out_> base;
@@ -88,8 +90,27 @@ namespace ann_toolbox {
 		    second_segment.push_back(chromosome[i]);
 		}
 
-		return task<ty>::set_inputs (item, this->param_weights, first_segment, first_segment.size()) && 
-		    task<ty>::set_inputs (item, this->param_output_weights, second_segment, second_segment.size());
+		return task<ty>::set_inputs (item, this->param_weights, first_segment, first_segment.size(), this->m_name + ":input weights") && 
+		task<ty>::set_inputs (item, this->param_output_weights, second_segment, second_segment.size(), this->m_name + ":output weights");
+	    }
+	    return false;
+	}
+
+    //	    return task<ty>::get_outputs (item, param_weights, weights);
+	virtual bool get_weights(const data_item & item, std::vector<ty> &chromosome)
+	{
+
+	    if(task<ty>::get_outputs (item, this->param_weights, chromosome))
+	    {
+		std::vector<ty> second;
+		CUDA_LOG_INFO(this->m_name, "retrieved weights", chromosome.size());
+		if(task<ty>::get_outputs (item, this->param_output_weights, second))
+		{
+		    chromosome.insert(chromosome.end(), second.begin(), second.end());
+		    CUDA_LOG_INFO(this->m_name, "retrieved output weights", chromosome.size());
+		    return true;
+		}
+		
 	    }
 	    return false;
 	}
@@ -99,8 +120,8 @@ namespace ann_toolbox {
 	
 	virtual bool prepare_outputs()
 	{
-	    return base::prepare_outputs() &&  this->prepare_dataset(data_item::point_mask, base::param_output_weights, m_hidden_weights) && 
-		this->prepare_dataset(data_item::point_mask, base::param_hiddens, hid_);
+	    return base::prepare_outputs() //&&  this->prepare_dataset(data_item::point_mask, base::param_output_weights, m_hidden_weights) 
+	    && this->prepare_dataset(data_item::point_mask, base::param_hiddens, hid_);
 	}
 
 	bool launch() 

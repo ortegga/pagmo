@@ -156,16 +156,21 @@ namespace cuda
 
 	virtual ~task()
 	{
+	    clear();
+	}
+	
+	virtual void clear()
+	{
 	    m_data.clear();
 	}
 
 	// sets the inputs for each instance (point x individual)
-	virtual bool set_inputs(const data_item & item, size_t parameter, const std::vector<cuda_type> & inputs, size_t size)
+	virtual bool set_inputs(const data_item & item, size_t parameter, const std::vector<cuda_type> & inputs, size_t size, const std::string & name = "")
 	{
 	    if (!has_data(parameter))
 	    {
 		data_dimensions dims = create_data_dims(item.m_type);
-		create_data(parameter, size, dims, false);
+		create_data(parameter, size, dims, name, false);
 	    }
 	    return set_data(item, parameter, inputs);
 	}
@@ -175,22 +180,22 @@ namespace cuda
 	    outputs.clear();
 	    if (!has_data(parameterid))
 	    {
-		CUDA_LOG_ERR(m_name, " get_outputs failed id:", item);
-		CUDA_LOG_ERR(m_name, " get_outputs failed parameterid:", parameterid);
+		CUDA_LOG_ERR(m_name, "get_outputs failed id:", item);
+		CUDA_LOG_ERR(m_name, "get_outputs failed parameterid:", parameterid);
 		return false;
 	    }
 	    return get_data(item, parameterid, outputs);
 	}
 
-	virtual bool  prepare_dataset(data_item::type type, size_t parameter, size_t size)
+	virtual bool  prepare_dataset(data_item::type type, size_t parameter, size_t size, const std::string & name = "")
 	{
 	    if (!has_data(parameter))
 	    {
-		CUDA_LOG_INFO(m_name, " prepare_dataset creating dataset:", parameter);		
+		CUDA_LOG_INFO(m_name, "prepare_dataset creating dataset:", parameter);		
 		data_dimensions dims = create_data_dims(type);
-		return create_data(parameter, size, dims, false);
+		return create_data(parameter, size, dims, this->m_name + ":" + name, false);
 	    }
-	    CUDA_LOG_WARN(m_name, " prepare_dataset dataset already exists:", parameter);
+	    CUDA_LOG_WARN(m_name, "prepare_dataset dataset already exists:", name);
 	    return false;
 	}
 
@@ -253,7 +258,7 @@ namespace cuda
 		for (;iter1 != sub_cond->end(); ++iter1)
 		{
 		    typename dataset<cuda_type>::ptr d = t->get_dataset(iter1->second);
-		    CUDA_LOG_INFO(m_name, " retrieved ptr ", d);
+		    CUDA_LOG_INFO(m_name, "retrieved ptr", d);
 		    if(!assign_data(iter1->first, d, true))
 		    {
 			CUDA_LOG_ERR(m_name, "could not assign data " , d);
@@ -303,7 +308,7 @@ namespace cuda
 	    typename dataset<cuda_type>::ptr pData = get_dataset(parameterid);
 	    if (!pData)
 	    {
-		CUDA_LOG_ERR(m_name, "failed to get data ", parameterid);
+		CUDA_LOG_ERR(m_name, "failed to get data", parameterid);
 		return false;
 	    }
 
@@ -335,12 +340,12 @@ namespace cuda
 	    return bSuccess;
 	}
 
-	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, bool bHost)
+	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, const std::string & name, bool bHost)
 	{
 
 	    if (!has_data(parameterid)) 
 	    {
-		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, bHost));
+		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, this->m_name + ":" + name, bHost));
 		m_data[parameterid] = s;
 		return true;
 	    }

@@ -36,7 +36,7 @@ namespace pagmo
 	    {
 		if (inputs.size() == get_size())
 		{
-		    return task<ty>::set_inputs (item, this->param_x, inputs, get_size());
+		    return task<ty>::set_inputs (item, this->param_x, inputs, get_size(), "inputs");
 		}
 		return false;
 	    }
@@ -45,7 +45,7 @@ namespace pagmo
 	    {
 		if (inputs.size() == 2)//<TODO> incomplete type
 		{
-		    return cuda::task<ty>::set_inputs (item, this->param_o, inputs, 2);
+		    return cuda::task<ty>::set_inputs (item, this->param_o, inputs, 2, "inputs");
 		}
 		return false;
 	    }

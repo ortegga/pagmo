@@ -152,22 +152,21 @@ __global__ void cu_runge_kutta_integrate (fty  * X , fty * O, const fty t , cons
     fty * Dxt = & ((fty *) rk_shared_mem)[4*offset];
     fty * Dxm = & ((fty *) rk_shared_mem)[5*offset];
 
-    size_t globaloffset = threadIdx.x + blockIdx.x* tasks_per_block;
+    size_t globaloffset = blockIdx.x* tasks_per_block + threadIdx.x;
+    size_t individ = globaloffset / (points * task_size);
 
 
-    if (threadIdx.x < tasks_per_block)
-    {
-	cuda_copy1<fty, o_pre_exec> (&Os[threadIdx.x*2], &O[globaloffset*2], max_val, 2);
-	cuda_copy<fty, pre_exec> (&Xs[threadIdx.x*order], &X[globaloffset*7], order);
-    }
 
+    copy_to_shared_mem1<fty, o_pre_exec>(Os, O, block_individuals * points * 2, max_val);
+    copy_to_shared_mem<fty, pre_exec> (Xs, X, block_individuals * points * order);
 
     __syncthreads();
 
 
     //<TODO> handle last block
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    if (threadIdx.x < tasks_per_block)
+
+    if (threadIdx.x < tasks_per_block  && individ < individuals)
     {
 
 	//fty dxdt [ datasize ] ;
@@ -192,10 +191,11 @@ __global__ void cu_runge_kutta_integrate (fty  * X , fty * O, const fty t , cons
 	//k4
 	system( Xt , Dxt , Os, fty( t + dt ));
 
-	increment_sum_sum<fty, 6>( Xs, DxDt, Dxt,  Dxm, dt /  fty( 6.0 ) , val2 );
+	increment_sum_sum<fty, order>( Xs, DxDt, Dxt,  Dxm, dt /  fty( 6.0 ) , val2 );
 
-	cuda_copy<fty, post_exec> (&X[globaloffset*7], &Xs[threadIdx.x*order], order);
-    }
+	//cuda_copy<fty, post_exec> (&X[globaloffset*7], &Xs[threadIdx.x*order], order);
+	}
+    copy_to_global_mem<fty, post_exec> (X, Xs, block_individuals * points * order);
 
     __syncthreads();
 
@@ -204,11 +204,10 @@ __global__ void cu_runge_kutta_integrate (fty  * X , fty * O, const fty t , cons
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
-    printf("%x\n", dims_);
-    printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
+    /*printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
 	   name, dims_->get_grid_dims().x, dims_->get_block_dims().x, dims_->get_shared_mem_size(), dims_->get_tasks_per_block());
     printf("individuals = %d\n points = %d\n task size = %d\n ", 
-	   dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());
+    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());*/
 
 }
 
@@ -305,10 +304,8 @@ __global__ void cu_compute_fitness_mindis_kernel(ty *S , ty *O, ty *F, ty *I, si
     size_t globaloffset = threadIdx.x + blockIdx.x* tasks_per_block;
 
     size_t offset = threadIdx.x*order;
-    if (threadIdx.x < tasks_per_block)
-    {
-	cuda_copy<ty, pre_exec> (&Ss[offset], &S[globaloffset*order], order);
-    }
+
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
 
     __syncthreads();
 
@@ -321,12 +318,13 @@ __global__ void cu_compute_fitness_mindis_kernel(ty *S , ty *O, ty *F, ty *I, si
 	ty distance = sqrt(Ss[offset] * Ss[offset] + Ss[offset + 2] * Ss[offset + 2]);
 	ty speed    = sqrt(Ss[offset + 1] * Ss[offset + 1] + Ss[offset + 3] * Ss[offset + 3]);		// sqrt(vx^2 + vy^2)
 
-	O[globaloffset*4] =  1/( 1 + distance );
-	O[globaloffset*4 + 1] =   distance;
-	O[globaloffset*4 + 2] =  speed;
-	O[globaloffset*4 + 3] =  Ss[offset + 4];
+	F[globaloffset*4] =  1/( 1 + distance );
+	F[globaloffset*4 + 1] =   distance;
+	F[globaloffset*4 + 2] =  speed;
+	F[globaloffset*4 + 3] =  Ss[offset + 4];
 
     }
+    __syncthreads();
 }
 
 

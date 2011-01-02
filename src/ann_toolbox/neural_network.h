@@ -68,7 +68,7 @@ namespace ann_toolbox {
 	{
 	    if (inputs.size() == get_number_of_inputs())
 	    {
-		return task<ty>::set_inputs (item, param_inputs, inputs, get_number_of_inputs());
+		return task<ty>::set_inputs (item, param_inputs, inputs, get_number_of_inputs(), this->m_name + ":inputs");
 	    }
 	    return false;
 	}
@@ -76,7 +76,7 @@ namespace ann_toolbox {
 	{
 	    if (weights.size() == get_number_of_weights())
 	    {
-		return task<ty>::set_inputs (item, param_weights, weights, get_number_of_weights());
+		return task<ty>::set_inputs (item, param_weights, weights, get_number_of_weights(), this->m_name + ":weights");
 	    }
 	    return false;
 	}
@@ -94,7 +94,7 @@ namespace ann_toolbox {
 	virtual bool prepare_outputs()
 	{ 
 	    int size = get_number_of_output_nodes();
-	    return task<ty>::prepare_dataset(data_item::point_mask,param_outputs, size);
+	    return task<ty>::prepare_dataset(data_item::point_mask,param_outputs, size, this->m_name + ":outputs");
 	}
      
 	virtual bool launch() = 0;

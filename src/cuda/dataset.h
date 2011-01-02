@@ -114,38 +114,40 @@ namespace cuda
 	class dataset
     {
     public:
-    dataset(info & info, const data_dimensions & count,  size_t size_, bool bhost):
-	m_data(0),  m_count(count), m_size(size_),m_host(bhost), m_info(info)
+    dataset(info & info, const data_dimensions & count,  size_t size_, const std::string & name, bool bhost):
+	m_data(0),  m_count(count), m_size(size_),m_host(bhost), m_info(info), m_name(name)
 	{
 	    cudaError_t err;
 	    
-	    CUDA_LOG_INFO("", "Data size: ", m_count);
+	    CUDA_LOG_INFO(m_name, "Data size:", m_count);
 	    size_t size = get_byte_size();
 	    if (m_host)
 	    {
-		CUDA_LOG_INFO("","Allocating host dataset: ", size);
-		err = cudaMallocHost(&m_data, size);
+		CUDA_LOG_INFO(m_name,"Allocating host dataset:", size);
+		err = cudaMallocHost((void **)&m_data, size);
 	    }
 	    else
 	    {
-		CUDA_LOG_INFO("","Allocating device dataset: ", size);
-		err = cudaMalloc(&m_data, size);
+		CUDA_LOG_INFO(m_name,"Allocating device dataset:", size);
+		err = cudaMalloc((void **)&m_data, size);
+		CUDA_LOG_INFO(m_name,"Allocating device dataset: ", m_data);
 	    }
 	
 	    if (err != cudaSuccess)
-		CUDA_LOG_ERR("","Could not allocate dataset ", err);
+		CUDA_LOG_ERR(m_name,"Could not allocate dataset:", err);
 	  
 	}
 
 	bool get_values(const data_item & item, cuda_type * sub_data)
 	{
 
-	    CUDA_LOG_INFO("","get dataset values for task: ", item);
+	    CUDA_LOG_INFO(m_name,"get dataset values for task:", item);
+	    CUDA_LOG_INFO(m_name,"get dataset values for task:", get_serial(item));
 	    cudaError_t err = cudaMemcpy(sub_data, &m_data[get_serial(item)], 
 					 m_size * sizeof(cuda_type), cudaMemcpyDeviceToHost);
 	    if (err != cudaSuccess)
 	    {
-		CUDA_LOG_ERR("","Could not get dataset values ", err);
+		CUDA_LOG_ERR(m_name,"Could not get dataset values", err);
 		return false;
 	    }
 	    return true; 
@@ -154,15 +156,15 @@ namespace cuda
 	bool set_values(const data_item & item, const cuda_type * sub_data)
 	{
 
-	    CUDA_LOG_INFO("","set dataset values for task: ", item);
-	    CUDA_LOG_INFO("","serialized: ", m_count.serialize(item));
+	    CUDA_LOG_INFO(m_name,"set dataset values for task:", item);
+	    CUDA_LOG_INFO(m_name,"serialized:", m_count.serialize(item));
 	    cudaError_t err = cudaMemcpy(&m_data[get_serial(item)], sub_data , 
 					 m_size * sizeof(cuda_type), cudaMemcpyHostToDevice);
 	    if (err != cudaSuccess)
 	    {
-		CUDA_LOG_ERR("","Could not set dataset values ", err);
-		CUDA_LOG_ERR("","\n:item: ", item);
-		CUDA_LOG_ERR("","\nsize: ", m_size);
+		CUDA_LOG_ERR(m_name,"Could not set dataset values ", err);
+		CUDA_LOG_ERR(m_name,"\n:item: ", item);
+		CUDA_LOG_ERR(m_name,"\nsize: ", m_size);
 		return false;
 	    }
 	    return true;
@@ -177,12 +179,11 @@ namespace cuda
 	    }
 	    else
 	    {
-
 		err = cudaFree(m_data);
 	    }
 	    if (err != cudaSuccess)
 	    {
-		CUDA_LOG_ERR("","Failed to deallocate dataset", err);
+		CUDA_LOG_ERR(m_name,"Failed to deallocate dataset", err);
 	    }
 	}
 
@@ -218,6 +219,7 @@ namespace cuda
 	size_t m_size;
 	bool m_host;
 	info & m_info;
+	std::string m_name;
     public:	
 	typedef  boost::shared_ptr<dataset<cuda_type> > ptr;
     };

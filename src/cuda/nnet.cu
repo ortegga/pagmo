@@ -52,7 +52,6 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
     size_t netsize = (inputs + 1)*outputs;
     size_t block_individuals = tasks_per_block / (points * outputs);
-    size_t btx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
     size_t individ = tx / (points * outputs);
 
@@ -61,15 +60,8 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
     cuda_type * Ws = (cuda_type *) compute_layer_shared_mem; 
     cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
 
-    load_to_shared<cuda_type>(Ws, W, block_individuals*netsize);
-    load_to_shared<cuda_type>(Xs, X, inputs*block_individuals*points);
-    /*if (threadIdx.x < tasks_per_block && individ < individuals)
-    {
-	cuda_copy<cuda_type, pre_exec>(&Ws[(inputs+1)*threadIdx.x],&W[(inputs+1)*tx], inputs+1);
-	cuda_copy<cuda_type, pre_exec>(&Xs[inputs*threadIdx.x],&X[inputs*tx],inputs);
-	} */
-
-
+    copy_to_shared_mem<cuda_type, pre_exec>(Ws, W, block_individuals * netsize);
+    copy_to_shared_mem<cuda_type, pre_exec>(Xs, X, block_individuals * points * inputs);
     __syncthreads();
 
     //Add check for last block that will be running less than normal threads
@@ -78,33 +70,26 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
 	size_t taskid = tx / outputs;
 	size_t yid = tx % outputs;
-	//size_t individ = tx / (outputs*points);
 	size_t sha_individ = threadIdx.x / (outputs*points);
 	size_t sha_taskid = threadIdx.x / outputs;   
 	//1. load in the bias
-	cuda_type value = pre(Ws[netsize*sha_individ + (inputs + 1)*yid + inputs]);
+	cuda_type value = Ws[netsize*sha_individ + (inputs + 1)*yid + inputs];
 	//2. Add the weights * inputs.
 	for (int i=0; i < inputs; ++i)
 	{
-	    value += pre(Xs[inputs*sha_taskid+i])*pre(Ws[ netsize*sha_individ + (inputs + 1)*yid + i]);
+	    value += Xs[inputs*sha_taskid+i]*Ws[ netsize*sha_individ + (inputs + 1)*yid + i];
 	}
 	//3. save to output
-	Y[taskid*outputs+yid] = value;//activator ( value );     
+	Y[taskid*outputs+yid] = activator ( value );     
     }
-}
-
-__global__ void foo()
-{
-    
 }
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
-    printf("%x\n", dims_);
-    printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
+    /*printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
 	   name, dims_->get_grid_dims().x, dims_->get_block_dims().x, dims_->get_shared_mem_size(), dims_->get_tasks_per_block());
     printf(" individuals = %d\n points = %d\n task size = %d\n ", 
-	   dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());
+    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());*/
 
 }
 
@@ -192,42 +177,3 @@ cudaError_t  cu_compute_layer<double, nop_functor<double>, sigmoid_functor<doubl
     cudaThreadSynchronize();
     return cudaGetLastError();
 }
-
-
-///////////////////////////////////////////////////////////
-/*template <typename cuda_type, typename activ_type>
-  __global__ void cu_compute_layer_with_segments_kernel(cuda_type *X,  cuda_type *W,  cuda_type *Y, int width, int seg,    
-  activ_type activator = activ_type()) 
-  {
-
-  unsigned int bx = blockIdx.x, by = blockIdx.y;
-  unsigned int tx = threadIdx.x, ty = threadIdx.y;
-
-  //The order of weights is as follows:
-  //1) the weights between X and Y
-  //2) the bias for Y
-  //3) the weights for the memory component*
-  unsigned int offset = tx*(width+1);
-
-  cuda_type value = W[offset + seg];
-  for (unsigned int i=0; i < seg; ++i)
-  {
-  value += X[i]*W[offset + i];
-  }
-
-  for (unsigned int i=seg; i < width; ++i)
-  {
-  value += X[i]*W[offset +  i  + 1];
-  }
-
-  Y[tx] = activator( value );
-  }
-
-
-  template <typename cuda_type, typename activ_type>
-  void cu_compute_layer_with_segments(cuda_type *X, cuda_type *W,  
-  cuda_type *Y, int width, int seg,
-  dim3 gridsize, dim3 blocksize)
-  {
-  cu_compute_layer_with_segments_kernel<cuda_type, activ_type><<<gridsize, blocksize>>>(X, W, Y, width, seg);
-  }*/

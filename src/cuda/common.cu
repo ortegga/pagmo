@@ -39,31 +39,47 @@ struct apply
 	}
 };
 
-template <typename ty>
-__device__ __forceinline__ void load_to_shared(ty * shared, ty * global, size_t size)
+template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_shared_mem(ty * shared, ty * global, size_t size, ftor f = ftor())
 {
     size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
     for (int i=0; i < segment ; ++i)
     {
 	if (i*segment + threadIdx.x < size)
-	    shared [i*segment + threadIdx.x] = global[blockIdx.x*size +  i*segment + threadIdx.x];
+	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x]);
     }
 }
 
 template <typename ty, typename ftor >
-__device__ __forceinline__ void cuda_copy (ty * to, ty * from, size_t size, ftor f = ftor() )
+__device__ __forceinline__ void copy_to_shared_mem1(ty * shared, ty * global, size_t size, ty param, ftor f = ftor())
 {
-    for (int i=0; i < size ; ++i)
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    for (int i=0; i < segment ; ++i)
     {
-	to [i] = f(from[i]);
+	if (i*segment + threadIdx.x < size)
+	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x], param);
+    }
+}
+
+
+template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_global_mem(ty * global, ty * shared, size_t size, ftor f = ftor())
+{
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    for (int i=0; i < segment ; ++i)
+    {
+	if (i*segment + threadIdx.x < size)
+	    global[blockIdx.x*size +  i*segment + threadIdx.x] = f(shared [i*segment + threadIdx.x]);
     }
 }
 
 template <typename ty, typename ftor >
-__device__ __forceinline__ void cuda_copy1 (ty * to, ty * from, ty param, size_t size, ftor f = ftor() )
+__device__ __forceinline__ void copy_to_global_mem1(ty * global, ty * shared, size_t size, ty param, ftor f = ftor())
 {
-    for (int i=0; i < size ; ++i)
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    for (int i=0; i < segment ; ++i)
     {
-	to [i] = f(from[i], param);
+	if (i*segment + threadIdx.x < size)
+	    global[blockIdx.x*size +  i*segment + threadIdx.x] = f(shared [i*segment + threadIdx.x],param);
     }
 }

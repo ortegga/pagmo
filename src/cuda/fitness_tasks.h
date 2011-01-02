@@ -13,7 +13,7 @@ namespace pagmo
 {
     namespace fitness
     {
-	template <typename ty, typename pre_exec = nop_functor<ty> , typename post_exec = nop_functor<ty> >
+	template <typename ty, typename kernel_dims1 = block_complete_dimensions, typename pre_exec = nop_functor<ty> , typename post_exec = nop_functor<ty> >
 	    class evaluate_fitness_task : public task <ty>
 	{ 
 	public:
@@ -40,9 +40,9 @@ namespace pagmo
 		m_tdt(0)
 		{
 		    
-		    this->set_shared_chunk(0, 0 , m_inputs + m_outputs);
-		    this->set_global_chunk(0, 0 , m_inputs + m_outputs + m_fitness);
-		    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
+		    this->set_shared_chunk(0, 0 , (m_inputs + m_outputs) * sizeof(ty) );
+		    this->set_global_chunk(0, 0 , (m_inputs + m_outputs + m_fitness) * sizeof(ty) );
+		    this->m_dims = kernel_dimensions::ptr( new kernel_dims1 (&this->m_info, this->get_profile(), this->m_name));	    
 		}
 
 	    enum

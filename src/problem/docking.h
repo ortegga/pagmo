@@ -14,7 +14,10 @@
 #include "../cuda/fitness_tasks.h"
 #include "../ann_toolbox/neural_network.h"
 #include "../rng.h"
+#include "../exceptions.h"
 
+
+extern double max_log_fitness;
 
 namespace pagmo 
 { 
@@ -27,8 +30,8 @@ namespace pagmo
 
 	    typedef ann_toolbox::neural_network <fty, 7, 2 >  neural_network;
 	    typedef hills_dynamical_system<fty > dynamic_system;
-	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system > integrator;
-	    typedef fitness::evaluate_fitness_task<fty > fitness_type;
+	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , adhoc_dimensions<256> > integrator;
+	    typedef fitness::evaluate_fitness_task<fty, adhoc_dimensions<256> > fitness_type;
 
 
 	docking(neural_network* ann_, 
@@ -45,7 +48,8 @@ namespace pagmo
 		max_docking_time(max_time),	
 		inf(inf_),
 		random_starting_positions(random_positions),
-		pre_evolution_strategy(in_pre_evo_strat)
+		pre_evolution_strategy(in_pre_evo_strat),
+		initialized(false)
 		{						
 		    set_lb(	std::vector<double> (ann->get_number_of_weights(), -10.0) );
 		    set_ub(	std::vector<double> (ann->get_number_of_weights(),  10.0) );
@@ -121,7 +125,18 @@ namespace pagmo
 		vicinity_orientation = d;
 	    }
 
-	    void initialize_tasks()
+	    void clear_tasks() const
+	    {
+		if (initialized)
+		{
+		    ann->clear();
+		    integrator_task->clear();
+		    fitness_task->clear();
+		    initialized = false;
+		}
+	    }
+
+	    void initialize_tasks() const
 	    {
 		//Ann controls most of the data
 		//integrator reuses the datasets for ann
@@ -135,6 +150,7 @@ namespace pagmo
 		fitness_task->add_association(ann, neural_network::param_outputs, fitness_type::param_outputs);
 		fitness_task->add_association(integrator_task, integrator::param_x, fitness_type::param_inputs);
 		fitness_task->prepare_outputs();
+		initialized = true;
 		
 		generate_starting_positions();
 	    }
@@ -167,13 +183,6 @@ namespace pagmo
 			fty cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0 };		
 			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
 		    }
-		
-
-/*		// DEBUG
-		std::cout << "XY@: " << random_start[0][0] << "," << random_start[0][2] << ","<< random_start[0][4];
-		std::cout << " XY@: " << random_start[1][0] << "," << random_start[1][2] << ","<< random_start[1][4];
-		std::cout << " XY@: " << random_start[2][0] << "," << random_start[2][2] << ","<< random_start[2][4];
-		std::cout << std::endl;*/		
 		    return;
 		}
 	
@@ -335,6 +344,10 @@ namespace pagmo
 
 	    void objfun_impl(population & pop) const
 	    {
+		//if (!initialized)
+		{
+		    initialize_tasks();
+		}
 		population::size_type size = pop.size();
 		std::vector<fty> inputs;
 
@@ -347,8 +360,8 @@ namespace pagmo
 		    decision_vector wi = indiv.cur_x;
 
 		    //necessary if we're working with floats while pagmo works with doubles
-		    std::vector<fty> wv;
-		    wv.insert(wv.begin(),wi.begin(),wi.end());
+		    std::vector<fty> wv;// (indiv.cur_x.size(), s + 1);
+		    wv.insert(wv.begin(),indiv.cur_x.begin(),indiv.cur_x.end());
 		    ann->set_weights(data_item::individual_data(0,s),wv);
 
 		    for(size_t i = 0;i < random_start.size();i++) 
@@ -363,40 +376,43 @@ namespace pagmo
 			}
 			if(!ann->set_inputs(data_item::point_data(0, s, i),inputs))
 			{
-	    		    CUDA_LOG_ERR("docking"," failed to set inputs ",inputs.size());
-			    return ;
+			    clear_tasks();
+			    pagmo_throw(value_error,"failed to set inputs");
 			}
 		    }
 		}
 		if (!integrator_task->execute_associations())
 		{
-		    CUDA_LOG_ERR("docking", " failed to complete docking run ",0);
-		    return;
+		    clear_tasks();
+		    pagmo_throw(value_error,"failed to associate integrator task dependencies ");
 		}
 		if (!fitness_task->execute_associations())
 		{
-		    CUDA_LOG_ERR("docking", " failed to complete docking run ",0);
-		    return;
+		    clear_tasks();
+		    pagmo_throw(value_error,"failed to associate fitness task dependencies ");
 		}
 		////////////////////////////////////////////////////////////////////////////////
 		//Execute the kernels
 
 		for(fty t = 0.0;t < max_docking_time ;t += time_step) 
 		{
-		    std::cout<<std::endl<<"t="<<t<<std::endl;
+		    //std::cout<<std::endl<<"t="<<t<<std::endl;
 		    if(!ann->launch())
 		    {
-			return ;
+			clear_tasks();
+			pagmo_throw(value_error,"neural network failed");
 		    }
 		    integrator_task->set_params(t, time_step, max_thrust);
 		    if(!integrator_task->launch())
 		    {
-			return;
+			clear_tasks();
+			pagmo_throw(value_error,"integrator failed");
 		    }
 		    fitness_task->set_time(t+time_step);
 		    if (!fitness_task->launch())
 		    {
-			return;
+			clear_tasks();
+			pagmo_throw(value_error,"fitness evaluator failed");
 		    }
 		}
 		
@@ -413,11 +429,11 @@ namespace pagmo
 		    ann->get_weights(data_item::individual_data(0,s),wv);
 		    decision_vector d;
 		    d.insert(d.begin(), wv.begin(), wv.end());
-		    for (int i=0; i < d.size(); ++i)
+		    /*for (int i=0; i < d.size(); ++i)
 		    {
 			std::cout<<" "<<d[i];
 		    }
-		    std::cout<<std::endl;
+		    std::cout<<std::endl;*/
 		    pop.set_x(s, d);
 		    decision_vector dv = d;
 		    std::transform(dv.begin(), dv.end(), indiv.cur_x.begin(), dv.begin(),std::minus<double>());
@@ -430,12 +446,17 @@ namespace pagmo
 			out.clear();
 			if(!fitness_task->get_fitness(data_item::point_data(0, s, i), out))
 			{
-			    std::cout<<"failed to retrieve fitness results"<<std::endl;
-			    return;
+			    clear_tasks();
+			    pagmo_throw(value_error, "failed to retrieve fitness results");
 			}
 			result += out[0];
 		    }
 		    result /= random_start.size();
+
+		    if(max_log_fitness > result) 
+		    {
+			max_log_fitness = result;
+		    }
 		    CUDA_LOG_INFO("docking", " result of launch is ", result);
 		    indiv.cur_f[0] = result;
 		    if ( first || base::compare_fitness(indiv.cur_f, max_fit)) {
@@ -445,6 +466,7 @@ namespace pagmo
 		    }
 		}
 		std::cout<<max_fit<<std::endl;
+		clear_tasks();
 	    }	    
 				
 	    /// Constants for 
@@ -488,6 +510,7 @@ namespace pagmo
 		
 	    fty time_step; 					// for integrator		
 	    cuda::info & inf;
+	    mutable bool initialized;
 	};	
     }
 }

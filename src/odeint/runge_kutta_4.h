@@ -15,7 +15,8 @@ namespace pagmo
     namespace odeint
     {
 	
-	template <typename ty, typename system, typename pre_exec=nop_functor<ty>, typename post_exec=nop_functor<ty> >
+	template <typename ty, typename system, typename kernel_dims1 = block_complete_dimensions, 
+	    typename pre_exec=nop_functor<ty>, typename post_exec=nop_functor<ty> >
 	    class ode_step_runge_kutta_4 : public integrator<ty, 6, system>
 	{
 	public:
@@ -24,9 +25,9 @@ namespace pagmo
 	
 	ode_step_runge_kutta_4 (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : base(inf, name, individuals, task_count_)
 	{
-	    this->set_shared_chunk(0, 0 , 24 + 6 + 2);//inputs + outputs for all individuals for all points plus 6 for each k of the rk method
-	    this->set_global_chunk(0, 0 , 6 + 2);
-	    this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
+	    this->set_shared_chunk(0, 0 , (24 + 6 + 2) * sizeof(ty) );//inputs + outputs for all individuals for all points plus 6 for each k of the rk method
+	    this->set_global_chunk(0, 0 , 6 + 2 * sizeof(ty) );
+	    this->m_dims = kernel_dimensions::ptr( new kernel_dims1 (&this->m_info, this->get_profile(), this->m_name));	    
 	}
 
 	bool launch()

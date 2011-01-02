@@ -11,7 +11,7 @@ namespace pagmo
     namespace odeint
     {
 
-	template <typename ty, typename system, typename pre_exec, typename post_exec >
+	template <typename ty, typename system, typename kernel_dims1 = block_complete_dimensions, typename pre_exec, typename post_exec >
 	    class euler_integrator : public integrator<ty, 1, system>
 	{
 	public:
@@ -22,7 +22,7 @@ namespace pagmo
 	    {
 		//this->set_shared_chunk(0, 0 , 24 + 6 + 2);
 		//this->set_global_chunk(0, 0 , 6 + 2)
-		this->m_dims = kernel_dimensions::ptr( new block_complete_dimensions (&this->m_info, this->get_profile(), this->m_name));	    
+		this->m_dims = kernel_dimensions::ptr( new kernel_dims1 (&this->m_info, this->get_profile(), this->m_name));	    
 	    }
 
 	    bool launch()

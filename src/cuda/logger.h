@@ -6,9 +6,10 @@
 
 #ifndef CUDA_LOG_DISABLED
 
-#define CUDA_LOG_INFO(N, X, Y) (std::cout <<std::endl<< "[I] " << (N) << (X) << (Y) << std::endl)
-#define CUDA_LOG_WARN(N, X, Y) (std::cout <<std::endl<< "[W] "<< (N) << (X) << (Y) << std::endl)
-#define CUDA_LOG_ERR(N, X, Y)  (std::cout <<std::endl<< "[E] "<< (N) << (X) << (Y) << std::endl)
+//#define CUDA_LOG_INFO(N, X, Y) (std::cout <<std::endl<< "[I] " << (N) <<" "<< (X) <<" "<< (Y) << std::endl)
+#define CUDA_LOG_WARN(N, X, Y) (std::cout <<std::endl<< "[W] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
+#define CUDA_LOG_ERR(N, X, Y)  (std::cout <<std::endl<< "[E] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
+#define CUDA_LOG_INFO(n, x, y) ;
 
 #else
 
