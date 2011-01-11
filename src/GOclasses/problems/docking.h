@@ -43,7 +43,6 @@ class DynamicSystem;
 
 
 // TODO:
-//	- try to make the loggin better!!
 //	- think about the const in some functions!!
 
 /// Spacecraft docking problem.

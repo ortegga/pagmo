@@ -209,7 +209,6 @@ void run_optimal_control(std::string fname, problem::docking &prob) {
 	fprintf(stderr, "Control loaded from %s (%f, %f, %f)\n", fname.c_str(), time.back(), ul.back(), ur.back());
 	
 	// redo timeing!!! 
-	// TODOD!!
 	
 	// TESTING
 	cout << "Created the problem!" << endl;	
@@ -218,8 +217,8 @@ void run_optimal_control(std::string fname, problem::docking &prob) {
 	max_log_fitness = 0.0;
 
 	prob.set_time_step(integrator_timestep);
-	prob.set_vicinity_speed(prob.get_vicinity_speed() + 0.05);
-	prob.set_vicinity_distance(prob.get_vicinity_distance() + 0.17);
+	prob.set_vicinity_speed(prob.get_vicinity_speed() + 0.001);
+	prob.set_vicinity_distance(prob.get_vicinity_distance() /*+ 0.17*/);
 	
 	prob.set_start_condition(start_cnd, 6);
 //	max_log_fitness = prob.objfun_oc(time, ul, ur);

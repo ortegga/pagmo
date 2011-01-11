@@ -123,7 +123,7 @@ void docking::generate_starting_positions() const {
 		// depending on the ann->get_number_of_inputs() we use 4 or 6
 		// i.e. (we use the attitude or not)
 		while(random_starting_positions > random_start.size()) {
-			double cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };	
+			double cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };	
 			random_start.push_back(std::vector<double> (cnd, cnd + ann->get_number_of_inputs()));
 		}
 
@@ -375,21 +375,28 @@ double docking::one_run(std::string &log) const {
 	// initialize the inputs (= starting conditions) to the ANN and allocate the outputs 
 	std::vector<double> inputs = starting_condition, outputs, retvals;
 	double initial_distance = sqrt(inputs[0] * inputs[0] + inputs[2] * inputs[2]);	
-	double distance = initial_distance, speed;
+	double distance = initial_distance, speed = 0.0;
 	double theta = 0.0, omega = 0.0;
 
 	size_t counter_at_goal = 0;
+	
+	while(inputs.size() > 6) inputs.pop_back();
 
 	// run evaluation of the ANN
 	for(t = 0.0;t < max_docking_time /*+ 0.0001*/;t += dt) {		
 
 		// distance to the final position (0,0) = sqrt(x^2 + z^2)
-		if(ann->get_number_of_inputs() == 7) inputs.push_back(distance);
-		if(ann->get_number_of_inputs() == 4 && inputs.size() == 6) {
-			omega = inputs[5]; inputs.pop_back();			
-			theta = inputs[4]; inputs.pop_back();
-		}
-		
+		if(inputs.size() == 6) {
+			if(ann->get_number_of_inputs() == 7) inputs.push_back(distance);
+			if(ann->get_number_of_inputs() == 8) {
+				inputs.push_back(distance);
+				inputs.push_back(speed);
+			}
+			if(ann->get_number_of_inputs() == 4) {
+				omega = inputs[5]; inputs.pop_back();			
+				theta = inputs[4]; inputs.pop_back();
+			}
+		}		
 		
 /*		
 		//////////CHRISTOS
@@ -431,7 +438,7 @@ double docking::one_run(std::string &log) const {
 			inputs.push_back(theta);
 			inputs.push_back(omega);
 		}
-		if(inputs.size() > 6) inputs.pop_back();		// delete distance again
+		while(inputs.size() > 6) inputs.pop_back();		// delete distance (and other things) again
 
 		// Perform the integration step
 		stepper.next_step( sys, inputs, t, dt );
@@ -490,7 +497,7 @@ double docking::one_run(std::string &log) const {
 		}
 		
 	}
-		
+	
 	// PaGMO minimizes the objective function!! therefore the minus here
 	return -retval;
 }
@@ -537,7 +544,7 @@ double docking::one_run_oc(std::string &log, const std::vector<double> &ul, cons
 		outputs.push_back(ur[i]);	
 		sys.set_outputs(outputs);
 		
-		std::cout << "t" << t << " QQ: " << ul[i] << ":" << ur[i] << std::endl;
+	//	std::cout << "t" << t << " QQ: " << ul[i] << ":" << ur[i] << std::endl;
 
 		// Perform the integration step
 		stepper.next_step( sys, inputs, t, dt );
