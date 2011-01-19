@@ -22,34 +22,39 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// 13/02/2008: Initial version by Francesco Biscani.
-
 #include <boost/python/class.hpp>
 #include <boost/python/module.hpp>
+#include <boost/python/pure_virtual.hpp>
+#include <boost/python/register_ptr_to_python.hpp>
+#include <string>
 
-#include "../../src/GOclasses/algorithms/asa.h"
-#include "../../src/GOclasses/algorithms/de.h"
-#include "../../src/GOclasses/algorithms/mpso.h"
-#include "../../src/GOclasses/algorithms/pso.h"
-#include "../../src/GOclasses/algorithms/sga.h"
-#include "../../src/GOclasses/algorithms/cs.h"
-#include "../../src/GOclasses/algorithms/base.h"
-#include "../../src/GOclasses/algorithms/ihs.h"
-#include "../../src/GOclasses/algorithms/nm.h"
+#include "../../src/algorithms.h"
+#include "../../src/population.h"
 #include "../exceptions.h"
 #include "../utils.h"
+#include "python_base.h"
 
 using namespace boost::python;
 using namespace pagmo;
 
+// Wrapper method for algorithm evolve that uses copy instead of pass-by-non-const-reference.
+static inline population evolve_copy(const algorithm::base &a, const population &pop)
+{
+	population pop_copy(pop);
+	a.evolve(pop_copy);
+	return pop_copy;
+}
+
+// Wrapper to expose algorithms.
 template <class Algorithm>
 static inline class_<Algorithm,bases<algorithm::base> > algorithm_wrapper(const char *name, const char *descr)
 {
 	class_<Algorithm,bases<algorithm::base> > retval(name,descr,init<const Algorithm &>());
-	retval.def("__copy__", &Py_copy_from_ctor<Algorithm>);
-	retval.def("__repr__", &Py_repr_from_stream<Algorithm>);
-	retval.add_property("id_name", &Algorithm::id_name, "Identification name.");
-	retval.add_property("id_object", &Algorithm::id_object, "Object identification name.");
+	retval.def(init<>());
+	retval.def("evolve", &evolve_copy);
+	retval.def_pickle(generic_pickle_suite<Algorithm>());
+	retval.def("cpp_loads", &py_cpp_loads<Algorithm>);
+	retval.def("cpp_dumps", &py_cpp_dumps<Algorithm>);
 	return retval;
 }
 
@@ -57,25 +62,130 @@ BOOST_PYTHON_MODULE(_algorithm) {
 	// Translate exceptions for this module.
 	translate_exceptions();
 
-	// Expose base algorithm class.
-	class_<algorithm::base, boost::noncopyable>("__algorithm::base", "Base GO algorithm", no_init);
+	// Expose base algorithm class, including the virtual methods.
+	class_<algorithm::python_base>("_base",init<>())
+		.def(init<const algorithm::python_base &>())
+		.def("__repr__",&algorithm::base::human_readable)
+		.def("is_thread_safe",&algorithm::base::is_thread_safe)
+		// Virtual methods that can be (re)implemented.
+		.def("__copy__",pure_virtual(&algorithm::base::clone))
+		.def("get_name", &algorithm::base::get_name, &algorithm::python_base::default_get_name)
+		// NOTE: This needs special treatment because its prototype changes in the wrapper.
+		.def("evolve",&algorithm::python_base::py_evolve)
+		.def("human_readable_extra", &algorithm::base::human_readable_extra, &algorithm::python_base::default_human_readable_extra)
+		.def_pickle(python_class_pickle_suite<algorithm::python_base>());
 
 	// Expose algorithms.
-	algorithm_wrapper<algorithm::asa>("asa", "Simulated Annealing with adaptive neighbourhood algorithm.").def(init<int, const double &, const double &>()).def(init<int, const double&, const double&, const int, const int, const double>());
-	algorithm_wrapper<algorithm::cs>("cs", "Compass search algorithm.").def(init<const double &, const double &, const double &>())
-		.def(init<const double&>());
-	algorithm_wrapper<algorithm::de>("de", "Differential evolution algorithm.").def(init<int, const double &, const double &, int>());
-	algorithm_wrapper<algorithm::ihs>("ihs", "Improved harmony search algorithm.")
-		.def(init<int, const double &, const double &, const double &, const double &, const double &>())
+
+	// Null.
+	algorithm_wrapper<algorithm::null>("null","Null algorithm.");
+
+	// IHS.
+	algorithm_wrapper<algorithm::ihs>("ihs","Improved harmony search.")
+		.def(init<int, optional<const double &, const double &, const double &, const double &, const double &> >());
+	
+	// CS.
+	algorithm_wrapper<algorithm::cs>("cs","Compass search solver.")
+		.def(init<const int &, const double &, optional<const double &, const double &> >());
+
+	// Monte-carlo.
+	algorithm_wrapper<algorithm::monte_carlo>("monte_carlo","Monte-Carlo search.")
 		.def(init<int>());
-	algorithm_wrapper<algorithm::nm>("nm", "Nelder-Mead algorithm.")
-		.def(init<int, const double &, const double &, const double &, const double &>())
-		.def(init<int>());
-	algorithm_wrapper<algorithm::mpso>("mpso", "MPSO algorithm.")
-		.def(init<int, const double &, const double &, const double &, const double &, int>());
-	algorithm_wrapper<algorithm::pso>("pso", "Particle swarm optimization algorithm.")
-		.def(init<int, const double &, const double &, const double &, const double &>());
-	algorithm_wrapper<algorithm::sga>("sga", "Simple genetic algorithm.")
-		.def(init<int, const double &, const double &, int>())
-		.def(init<int, const double &, const double &, int, double, int, int>());
+
+	// Artificial Bee Colony Optimization (ABC).
+	algorithm_wrapper<algorithm::bee_colony>("bee_colony","Artificial Bee Colony optimization (ABC) algorithm.")
+		.def(init<int,optional<int> >());
+	
+	// Ant Colony Optimization (ACO).
+	algorithm_wrapper<algorithm::aco>("aco","Ant Colony Optimization (ACO) algorithm.")
+		.def(init<int,optional<double> >());
+	
+	// Firefly (FA).
+	algorithm_wrapper<algorithm::firefly>("firefly","Firefly optimization algorithm.")
+		.def(init<int,optional<double, double, double> >());
+	
+	// Monotonic Basin Hopping.
+	algorithm_wrapper<algorithm::mbh>("mbh","Monotonic Basin Hopping.")
+		.def(init<const algorithm::base &,optional<int, double> >())
+		.def(init<const algorithm::base &,optional<int, const std::vector<double> &> >())
+		.def("screen_output",&algorithm::mbh::screen_output);
+	
+	// Multistart.
+	algorithm_wrapper<algorithm::ms>("ms","Multistart.")
+		.def(init<const algorithm::base &, int >());
+	
+	// Particle Swarm Optimization.
+	algorithm_wrapper<algorithm::pso>("pso","Particle swarm optimization.")
+		.def(init<int,optional<double, double, double, double, int> >());
+	
+	// Simple Genetic Algorithm.
+	algorithm_wrapper<algorithm::sga>("sga","Simple Genetic Algorithm.")
+		.def(init<int, const double &, const double &, optional<int, algorithm::sga::mutation::type, double, algorithm::sga::selection::type, algorithm::sga::crossover::type> >());
+	
+	// Differential evolution.
+	algorithm_wrapper<algorithm::de>("de","Differential evolution algorithm.")
+		.def(init<int,optional<const double &, const double &, int> >());
+	// ASA.
+	algorithm_wrapper<algorithm::sa_corana>("sa_corana","Simulated annealing, Corana's version with adaptive neighbourhood.")
+		.def(init<int, const double &, const double &, optional<int,int,const double &> >());
+
+	// GSL algorithms.
+	#ifdef PAGMO_ENABLE_GSL
+
+	// GSL's BFGS.
+	algorithm_wrapper<algorithm::gsl_bfgs>("gsl_bfgs","GSL BFGS algorithm.")
+		.def(init<optional<int, const double &, const double &, const double &, const double &> >());
+
+	algorithm_wrapper<algorithm::gsl_bfgs2>("gsl_bfgs2","GSL BFGS2 algorithm.")
+		.def(init<optional<int, const double &, const double &, const double &, const double &> >());
+	
+	// GSL's Fletcher-Reeves.
+	algorithm_wrapper<algorithm::gsl_fr>("gsl_fr","GSL Fletcher-Reeves algorithm.")
+		.def(init<optional<int, const double &, const double &, const double &, const double &> >());
+
+	// GSL's Nelder-Mead.
+	algorithm_wrapper<algorithm::gsl_nm>("gsl_nm","GSL Nelder-Mead simplex method.")
+		.def(init<optional<int, const double &, const double &> >());
+
+	// GSL's Nelder-Mead, version 2.
+	algorithm_wrapper<algorithm::gsl_nm2>("gsl_nm2","GSL Nelder-Mead simplex method, version 2.")
+		.def(init<optional<int, const double &, const double &> >());
+
+	// GSL's Nelder-Mead, version 2 + random initial simplex.
+	algorithm_wrapper<algorithm::gsl_nm2rand>("gsl_nm2rand","GSL Nelder-Mead simplex method, version 2 with randomised initial simplex.")
+		.def(init<optional<int, const double &, const double &> >());
+
+	// GSL's Polak-Ribiere.
+	algorithm_wrapper<algorithm::gsl_pr>("gsl_pr","GSL Polak-Ribiere algorithm.")
+		.def(init<optional<int, const double &, const double &, const double &, const double &> >());
+
+	#endif
+
+	// NLopt algorithms.
+	#ifdef PAGMO_ENABLE_NLOPT
+
+	// NLopt's COBYLA.
+	algorithm_wrapper<algorithm::nlopt_cobyla>("nlopt_cobyla","NLopt's COBYLA algorithm.")
+		.def(init<optional<int, const double &> >());
+
+	// NLopt's BOBYQA.
+	algorithm_wrapper<algorithm::nlopt_bobyqa>("nlopt_bobyqa","NLopt's BOBYQA algorithm.")
+		.def(init<optional<int, const double &> >());
+
+	// NLopt's Sbplx.
+	algorithm_wrapper<algorithm::nlopt_sbplx>("nlopt_sbplx","NLopt's Sbplx algorithm.")
+		.def(init<optional<int, const double &> >());
+
+	#endif
+
+	// Snopt solver.
+	#ifdef PAGMO_ENABLE_SNOPT
+	algorithm_wrapper<algorithm::snopt>("snopt","Snopt solver.")
+		.def(init<int, optional<double, double> >())
+		.def("screen_output",&algorithm::snopt::screen_output);
+	
+	#endif
+
+	// Register to_python conversion from smart pointer.
+	register_ptr_to_python<algorithm::base_ptr>();
 }

@@ -20,6 +20,7 @@
 #include <memory>            // allocator, bad_alloc.
 #include <new>          
 #include <boost/config.hpp>  // MSVC, STATIC_CONSTANT, DEDUCED_TYPENAME, DINKUM.
+#include <boost/cstdint.hpp> // uint*_t
 #include <boost/detail/workaround.hpp>
 #include <boost/iostreams/constants.hpp>   // buffer size.
 #include <boost/iostreams/detail/config/auto_link.hpp>
@@ -43,9 +44,9 @@ namespace boost { namespace iostreams {
 namespace zlib {
                     // Typedefs
 
-typedef unsigned int uint;
-typedef unsigned char byte;
-typedef unsigned long ulong;
+typedef uint32_t uint;
+typedef uint8_t byte;
+typedef uint32_t ulong;
 
 // Prefix 'x' prevents symbols from being redefined when Z_PREFIX is defined
 typedef void* (*xalloc_func)(void*, zlib::uint, zlib::uint);
@@ -138,7 +139,7 @@ class BOOST_IOSTREAMS_DECL zlib_error : public BOOST_IOSTREAMS_FAILURE {
 public:
     explicit zlib_error(int error);
     int error() const { return error_; }
-    static void check(int error);
+    static void check BOOST_PREVENT_MACRO_SUBSTITUTION(int error);
 private:
     int error_;
 };
@@ -209,6 +210,7 @@ private:
     void*        stream_;         // Actual type: z_stream*.
     bool         calculate_crc_;
     zlib::ulong  crc_;
+    zlib::ulong  crc_imp_;
     int          total_in_;
     int          total_out_;
 };
@@ -242,6 +244,9 @@ public:
     bool filter( const char*& begin_in, const char* end_in,
                  char*& begin_out, char* end_out, bool flush );
     void close();
+    bool eof() const { return eof_; }
+private:
+    bool eof_;
 };
 
 } // End namespace detail.
@@ -291,6 +296,7 @@ public:
                              int buffer_size = default_device_buffer_size );
     zlib::ulong crc() { return this->filter().crc(); }
     int total_out() {  return this->filter().total_out(); }
+    bool eof() { return this->filter().eof(); }
 };
 BOOST_IOSTREAMS_PIPABLE(basic_zlib_decompressor, 1)
 
@@ -344,7 +350,7 @@ bool zlib_compressor_impl<Alloc>::filter
     before(src_begin, src_end, dest_begin, dest_end);
     int result = xdeflate(flush ? zlib::finish : zlib::no_flush);
     after(src_begin, dest_begin, true);
-    zlib_error::check(result);
+    zlib_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
     return result != zlib::stream_end; 
 }
 
@@ -355,6 +361,7 @@ void zlib_compressor_impl<Alloc>::close() { reset(true, true); }
 
 template<typename Alloc>
 zlib_decompressor_impl<Alloc>::zlib_decompressor_impl(const zlib_params& p)
+  : eof_(false)
 { init(p, false, static_cast<zlib_allocator<Alloc>&>(*this)); }
 
 template<typename Alloc>
@@ -377,12 +384,15 @@ bool zlib_decompressor_impl<Alloc>::filter
     before(src_begin, src_end, dest_begin, dest_end);
     int result = xinflate(zlib::sync_flush);
     after(src_begin, dest_begin, false);
-    zlib_error::check(result);
-    return result != zlib::stream_end;
+    zlib_error::check BOOST_PREVENT_MACRO_SUBSTITUTION(result);
+    return !(eof_ = result == zlib::stream_end);
 }
 
 template<typename Alloc>
-void zlib_decompressor_impl<Alloc>::close() { reset(false, true); }
+void zlib_decompressor_impl<Alloc>::close() {
+    eof_ = false;
+    reset(false, true);
+}
 
 } // End namespace detail.
 

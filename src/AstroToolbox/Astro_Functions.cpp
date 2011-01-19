@@ -28,7 +28,6 @@
 
 #include "Astro_Functions.h"
 #include "ZeroFinder.h"
-#include "../constants.h"
 
 using namespace std;
 

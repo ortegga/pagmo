@@ -8,7 +8,7 @@
  *                                                                           *
  *   This program is free software; you can redistribute it and/or modify    *
  *   it under the terms of the GNU General Public License as published by    *
- *   the Free Software Foundation; either version 3 of the License, or       *
+ *   the Free Software Foundation; either version 2 of the License, or       *
  *   (at your option) any later version.                                     *
  *                                                                           *
  *   This program is distributed in the hope that it will be useful,         *
@@ -25,37 +25,26 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
-#include "src/GOclasses/basic/archipelago.h"
-#include "src/GOclasses/basic/island.h"
-#include "src/GOclasses/basic/population.h"
-#include "src/GOclasses/basic/individual.h"
-
-#include "src/GOclasses/problems/docking.h"
-#include "src/GOclasses/algorithms/asa.h"
-#include "src/GOclasses/algorithms/de.h"
-#include "src/GOclasses/algorithms/sga.h"
-
-#include "src/GOclasses/basic/migration/MigrationScheme.h"
-#include "src/GOclasses/basic/migration/MigrationPolicy.h"
-#include "src/GOclasses/basic/migration/ChooseBestMigrationSelectionPolicy.h"
-#include "src/GOclasses/basic/topology/ring_topology.h"
-
-#include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/ctrnn.h"
-
-#include "src/logger.h"
-#include "src/config_toolbox/config_parser.h"
-
 #include <numeric>
 
-using namespace std;
+
+// include pagmo
+#include "src/pagmo.h"
+
+// include developmental stuff for this branch
+#include "src/problem/docking.h"
+#include "src/migration.h"
+#include "src/ann_toolbox/multilayer_perceptron.h"
+#include "src/config_toolbox/config_parser.h"
+#include "src/logger.h"
+
+// TODO ADD THIS ONE into problem.h later
+
+
 using namespace pagmo;
 
+my_logger logging;			
 
-my_logger logging;
-
-extern string max_log_string = "";
 extern double max_log_fitness = 99.0;
 extern bool pre_evolve = false;
 
@@ -75,8 +64,8 @@ void usage(const char* name) {
 }
 
 std::vector<double> load_chromosome_twodee(std::string fname) {
-	fstream file;
-	file.open(fname.c_str(), ios::in);
+	std::fstream file;
+	file.open(fname.c_str(), std::ios::in);
 	if ( file.fail() ) {
 	    printf("Error opening %s - %s\n", fname.c_str(), strerror(errno));
 		exit(0);
@@ -85,7 +74,7 @@ std::vector<double> load_chromosome_twodee(std::string fname) {
     file >> len;
     std::vector<double> chromosome(len, 0);
 
-    for (int i = 0; i < len; i++) {
+    for (unsigned int i = 0; i < len; i++) {
         file >> chromosome[i];
     }
     file.close();
@@ -96,8 +85,8 @@ std::vector<double> load_chromosome_twodee(std::string fname) {
 }
 
 std::vector<double> load_chromosome_pagmo(std::string fname) {
-	fstream file;
-	file.open(fname.c_str(), ios::in);
+	std::fstream file;
+	file.open(fname.c_str(), std::ios::in);
 	if ( file.fail() ) {
 	    printf("Error opening %s - %s\n", fname.c_str(), strerror(errno));
 		exit(0);
@@ -116,7 +105,7 @@ std::vector<double> load_chromosome_pagmo(std::string fname) {
 	
 	
 	//std::copy(chromosome.begin(), chromosome.end(), std::ostream_iterator<double>(std::cout, ", "));
-	//cout << endl; 
+	//cout << std::endl; 
 	
 	
 	return chromosome;	
@@ -139,19 +128,21 @@ void run_chromosome(std::string file, problem::docking &prob) {
 	// prob.set_fitness_function(99);	// 10  = no attitude
 
 	// TESTING
-	cout << "Created the problem!" << endl;	
-	cout << "Calling the objfun_ ... " << endl;
+	std::cout << "Created the problem!" << std::endl;	
+	std::cout << "Calling the objfun_ ... " << std::endl;
 
 
 	//prob.pre_evolution(pop);
 	prob.generate_starting_positions();
-	cout << "TESTING > " << prob.objfun_(v) << std::endl;
-	cout << "\r=== Loaded fitness: " << logging.best_value() << endl;	
-	cout << logging << endl;	
+	fitness_vector f(1);
+	prob.objfun_impl(f, v);
+	std::cout << "TESTING > " << f[0] << std::endl;
+	std::cout << "\r=== Loaded fitness: " << logging.best_value() << std::endl;	
+	std::cout << logging << std::endl;	
 
-	ofstream myfile;
+	std::ofstream myfile;
 	myfile.open ("bestrun.dat");
-	myfile << logging << endl;
+	myfile << logging << std::endl;
 	myfile.close();	
 
 }
@@ -164,13 +155,12 @@ void run_optimal_control(std::string fname, problem::docking &prob) {
 	
 	// read oc file
 	// the order is, :: time x vx z vz theta omega uL uR
-	fstream file;
-	file.open(fname.c_str(), ios::in);
+	std::fstream file;
+	file.open(fname.c_str(), std::ios::in);
 	if ( file.fail() ) {
 	    printf("Error opening %s - %s\n", fname.c_str(), strerror(errno));
 		exit(0);
 	}
-	char h[512];
 	std::string line;
 	double dbl[9]; // elements in line
 	std::vector<double> time, ul, ur;
@@ -199,36 +189,36 @@ void run_optimal_control(std::string fname, problem::docking &prob) {
 		prev = *j;
 	}
 
-//	cout << time.pop_back() << std::endl;
+//	std::cout << time.pop_back() << std::std::endl;
 	time.pop_back(); ul.pop_back(); ur.pop_back();
 
 	double integrator_timestep = sum_of_time_diffs / (time.size());
 	
-	cout << "TIME STEP --> " << integrator_timestep << "("<< time.size() << ")" << std::endl << std::endl;
+	std::cout << "TIME STEP --> " << integrator_timestep << "("<< time.size() << ")" << std::endl << std::endl;
 
 	fprintf(stderr, "Control loaded from %s (%f, %f, %f)\n", fname.c_str(), time.back(), ul.back(), ur.back());
 	
 	// redo timeing!!! 
 	
 	// TESTING
-	cout << "Created the problem!" << endl;	
-	cout << "Calling the objfun_ ... " << endl;
+	std::cout << "Created the problem!" << std::endl;	
+	std::cout << "Calling the objfun_ ... " << std::endl;
 
 	max_log_fitness = 0.0;
+	std::string oc_string = "";
 
 	prob.set_time_step(integrator_timestep);
 	prob.set_vicinity_speed(prob.get_vicinity_speed() + 0.001);
 	prob.set_vicinity_distance(prob.get_vicinity_distance() /*+ 0.17*/);
 	
 	prob.set_start_condition(start_cnd, 6);
-//	max_log_fitness = prob.objfun_oc(time, ul, ur);
-	max_log_fitness = prob.one_run_oc(max_log_string, ul, ur);	
-	cout << "\r=== OC fitness: " << max_log_fitness << endl;	
-	cout << max_log_string << endl;	
+	max_log_fitness = prob.one_run_oc(oc_string, ul, ur);	
+	std::cout << "\r=== OC fitness: " << max_log_fitness << std::endl;	
+	std::cout << oc_string << std::endl;	
 
-	ofstream myfile;
+	std::ofstream myfile;
 	myfile.open ("bestrun-oc.dat");
-	myfile << max_log_string << endl;
+	myfile << oc_string << std::endl;
 	myfile.close();	
 	max_log_fitness = 0;
 
@@ -246,7 +236,7 @@ int main(int argc, char *argv[]){
 	
 	bool less_output = false;
 	bool evaluate_chromosome = false, run_oc = false;
-	char *config_filename;
+	char *config_filename = NULL;
 	std::string filename;	// for laoding stuff
 	
 		
@@ -264,31 +254,31 @@ int main(int argc, char *argv[]){
 			// load switch to load chromosome from a file
 			else if (strcmp(argv[i], "--load") == 0) {
 				if(run_oc) {
-					cout << "ERROR: can not combine --load with --load-oc"<< endl;
+					std::cout << "ERROR: can not combine --load with --load-oc"<< std::endl;
 					exit(0);
 				}
 				if(argc > i + 1) { 
 					evaluate_chromosome = true;
 					filename = argv[++i];
-					//cout << "T:" << i << ", " << filename << ", " << argc << endl;
-				} else { cout << "--load: missing a filename to load!" << endl; usage(argv[0]); }
+					//std::cout << "T:" << i << ", " << filename << ", " << argc << std::endl;
+				} else { std::cout << "--load: missing a filename to load!" << std::endl; usage(argv[0]); }
 			}
 			// load-oc switch to load the AMPL oc from a file
 			else if (strcmp(argv[i], "--load-oc") == 0) {
 				if(evaluate_chromosome) {
-					cout << "ERROR: can not combine --load with --load-oc"<< endl;
+					std::cout << "ERROR: can not combine --load with --load-oc"<< std::endl;
 					exit(0);
 				}
 				if(argc > i + 1) { 
 					run_oc = true;
 					filename = argv[++i];
-				} else { cout << "--load-oc: missing a filename to load!" << endl; usage(argv[0]); }
+				} else { std::cout << "--load-oc: missing a filename to load!" << std::endl; usage(argv[0]); }
 			}
 			// change the noise level in the integrator
 			else if(strcmp(argv[i], "--noise") == 0) {
 				if(argc > i + 1) { 
 					max_noise = boost::lexical_cast<double>(argv[++i]);
-				} else { cout << "--noise: missing a noise value!" << endl; usage(argv[0]); }
+				} else { std::cout << "--noise: missing a noise value!" << std::endl; usage(argv[0]); }
 			}
 			// the rest show warning!
 			else { printf("warning: unknown command line option '%s'\n", argv[i]); usage(argv[0]); }
@@ -332,7 +322,7 @@ int main(int argc, char *argv[]){
 	
 	/////////////////////////////////////////
 	// Print all values!
-	string configs = "";
+	std::string configs = "";
 	configs += "Run Information: ID=" + boost::lexical_cast<std::string>(run_id) + "\n";
 	configs += "Input Neurons:\t\t" + boost::lexical_cast<std::string>(ann_input_neurons) + "\n";
 	configs += "Hidden Neurons:\t\t" + boost::lexical_cast<std::string>(ann_hidden_neurons) + "\n";
@@ -361,7 +351,7 @@ int main(int argc, char *argv[]){
 
     configs += "Max Noise Level:\t\t" + boost::lexical_cast<std::string>(max_noise) + "\n";
 	configs += "-------------------------------------\n";
-	cout << configs;
+	std::cout << configs;
 	///////////////////////////////////////////////////////////
 			
 					
@@ -383,7 +373,7 @@ int main(int argc, char *argv[]){
 
 	////////////////////////////////////////////////
 	// Define the problem						positions, strategy, 				max_time, max_thrust
-	problem::docking prob = problem::docking(&ann, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
+	problem::docking prob(&ann, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 	prob.set_start_condition(start_cnd, 6);	
 	prob.set_log_genome(true);
 
@@ -422,22 +412,21 @@ int main(int argc, char *argv[]){
 	
 	////////////////////////////////////////////////
 	// Create the archipelag/islands
-	cout << "Creating an archipelago...";
-	ring_topology top;
-	MigrationScheme migS(top);
-//	MigrationPolicy migP;
-					//probability, one individual per island, up to 100% of the population can be replaced (1.0)
-	MigrationPolicy migP(0.2, ChooseBestMigrationSelectionPolicy(1), RandomMigrationReplacementPolicy(1.0));	
-	Migration m(migS, migP);
-	archipelago arch = archipelago(prob, algo, islands, individuals, m);
-	cout << "Created!";
+	std::cout << "Creating an archipelago...";
+	topology::ring top;
+//	migration_scheme mig_s(top);
+//					//probability, one individual per island, up to 100% of the population can be replaced (1.0)
+//	migration_policy mig_p(0.2, ChooseBestMigrationSelectionPolicy(1), RandomMigrationReplacementPolicy(1.0));	
+//	migration mig(mig_s, mig_p);
+	archipelago arch = archipelago(prob, algo, islands, individuals, top);
+	std::cout << "Created!";
 
 
 	///////////////////////////////////////////////
 	// Start evolution
-	cout << "\rStarting evolution ...          ID: " << run_id << "          " << endl;	
+	std::cout << "\rStarting evolution ...          ID: " << run_id << "          " << std::endl;	
 	
-	ofstream myfile;
+	std::ofstream myfile;
 	int i = 0, lasti = 0;
 	double best_fitness = 99.9;	// minimizing!!
 	double last_fitness = 99.9;
@@ -449,9 +438,9 @@ int main(int argc, char *argv[]){
 	// run until we are quite good
 	while(best_fitness > -1.7 && i < 79999) { 
 		if(!less_output) {
-			cout << "\r                                                      "
+			std::cout << "\r                                                      "
 			     << "                                                    ";
-			cout << "\rGeneration #" << i << " ["; cout.flush();
+			std::cout << "\rGeneration #" << i << " ["; std::cout.flush();
 		}
 
 		max_log_fitness	= 0.0;		
@@ -461,12 +450,16 @@ int main(int argc, char *argv[]){
 
 		
 		if(!less_output) {
-			cout << "] best: " << arch.best().get_fitness() << "~" << logging.best_value() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+			double best_overall_fitness = 0.0;//arch.best().get_fitness();
+			for(int it = 0; it < arch.get_size(); it++) {
+			 	std::cout << "\\|/ " << it << ":" << arch.get_island(it)->get_population().champion() << ", ";
+			}
+			std::cout << "] best: " << best_overall_fitness << "~" << logging.best_value() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << std::endl;
 			// << "/" << arch[0].get_average_fitnes()?; // << "  lasti: " << (i-lasti);
-			cout << "TEST: #ofIslands: " << arch.size() << " #0: size" << arch[0].size() << " best: " << arch[0].best().get_fitness() << endl;
-			cout << "TEST: Island" << arch[0] << endl;
+//			std::cout << "TEST: #ofIslands: " << arch.get_size() << " #0: size" << arch.get_island(0).size() << " best: " << arch.get_island(0).best().get_fitness() << std::endl;
+			std::cout << "TEST: Island" << arch.get_island(0) << std::endl;
 		}else {
-			cout << "\rG#" << i << "        "; cout.flush();
+			std::cout << "\rG#" << i << "        "; std::cout.flush();
 		}
 		
 		
@@ -474,13 +467,13 @@ int main(int argc, char *argv[]){
 		// logging
 		if(logging.best_value() < best_fitness) {	// max_log_fitness
 			best_fitness = logging.best_value();	
-			cout << "\r=== Best increased @ #" << i-1 << ": " << best_fitness << endl;
+			std::cout << "\r=== Best increased @ #" << i-1 << ": " << best_fitness << std::endl;
 			
 			// write to file
 			std::string h = "id_" + run_id + "_bestrun.dat";
 			myfile.open (h.c_str());
-			myfile << configs << endl;//expected
-			myfile << logging << endl;
+			myfile << configs << std::endl;//expected
+			myfile << logging << std::endl;
 			myfile.close();	
 			lasti = i-1;
 						
@@ -493,8 +486,8 @@ int main(int argc, char *argv[]){
 			while(h.length() < 5) h = "0" + h;
 			std::string s = "id_" + run_id + "_genbest-" + h + ".dat";
 			myfile.open (s.c_str());
-			myfile << configs << endl;
-			myfile << logging << endl;
+			myfile << configs << std::endl;
+			myfile << logging << std::endl;
 			myfile.close();	
 			//////////////////////////////////////////
 			
@@ -506,11 +499,12 @@ int main(int argc, char *argv[]){
 				cmd += s += "\" -F \"submit=submit\" -F \"hostname=`hostname`\" http://juxi.net/projects/EvolvingDocking/upload.php";
 				cmd += " -o tmp.out";
 			
-				int ret = system (cmd.c_str());	
+				//int ret = 
+				system (cmd.c_str());	
 			}
 			
 		}
-		cout.flush();		
+		std::cout.flush();		
 
 		// randomize positions if we seem to be stuck
 /*		if( (i - 1 - lasti) >= evolution_stuck_threshold ) {
@@ -521,7 +515,7 @@ int main(int argc, char *argv[]){
 	}	
 	
 	// finished
-	cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << endl;	
+	std::cout << "==================== Best Overall: " << best_fitness << "\t(i=" << i << ")" << std::endl;	
 
 	return 0;
 }

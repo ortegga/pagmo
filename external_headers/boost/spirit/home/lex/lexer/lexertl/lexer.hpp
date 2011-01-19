@@ -1,4 +1,4 @@
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 // 
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying 
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -90,8 +90,8 @@ namespace boost { namespace spirit { namespace lex { namespace lexertl
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    template <typename Lexer>
-    bool generate_static(Lexer const& lex, std::ostream& os, char const* name);
+    template <typename Lexer, typename F>
+    bool generate_static(Lexer const&, std::ostream&, char const*, F);
 
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -169,10 +169,10 @@ namespace boost { namespace spirit { namespace lex { namespace lexertl
             typedef typename Functor::semantic_actions_type semantic_actions_type;
 
             iterator_data_type(
-                boost::lexer::basic_state_machine<char_type> const& state_machine
-              , boost::lexer::basic_rules<char_type> const& rules
-              , semantic_actions_type const& actions)
-              : state_machine_(state_machine), rules_(rules), actions_(actions)
+                    boost::lexer::basic_state_machine<char_type> const& sm
+                  , boost::lexer::basic_rules<char_type> const& rules
+                  , semantic_actions_type const& actions)
+              : state_machine_(sm), rules_(rules), actions_(actions)
             {}
 
             boost::lexer::basic_state_machine<char_type> const& state_machine_;
@@ -190,7 +190,7 @@ namespace boost { namespace spirit { namespace lex { namespace lexertl
         iterator_type begin(Iterator& first, Iterator const& last
           , char_type const* initial_state = 0) const
         { 
-            if (!init_dfa())
+            if (!init_dfa())    // never minimize DFA for dynamic lexers
                 return iterator_type();
 
             iterator_data_type iterator_data(state_machine_, rules_, actions_);
@@ -265,17 +265,32 @@ namespace boost { namespace spirit { namespace lex { namespace lexertl
         template <typename F>
         void add_action(id_type unique_id, std::size_t state, F act)
         {
+            // If you see an error here stating add_action is not a member of
+            // fusion::unused_type the you are probably having semantic actions 
+            // attached to at least one token in the lexer definition without
+            // using the lex::lexertl::actor_lexer<> as its base class.
             typedef typename Functor::wrap_action_type wrapper_type;
             actions_.add_action(unique_id, state, wrapper_type::call(act));
         }
+//         template <typename F>
+//         void add_action(id_type unique_id, char_type const* state, F act)
+//         {
+//             typedef typename Functor::wrap_action_type wrapper_type;
+//             actions_.add_action(unique_id, add_state(state), wrapper_type::call(act));
+//         }
 
-        bool init_dfa() const
+        // We do not minimize the state machine by default anymore because 
+        // Ben said: "If you can afford to generate a lexer at runtime, there 
+        //            is little point in calling minimise."
+        // Go figure.
+        bool init_dfa(bool minimize = false) const
         {
             if (!initialized_dfa_) {
                 state_machine_.clear();
                 typedef boost::lexer::basic_generator<char_type> generator;
                 generator::build (rules_, state_machine_);
-                generator::minimise (state_machine_);
+                if (minimize)
+                    generator::minimise (state_machine_);
 
 #if defined(BOOST_SPIRIT_LEXERTL_DEBUG)
                 boost::lexer::debug::dump(state_machine_, std::cerr);
@@ -294,8 +309,9 @@ namespace boost { namespace spirit { namespace lex { namespace lexertl
         typename Functor::semantic_actions_type actions_;
         mutable bool initialized_dfa_;
 
-        template <typename Lexer> 
-        friend bool generate_static(Lexer const&, std::ostream&, char const*);
+        // generator functions must be able to access members directly
+        template <typename Lexer, typename F> 
+        friend bool generate_static(Lexer const&, std::ostream&, char const*, F);
     };
 
     ///////////////////////////////////////////////////////////////////////////

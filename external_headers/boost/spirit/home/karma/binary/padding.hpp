@@ -1,4 +1,4 @@
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 // 
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying 
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -75,7 +75,7 @@ namespace boost { namespace spirit { namespace karma
 
             bool result = true;
             while (result && count-- != 0)
-                result = detail::generate_to(sink, 0);
+                result = detail::generate_to(sink, '\0');
 
             if (result)
                 result = karma::delimit_out(sink, d);  // always do post-delimiting

@@ -23,8 +23,6 @@
  *****************************************************************************/
 
 #include <cmath>
-
-#include "../constants.h"
 #include "Astro_Functions.h"
 #include "Lambert.h"
 #include "mga_dsm.h"
@@ -351,12 +349,12 @@ int MGA_DSM(
 		DV, inter_pl_out_v); // [MR] output
 
 	// INTERMEDIATE BLOCK
+
 	for (int i_count=0; i_count < n - 2; i_count++)	{
 		//copy previous output velocity to current input velocity
 		inter_pl_in_v[0] = inter_pl_out_v[0]; inter_pl_in_v[1] = inter_pl_out_v[1]; inter_pl_in_v[2] = inter_pl_out_v[2];
 
-		problem.vrelin_vec.push_back(intermediate_block(t, problem, r, v, i_count, inter_pl_in_v,
-			DV, inter_pl_out_v));
+		problem.vrelin_vec[i_count] = intermediate_block(t, problem, r, v, i_count, inter_pl_in_v,DV, inter_pl_out_v);
 	}
 
 	//copy previous output velocity to current input velocity

@@ -27,8 +27,12 @@
 
 #include <vector>
 #include "Pl_Eph_An.h"
-
-using namespace std;
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/serialization/version.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/split_member.hpp>
 
 // problem types
 #define orbit_insertion          0 // Tandem
@@ -40,6 +44,21 @@ using namespace std;
 
 struct customobject
 {
+	customobject()
+	{
+		for (int i = 0; i < 6; ++i) {
+			keplerian[i] = 0;
+		}
+		epoch = 0;
+		mu = 0;
+	}
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive &ar, const unsigned int){
+		ar & keplerian;
+		ar & epoch;
+		ar & mu;
+	}
 	double keplerian[6];
 	double epoch;
 	double mu;
@@ -47,9 +66,23 @@ struct customobject
 
 
 struct mgaproblem {
+	mgaproblem():type(0),e(0),rp(0),Isp(0),mass(0),DVlaunch(0) {}
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive &ar, const unsigned int){
+		ar & type;
+		ar & sequence;
+		ar & rev_flag;
+		ar & e;
+		ar & rp;
+		ar & asteroid;
+		ar & Isp;
+		ar & mass;
+		ar & DVlaunch;
+	}
 	int type;							//problem type
-	vector<int> sequence;				//fly-by sequence (ex: 3,2,3,3,5,is Earth-Venus-Earth-Earth-Jupiter)
-	vector<int> rev_flag;				//vector of flags for clockwise legs
+	std::vector<int> sequence;				//fly-by sequence (ex: 3,2,3,3,5,is Earth-Venus-Earth-Earth-Jupiter)
+	std::vector<int> rev_flag;				//vector of flags for clockwise legs
 	double e;							//insertion e (only in case total_DV_orbit_insertion)
 	double rp;							//insertion rp in km (only in case total_DV_orbit_insertion)
 	customobject asteroid;				//asteroid data (in case fly-by sequence has a final number = 10)
@@ -60,10 +93,10 @@ struct mgaproblem {
 
 int MGA( 
 		 //INPUTS
-		 vector<double>,
+		 std::vector<double>,
 		 mgaproblem, 
 		
 		 //OUTPUTS
-		 vector <double>&, vector<double>&, double&); 
+		 std::vector <double>&, std::vector<double>&, double&); 
 
 #endif

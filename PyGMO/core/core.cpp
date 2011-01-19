@@ -22,81 +22,156 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// 27/12/2008: Initial version by Francesco Biscani.
-
-#include <boost/cstdint.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/enum.hpp>
+#include <boost/python/extract.hpp>
 #include <boost/python/make_function.hpp>
-#include <boost/python/manage_new_object.hpp>
 #include <boost/python/module.hpp>
-#include <boost/python/overloads.hpp>
-#include <boost/utility.hpp>
-#include <sstream>
-#include <string>
+#include <boost/python/operators.hpp>
+#include <boost/python/pure_virtual.hpp>
+#include <boost/python/register_ptr_to_python.hpp>
+#include <boost/python/tuple.hpp>
+#include <stdexcept>
 #include <vector>
 
-#include "../../src/GOclasses/algorithms/base.h"
-#include "../../src/GOclasses/basic/archipelago.h"
-#include "../../src/GOclasses/basic/topology/base_topology.h"
-#include "../../src/GOclasses/basic/individual.h"
-#include "../../src/GOclasses/basic/island.h"
-#include "../../src/GOclasses/basic/population.h"
-#include "../../src/GOclasses/problems/base.h"
-#include "../../src/GOclasses/basic/migration/MigrationScheme.h"
-#include "../../src/GOclasses/basic/migration/MigrationPolicy.h"
-#include "../../src/GOclasses/basic/migration/MigrationSelectionPolicy.h"
-#include "../../src/GOclasses/basic/migration/RandomMigrationSelectionPolicy.h"
-#include "../../src/GOclasses/basic/migration/ChooseBestMigrationSelectionPolicy.h"
-#include "../../src/GOclasses/basic/migration/MigrationReplacementPolicy.h"
-#include "../../src/GOclasses/basic/migration/RandomMigrationReplacementPolicy.h"
-#include "../../src/GOclasses/basic/migration/BestReplaceWorstIfBetterMigrationReplacementPolicy.h"
+#include "../../src/algorithm/base.h"
+#include "../../src/archipelago.h"
+#include "../../src/base_island.h"
+// NOTE: here probably we need to re-put python island for the future.
+#include "../../src/island.h"
+#include "../../src/migration/base_r_policy.h"
+#include "../../src/migration/base_s_policy.h"
+#include "../../src/migration/best_s_policy.h"
+#include "../../src/migration/fair_r_policy.h"
+#include "../../src/population.h"
+#include "../../src/python_locks.h"
+#include "../../src/problem/base.h"
+#include "../../src/topology/base.h"
 #include "../boost_python_container_conversions.h"
 #include "../exceptions.h"
 #include "../utils.h"
+//#include "python_island.h"
+#include "python_base_island.h"
 
 using namespace boost::python;
 using namespace pagmo;
 
-template <class T, class C>
-static inline T *problem_getter(const C &c)
+static inline problem::base_ptr problem_from_pop(const population &pop)
 {
-	return c.problem().clone();
+	return pop.problem().clone();
 }
 
-template <class T, class C>
-static inline T *algorithm_getter(const C &c)
-{
-	return c.algorithm().clone();
+#define TRIVIAL_GETTER_SETTER(type1,type2,name) \
+static inline type2 get_##name(const type1 &arg) \
+{ \
+	return arg.name; \
+} \
+static inline void set_##name(type1 &arg1, const type2 &arg2) \
+{ \
+	arg1.name = arg2; \
 }
 
-template <class T, class C>
-static inline T *topology_getter(const C &c)
+TRIVIAL_GETTER_SETTER(population::individual_type,decision_vector,cur_x);
+TRIVIAL_GETTER_SETTER(population::individual_type,decision_vector,cur_v);
+TRIVIAL_GETTER_SETTER(population::individual_type,fitness_vector,cur_f);
+TRIVIAL_GETTER_SETTER(population::individual_type,constraint_vector,cur_c);
+TRIVIAL_GETTER_SETTER(population::individual_type,decision_vector,best_x);
+TRIVIAL_GETTER_SETTER(population::individual_type,fitness_vector,best_f);
+TRIVIAL_GETTER_SETTER(population::individual_type,constraint_vector,best_c);
+
+TRIVIAL_GETTER_SETTER(population::champion_type,decision_vector,x);
+TRIVIAL_GETTER_SETTER(population::champion_type,fitness_vector,f);
+TRIVIAL_GETTER_SETTER(population::champion_type,constraint_vector,c);
+
+// Wrappers to make functions taking size_type as input take integers instead, with safety checks.
+inline static base_island_ptr archipelago_get_island(const archipelago &a, int n)
 {
-	return c.get_topology().clone();
+	return a.get_island(boost::numeric_cast<archipelago::size_type>(n));
 }
 
-/// \todo Is this really the correct way to do things??
-template <class T, class C>
-static inline T *selection_policy_getter(const C &c)
+inline static void archipelago_set_algorithm(archipelago &archi, int n, const algorithm::base &a)
 {
-	return c.getMigrationSelectionPolicy().clone();
+	archi.set_algorithm(boost::numeric_cast<archipelago::size_type>(n),a);
 }
 
-template <class T, class C>
-static inline T *replacement_policy_getter(const C &c)
+inline static population::individual_type population_get_individual(const population &pop, int n)
 {
-	return c.getMigrationReplacementPolicy().clone();
+	return pop.get_individual(boost::numeric_cast<population::size_type>(n));
 }
 
-template <class T, class C>
-static inline T *migration_scheme_getter(const C &c)
+inline static void population_set_x(population &pop, int n, const decision_vector &x)
 {
-	return c.get_migration_scheme().clone();
+	pop.set_x(boost::numeric_cast<population::size_type>(n),x);
 }
 
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(island_evolve_overloads, evolve, 0, 1)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(archipelago_evolve_overloads, evolve, 0, 1)
+inline static void population_set_v(population &pop, int n, const decision_vector &v)
+{
+	pop.set_v(boost::numeric_cast<population::size_type>(n),v);
+}
+
+struct population_pickle_suite : boost::python::pickle_suite
+{
+	static boost::python::tuple getinitargs(const population &pop)
+	{
+		gil_state_lock lock;
+		return boost::python::make_tuple(pop.problem().clone());
+	}
+	static boost::python::tuple getstate(const population &pop)
+	{
+		gil_state_lock lock;
+		std::stringstream ss;
+		boost::archive::text_oarchive oa(ss);
+		oa << pop;
+		return boost::python::make_tuple(ss.str(),pop.problem().clone());
+	}
+	static void setstate(population &pop, boost::python::tuple state)
+	{
+		gil_state_lock lock;
+		if (len(state) != 2)
+		{
+			PyErr_SetObject(PyExc_ValueError,("expected 2-item tuple in call to __setstate__; got %s" % state).ptr());
+			throw_error_already_set();
+		}
+		const std::string str = extract<std::string>(state[0]);
+		std::stringstream ss(str);
+		boost::archive::text_iarchive ia(ss);
+		ia >> pop;
+		const problem::base_ptr prob = boost::python::extract<problem::base_ptr>(state[1]);
+		population_access::get_problem_ptr(pop) = prob->clone();
+	}
+};
+
+template <class Island>
+struct island_pickle_suite : boost::python::pickle_suite
+{
+	static boost::python::tuple getinitargs(const Island &isl)
+	{
+		return boost::python::make_tuple(isl.get_problem(),isl.get_algorithm());
+	}
+	static boost::python::tuple getstate(const Island &isl)
+	{
+		std::stringstream ss;
+		boost::archive::text_oarchive oa(ss);
+		oa << isl;
+		return boost::python::make_tuple(ss.str(),isl.get_algorithm());
+	}
+	static void setstate(Island &isl, boost::python::tuple state)
+	{
+		if (len(state) != 2)
+		{
+			PyErr_SetObject(PyExc_ValueError,("expected 2-item tuple in call to __setstate__; got %s" % state).ptr());
+			throw_error_already_set();
+		}
+		const std::string str = extract<std::string>(state[0]);
+		std::stringstream ss(str);
+		boost::archive::text_iarchive ia(ss);
+		ia >> isl;
+		const algorithm::base_ptr algo = boost::python::extract<algorithm::base_ptr>(state[1]);
+		isl.set_algorithm(*algo);
+	}
+};
 
 // Instantiate the core module.
 BOOST_PYTHON_MODULE(_core)
@@ -104,165 +179,130 @@ BOOST_PYTHON_MODULE(_core)
 	// Translate exceptions for this module.
 	translate_exceptions();
 
-	// Enable automatic conversion to/from python list of double/vector<double>.
+	// Enable handy automatic conversions.
 	to_tuple_mapping<std::vector<double> >();
 	from_python_sequence<std::vector<double>,variable_capacity_policy>();
-
-	// Enable automatic conversion to/from python list of double/vector<int>.
 	to_tuple_mapping<std::vector<int> >();
 	from_python_sequence<std::vector<int>,variable_capacity_policy>();
-
-        // Enable automatic conversion to/from python list of double/vector<double>.
-        to_tuple_mapping<std::vector<std::vector<double> > >();
-        from_python_sequence<std::vector<std::vector<double> >,variable_capacity_policy>();
-
-	// Expose individual class.
-	class_<individual> class_ind("individual", "Individual class.", init<const problem::base &>());
-	class_ind.def(init<const problem::base &, const std::vector<double> &, const std::vector<double> &>());
-	class_ind.def(init<const problem::base &, const std::vector<double> &>());
-	class_ind.def(init<const individual &>());
-	class_ind.def("__copy__", &Py_copy_from_ctor<individual>);
-	class_ind.def("__repr__", &Py_repr_from_stream<individual>);
-	class_ind.add_property("fitness", &individual::get_fitness, "Fitness.");
-	class_ind.add_property("decision_vector", make_function(&individual::get_decision_vector, return_value_policy<copy_const_reference>()),
-		"Decision vector.");
-	class_ind.add_property("velocity", make_function(&individual::get_velocity, return_value_policy<copy_const_reference>()),
-		"Velocity.");
+	to_tuple_mapping<std::vector<topology::base::vertices_size_type> >();
+	from_python_sequence<std::vector<topology::base::vertices_size_type>,variable_capacity_policy>();
+	to_tuple_mapping<std::vector<std::vector<double> > >();
+	from_python_sequence<std::vector<std::vector<double> >,variable_capacity_policy>();
+	to_tuple_mapping<std::vector<std::vector<int> > >();
+	from_python_sequence<std::vector<std::vector<int> >,variable_capacity_policy>();
+	to_tuple_mapping<std::vector<std::vector<topology::base::vertices_size_type> > >();
+	from_python_sequence<std::vector<std::vector<topology::base::vertices_size_type> >,variable_capacity_policy>();
 
 	// Expose population class.
-	typedef const individual &(population::*pop_get_const)(int) const;
-	class_<population> class_pop("population", "Population class.", init<const problem::base &>());
-	class_pop.def(init<const problem::base &, int>());
-	class_pop.def(init<const problem::base &>());
-	class_pop.def(init<const population &>());
-	class_pop.def("__copy__", &Py_copy_from_ctor<population>);
-	class_pop.def("__delitem__", &population::erase);
-	class_pop.def("__getitem__", pop_get_const(&population::operator[]), return_value_policy<copy_const_reference>(), "Get a copy of individual.");
-	class_pop.def("__len__", &population::size);
-	class_pop.def("__setitem__", &population::setIndividual);
-	class_pop.def("__repr__", &Py_repr_from_stream<population>);
-	class_pop.add_property("problem", make_function(&problem_getter<problem::base,population>,return_value_policy<manage_new_object>()), "Problem.");
-	class_pop.def("append", &population::push_back, "Append individual at the end of the population.");
-	class_pop.def("insert", &population::insert, "Insert individual before index.");
-	class_pop.def("mean", &population::evaluateMean, "Evaluate mean.");
-	class_pop.def("std", &population::evaluateStd, "Evaluate std.");
-	class_pop.def("best", &population::extractBestIndividual, return_value_policy<copy_const_reference>(), "Copy of best individual.");
-	class_pop.def("worst", &population::extractWorstIndividual, return_value_policy<copy_const_reference>(), "Copy of worst individual.");
+	class_<population>("population", "Population class.", init<const problem::base &,optional<int> >())
+		.def(init<const population &>())
+		.def("__copy__", &Py_copy_from_ctor<population>)
+		.def("__getitem__", &population_get_individual)
+		.def("__len__", &population::size)
+		.def("__repr__", &population::human_readable)
+		.add_property("problem",&problem_from_pop)
+		.add_property("champion",make_function(&population::champion,return_value_policy<copy_const_reference>()))
+		.def("get_best_idx",&population::get_best_idx,"Get index of best individual.")
+		.def("get_worst_idx",&population::get_worst_idx,"Get index of worst individual.")
+		.def("set_x", &population_set_x,"Set decision vector of individual at position n.")
+		.def("set_v", &population_set_v,"Set velocity of individual at position n.")
+		.def("push_back", &population::push_back,"Append individual with given decision vector at the end of the population.")
+		.def("cpp_loads", &py_cpp_loads<population>)
+		.def("cpp_dumps", &py_cpp_dumps<population>)
+		.def_pickle(population_pickle_suite());
 
-	// Expose island.
-	class_<island> class_island("island", "Island.", init<const problem::base &, const algorithm::base &, int>());
-	class_island.def(init<const problem::base &, const algorithm::base &>());
-	class_island.def(init<const problem::base&, const algorithm::base&, int, const MigrationPolicy&>());
-	class_island.def(init<const island &>());
-	class_island.def("__copy__", &Py_copy_from_ctor<island>);
-	class_island.def("__delitem__", &island::erase);
-	class_island.def("__getitem__", &island::operator[], "Get a copy of individual.");
-	class_island.def("__len__", &island::size);
-	class_island.def("__setitem__", &island::set_individual);
-	class_island.def("__repr__", &Py_repr_from_stream<island>);
-	class_island.def("append", &island::push_back, "Append individual at the end of the island.");
-	class_island.def("insert", &island::insert, "Insert individual after index.");
-	class_island.add_property("problem", make_function(&problem_getter<problem::base,island>, return_value_policy<manage_new_object>()), "Problem.");
-	class_island.add_property("algorithm", make_function(&algorithm_getter<algorithm::base,island>, return_value_policy<manage_new_object>()),
-		&island::set_algorithm, "Algorithm.");
-	class_island.add_property("selection_policy", make_function(&selection_policy_getter<MigrationSelectionPolicy, island>, return_value_policy<manage_new_object>()),
-		&island::setMigrationSelectionPolicy, "The island's migration selection policy.");
-	class_island.add_property("replacement_policy", make_function(&replacement_policy_getter<MigrationReplacementPolicy, island>, return_value_policy<manage_new_object>()),
-		&island::setMigrationReplacementPolicy, "The island's migration selection policy.");
-	class_island.add_property("population", &island::get_population, "Copy of population.");
-	class_island.def("mean", &island::mean, "Evaluate mean.");
-	class_island.def("std", &island::std, "Evaluate std.");
-	class_island.def("best", &island::best, "Copy of best individual.");
-	class_island.def("worst", &island::worst, "Copy of worst individual.");
-	class_island.add_property("id", &island::id, "Identification number.");
-	class_island.def("evolve", &island::evolve, island_evolve_overloads());
-	class_island.def("evolve_t", &island::evolve_t, "Evolve for an amount of time.");
-	class_island.def("join", &island::join, "Block until evolution has terminated.");
-	class_island.add_property("busy", &island::busy, "True if island is evolving, false otherwise.");
-	class_island.add_property("evo_time", &island::evo_time, "Total time spent evolving.");
+	// Individual and champion.
+	class_<population::individual_type>("individual","Individual class.",init<>())
+		.def("__repr__",&population::individual_type::human_readable)
+		.add_property("cur_x",&get_cur_x,&set_cur_x)
+		.add_property("cur_f",&get_cur_f,&set_cur_f)
+		.add_property("cur_c",&get_cur_c,&set_cur_c)
+		.add_property("cur_v",&get_cur_v,&set_cur_v)
+		.add_property("best_x",&get_best_x,&set_best_x)
+		.add_property("best_f",&get_best_f,&set_best_f)
+		.add_property("best_c",&get_best_c,&set_best_c)
+		.def("cpp_loads", &py_cpp_loads<population::individual_type>)
+		.def("cpp_dumps", &py_cpp_dumps<population::individual_type>)
+		.def_pickle(generic_pickle_suite<population::individual_type>());
 
-	// Expose archipelago.
-	class_<archipelago> class_arch("archipelago", "Archipelago", init<const problem::base &>());
-	class_arch.def(init<const problem::base &, const algorithm::base &, int, int>());
-	class_arch.def(init<const problem::base &, const MigrationScheme&>());
-	class_arch.def(init<const problem::base &, const algorithm::base &, int, int, const Migration&>());
-	class_arch.def(init<const archipelago &>());
-	class_arch.def("__copy__", &Py_copy_from_ctor<archipelago>);
-	class_arch.def("__getitem__", &archipelago::operator[], return_value_policy<copy_const_reference>());
-	class_arch.def("__len__", &archipelago::size);
-	class_arch.def("__setitem__", &archipelago::set_island);
-	class_arch.def("__repr__", &Py_repr_from_stream<archipelago>);
-	class_arch.add_property("migration_scheme", make_function(&migration_scheme_getter<MigrationScheme, archipelago>, return_value_policy<manage_new_object>()),
-		&archipelago::set_migration_scheme, "The archipelago's migration scheme.");
-	class_arch.add_property("topology", make_function(&topology_getter<base_topology, archipelago>, return_value_policy<manage_new_object>()),
-		&archipelago::set_topology, "The archipelago's migration topology.");
-	class_arch.def("append", &archipelago::push_back, "Append island.");
-	class_arch.add_property("problem", make_function(&problem_getter<problem::base,archipelago>, return_value_policy<manage_new_object>()), "Problem.");
-	class_arch.def("join", &archipelago::join, "Block until evolution on each island has terminated.");
-	class_arch.add_property("busy", &archipelago::busy, "True if at least one island is evolving, false otherwise.");
-	class_arch.def("evolve", &archipelago::evolve, archipelago_evolve_overloads());
-	class_arch.def("evolve_t", &archipelago::evolve_t, "Evolve islands for an amount of time.");
-	class_arch.def("best", &archipelago::best, "Copy of best individual.");
-	class_arch.def("max_evo_time", &archipelago::get_max_evo_time, "Maximum of total evolution times for all islands.");
-	class_arch.def("total_evo_time", &archipelago::get_total_evo_time, "Sum of total evolution times for all islands.");
-	
-	
-	// Expose Migration
-	class_<Migration> class_M("migration", "The migration parameters for archipelago.", init<>());
-	class_M.def(init<const MigrationScheme&, const MigrationPolicy&>());
-	class_M.def("__copy__", &Py_copy_from_ctor<Migration>);
-	class_M.def("__repr__", &Py_repr_from_stream<Migration>);
+	class_<population::champion_type>("champion","Champion class.",init<>())
+		.def("__repr__",&population::champion_type::human_readable)
+		.add_property("x",&get_x,&set_x)
+		.add_property("f",&get_f,&set_f)
+		.add_property("c",&get_c,&set_c)
+		.def("cpp_loads", &py_cpp_loads<population::champion_type>)
+		.def("cpp_dumps", &py_cpp_dumps<population::champion_type>)
+		.def_pickle(generic_pickle_suite<population::champion_type>());
 
-	// Expose MigrationScheme
-	class_<MigrationScheme> class_MS("migration_scheme", "The migration scheme.", init<int, int, optional<boost::uint32_t> >());
-	class_MS.def(init<int, int, const base_topology&, optional<boost::uint32_t> >());
-	class_MS.def("__copy__", &Py_copy_from_ctor<MigrationScheme>);
-	class_MS.def("__repr__", &Py_repr_from_stream<MigrationScheme>);
-	
-	// Expose MigrationPolicy
-	class_<MigrationPolicy> class_MP("migration_policy", "The island's migration policy.", init<>());
-	class_MP.def(init<const double>());
-	class_MP.def(init<const double, const MigrationSelectionPolicy&, const MigrationReplacementPolicy&>());
-	class_MP.def("__copy__", &Py_copy_from_ctor<MigrationPolicy>);
-	class_MP.def("__repr__", &Py_repr_from_stream<MigrationPolicy>);
-	
-	
-	// Expose MigrationSelectionPolicy
-	class_<MigrationSelectionPolicy, boost::noncopyable> class_MSP("__migration_selection_policy", "A migration selection policy.", no_init);
-	
-	// Expose RandomMigrationSelectionPolicy
-	class_<RandomMigrationSelectionPolicy, bases<MigrationSelectionPolicy> > class_RMSP("random_selection_policy", "A random migration selection policy.", init<optional<const boost::uint32_t> >());	
-	/*
-	 * !!!
-	 * Here and below the order of declaration of constructors is crucial !!!
-	 * If the int one is given first, RandomMigrationSelectionPolicy(1) will be interpreted as RandomMigrationSelectionPolicy(1.0) !!!
-	 * Python overloading SUCKS.
-	 * !!!
-	 */	
-	class_RMSP.def(init<const double&, optional<const boost::uint32_t> >());
-	class_RMSP.def(init<const int&, optional<const boost::uint32_t> >());
-	class_RMSP.def("__copy__", &Py_copy_from_ctor<RandomMigrationSelectionPolicy>);
-	class_RMSP.def("__repr__", &Py_repr_from_stream<RandomMigrationSelectionPolicy>);
-	// Expose ChooseBestMigrationSelectionPolicy
-	class_<ChooseBestMigrationSelectionPolicy, bases<MigrationSelectionPolicy> > class_CBMSP("choose_best_selection_policy", "A choose best migration selection policy.", init<>());	
-	class_CBMSP.def(init<const double&>());
-	class_CBMSP.def(init<const int&>());	
-	class_CBMSP.def("__copy__", &Py_copy_from_ctor<ChooseBestMigrationSelectionPolicy>);
-	class_CBMSP.def("__repr__", &Py_repr_from_stream<ChooseBestMigrationSelectionPolicy>);
-		
-	// Expose MigrationReplacementPolicy
-	class_<MigrationReplacementPolicy, boost::noncopyable> class_MRP("__migration_replacement_policy", "A migration replacement policy.", no_init);
-	
-	// Expose RandomMigrationReplacementPolicy
-	class_<RandomMigrationReplacementPolicy, bases<MigrationReplacementPolicy> > class_RMRP("random_replacement_policy", "A random migration replacement policy.", init<optional<const boost::uint32_t> >());
-	class_RMRP.def(init<const double&, optional<const boost::uint32_t> >());
-	class_RMRP.def(init<const int&, optional<const boost::uint32_t> >());	
-	class_RMRP.def("__copy__", &Py_copy_from_ctor<RandomMigrationReplacementPolicy>);
-	class_RMRP.def("__repr__", &Py_repr_from_stream<RandomMigrationReplacementPolicy>);
+	// Base island class for Python implementation.
+	class_<python_base_island>("_base_island",init<const problem::base &, const algorithm::base &,optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const population &, const algorithm::base &,optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const python_base_island &>())
+		.def("__repr__",&base_island::human_readable)
+		.def("__len__", &base_island::get_size)
+		.def("evolve", &base_island::evolve,"Evolve island n times.")
+		.def("evolve_t", &base_island::evolve_t,"Evolve island for at least n milliseconds.")
+		.def("join", &base_island::join,"Wait for evolution to complete.")
+		.def("busy", &base_island::busy,"Check if island is evolving.")
+		.def("is_thread_safe", &base_island::is_thread_safe,"Check if island is thread-safe.")
+		.def("is_blocking", &base_island::is_blocking,"Check if island is blocking.")
+		.def("interrupt", &base_island::interrupt,"Interrupt evolution.")
+		.add_property("problem",&base_island::get_problem)
+		.add_property("algorithm",&base_island::get_algorithm,&island::set_algorithm)
+		.add_property("population",&base_island::get_population)
+		.add_property("s_policy",&base_island::get_s_policy)
+		.add_property("r_policy",&base_island::get_r_policy)
+		.add_property("migration_probability",&base_island::get_migration_probability)
+		// Virtual methods.
+		.def("__copy__",pure_virtual(&base_island::clone))
+		.def("get_name", &base_island::get_name,&python_base_island::default_get_name)
+		.def("_perform_evolution",&python_base_island::py_perform_evolution)
+		.def_pickle(python_class_pickle_suite<python_base_island>());
 
-	class_<BestReplaceWorstIfBetterMigrationReplacementPolicy, bases<MigrationReplacementPolicy> > class_BRWIBMRP("best_rep_worst_replacement_policy", "A migration replacement policy where best incoming replace worst present if they are better.", init<>());
-	class_BRWIBMRP.def(init<const double&>());
-	class_BRWIBMRP.def(init<const int&>());
-	class_BRWIBMRP.def("__copy__", &Py_copy_from_ctor<BestReplaceWorstIfBetterMigrationReplacementPolicy>);
-	class_BRWIBMRP.def("__repr__", &Py_repr_from_stream<BestReplaceWorstIfBetterMigrationReplacementPolicy>);	
+	// Local island class.
+	class_<island,bases<base_island> >("island", "Local island class.",init<const problem::base &, const algorithm::base &,optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const population &, const algorithm::base &,optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const island &>())
+		.def("cpp_loads", &py_cpp_loads<island>)
+		.def("cpp_dumps", &py_cpp_dumps<island>)
+		.def_pickle(island_pickle_suite<island>());
+
+	// Register to_python conversion from smart pointer.
+	register_ptr_to_python<base_island_ptr>();
+
+	// Expose archipelago class.
+	class_<archipelago>("archipelago", "Archipelago class.", init<const problem::base &, const algorithm::base &,
+		int,int,optional<const topology::base &,archipelago::distribution_type,archipelago::migration_direction> >())
+		.def(init<optional<archipelago::distribution_type,archipelago::migration_direction> >())
+		.def(init<const topology::base &, optional<archipelago::distribution_type,archipelago::migration_direction> >())
+		.def(init<archipelago::distribution_type, archipelago::migration_direction>())
+		.def(init<const archipelago &>())
+		.def("__copy__", &Py_copy_from_ctor<archipelago>)
+		.def("__len__", &archipelago::get_size)
+		.def("__repr__", &archipelago::human_readable)
+		.def("__getitem__", &archipelago_get_island)
+		.def("evolve", &archipelago::evolve,"Evolve archipelago n times.")
+		.def("evolve_t", &archipelago::evolve_t,"Evolve archipelago for at least n milliseconds.")
+		.def("join", &archipelago::join,"Wait for evolution to complete.")
+		.def("interrupt", &archipelago::interrupt,"Interrupt evolution.")
+		.def("busy", &archipelago::busy,"Check if archipelago is evolving.")
+		.def("push_back", &archipelago::push_back,"Append island.")
+		.def("set_algorithm", &archipelago_set_algorithm,"Set algorithm on island.")
+		.def("is_thread_safe", &archipelago::is_thread_safe,"Check if archipelago is thread_safe.")
+		.def("is_blocking", &archipelago::is_blocking,"Check if archipelago is blocking.")
+		.def("dump_migr_history", &archipelago::dump_migr_history)
+		.def("clear_migr_history", &archipelago::clear_migr_history)
+		.def("cpp_loads", &py_cpp_loads<archipelago>)
+		.def("cpp_dumps", &py_cpp_dumps<archipelago>)
+		.add_property("topology", &archipelago::get_topology, &archipelago::set_topology)
+		.def_pickle(generic_pickle_suite<archipelago>());
+
+	// Archipelago's migration strategies.
+	enum_<archipelago::distribution_type>("distribution_type")
+		.value("point_to_point",archipelago::point_to_point)
+		.value("broadcast",archipelago::broadcast);
+
+	enum_<archipelago::migration_direction>("migration_direction")
+		.value("source",archipelago::source)
+		.value("destination",archipelago::destination);
 }

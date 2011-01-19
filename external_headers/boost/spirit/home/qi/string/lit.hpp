@@ -1,5 +1,5 @@
 /*=============================================================================
-    Copyright (c) 2001-2009 Joel de Guzman
+    Copyright (c) 2001-2010 Joel de Guzman
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,6 +23,7 @@
 #include <boost/spirit/home/support/unused.hpp>
 #include <boost/spirit/home/support/common_terminals.hpp>
 #include <boost/spirit/home/support/string_traits.hpp>
+#include <boost/spirit/home/support/detail/get_encoding.hpp>
 #include <boost/fusion/include/at.hpp>
 #include <boost/fusion/include/value_at.hpp>
 #include <boost/type_traits/add_reference.hpp>
@@ -194,7 +195,8 @@ namespace boost { namespace spirit { namespace qi
         template <typename String>
         result_type op(String const& str, mpl::true_) const
         {
-            typename Modifiers::char_encoding encoding;
+            typename spirit::detail::get_encoding<Modifiers,
+                spirit::char_encoding::standard>::type encoding;
             return result_type(traits::get_c_string(str), encoding);
         }
     };

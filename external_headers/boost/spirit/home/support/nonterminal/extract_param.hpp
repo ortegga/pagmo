@@ -1,6 +1,6 @@
 /*=============================================================================
-    Copyright (c) 2001-2009 Joel de Guzman
-    Copyright (c) 2001-2009 Hartmut Kaiser
+    Copyright (c) 2001-2010 Joel de Guzman
+    Copyright (c) 2001-2010 Hartmut Kaiser
     Copyright (c) 2009 Francois Barel
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -16,6 +16,7 @@
 #include <boost/spirit/home/support/meta_compiler.hpp>
 #include <boost/spirit/home/support/nonterminal/locals.hpp>
 #include <boost/spirit/home/support/unused.hpp>
+#include <boost/spirit/home/support/common_terminals.hpp>
 
 #include <boost/function_types/is_function.hpp>
 #include <boost/function_types/parameter_types.hpp>
@@ -107,6 +108,16 @@ namespace boost { namespace spirit { namespace detail
 
         typedef typename fusion::result_of::as_list<params>::type type;
     };
+
+    ///////////////////////////////////////////////////////////////////////////
+    template <typename Types>
+    struct extract_encoding
+      : extract_param<
+            Types
+          , is_char_encoding<mpl::_>
+          , unused_type
+        >
+    {};
 }}}
 
 #endif

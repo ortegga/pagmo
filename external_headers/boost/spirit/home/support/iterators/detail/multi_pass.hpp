@@ -1,5 +1,5 @@
 //  Copyright (c) 2001 Daniel C. Nuffer
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 // 
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,15 +17,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 namespace boost { namespace spirit { namespace detail
 {
-    ///////////////////////////////////////////////////////////////////////////
-    template <typename T>
-    inline void swap(T& t1, T& t2)
-    {
-        using std::swap;
-        using boost::spirit::swap;
-        swap(t1, t2);
-    }
-
 #if defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
     ///////////////////////////////////////////////////////////////////////////
     //  Meta-function to generate a std::iterator<> base class for multi_pass. 
@@ -67,10 +58,13 @@ namespace boost { namespace spirit { namespace detail
         void swap(default_input_policy&) {}
 
         template <typename MultiPass, typename TokenType>
-        static TokenType& advance_input(MultiPass& mp, TokenType& curtok);
+        static void advance_input(MultiPass& mp);
 
-        template <typename MultiPass, typename TokenType>
-        static bool input_at_eof(MultiPass const& mp, TokenType& curtok);
+        template <typename MultiPass>
+        static typename MultiPass::reference get_input(MultiPass& mp);
+
+        template <typename MultiPass>
+        static bool input_at_eof(MultiPass const& mp);
 
         template <typename MultiPass, typename TokenType>
         static bool input_is_valid(MultiPass& mp, TokenType& curtok);
@@ -127,7 +121,7 @@ namespace boost { namespace spirit { namespace detail
         void swap(default_checking_policy&) {}
 
         template <typename MultiPass>
-        static void check(MultiPass const&) {}
+        static void docheck(MultiPass const&) {}
 
         template <typename MultiPass>
         static void clear_queue(MultiPass&) {}

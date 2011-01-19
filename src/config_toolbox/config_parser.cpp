@@ -29,8 +29,9 @@
 #include <cstdlib>
 #include <vector>        
 #include <exception>
-#include "../exceptions.h"
 
+
+#include "../exceptions.h"
 #include "config_parser.h"
 
 #include <boost/algorithm/string/trim.hpp>

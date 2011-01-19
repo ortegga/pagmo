@@ -1,4 +1,4 @@
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 // 
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying 
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,6 +10,8 @@
 #pragma once
 #endif
 
+#include <boost/spirit/home/karma/directive/encoding.hpp>
+
 ///////////////////////////////////////////////////////////////////////////////
 //  directives related to alignment 
 //  left_align[...], right_align[...], center[...]
@@ -20,9 +22,10 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //  directives related to truncating length
-//  maxwidth[...]
+//  maxwidth[...], columns[]
 ///////////////////////////////////////////////////////////////////////////////
 #include <boost/spirit/home/karma/directive/maxwidth.hpp>
+#include <boost/spirit/home/karma/directive/columns.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
 //  directives related to character case
@@ -36,6 +39,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include <boost/spirit/home/karma/directive/verbatim.hpp>
 #include <boost/spirit/home/karma/directive/delimit.hpp>
+#include <boost/spirit/home/karma/directive/no_delimit.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
 //  repeat directives
@@ -44,15 +48,22 @@
 #include <boost/spirit/home/karma/directive/repeat.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
-//  omit directive
-//  omit[...]
+//  omit, skip, and duplicate directives
+//  omit[...], skip[...], duplicate[...]
 ///////////////////////////////////////////////////////////////////////////////
 #include <boost/spirit/home/karma/directive/omit.hpp>
+#include <boost/spirit/home/karma/directive/duplicate.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
 //  buffer directive
 //  buffer[...]
 ///////////////////////////////////////////////////////////////////////////////
 #include <boost/spirit/home/karma/directive/buffer.hpp>
+
+///////////////////////////////////////////////////////////////////////////////
+//  strict and relaxed directives
+//  strict[...], relaxed[...]
+///////////////////////////////////////////////////////////////////////////////
+#include <boost/spirit/home/karma/directive/strict_relaxed.hpp>
 
 #endif

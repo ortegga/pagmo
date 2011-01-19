@@ -54,6 +54,24 @@ namespace detail {
   template<typename Vertex, typename EdgeIndex>
   class csr_edge_descriptor;
 
+  // Add edge_index property map
+  template<typename Vertex, typename EdgeIndex>
+  struct csr_edge_index_map
+  {
+    typedef EdgeIndex                 value_type;
+    typedef EdgeIndex                 reference;
+    typedef csr_edge_descriptor<Vertex, EdgeIndex> key_type;
+    typedef readable_property_map_tag category;
+  };
+
+  template<typename Vertex, typename EdgeIndex>
+  inline EdgeIndex
+  get(const csr_edge_index_map<Vertex, EdgeIndex>&,
+      const csr_edge_descriptor<Vertex, EdgeIndex>& key)
+  {
+    return key.idx;
+  }
+
   /** Compressed sparse row graph internal structure.
    *
    * Vertex and EdgeIndex should be unsigned integral types and should
@@ -65,12 +83,14 @@ namespace detail {
     public detail::indexed_edge_properties<
              compressed_sparse_row_structure<EdgeProperty, Vertex, EdgeIndex>,
              EdgeProperty,
-             csr_edge_descriptor<Vertex, EdgeIndex> > {
+             csr_edge_descriptor<Vertex, EdgeIndex>,
+             csr_edge_index_map<Vertex, EdgeIndex> > {
     public:
     typedef detail::indexed_edge_properties<
               compressed_sparse_row_structure<EdgeProperty, Vertex, EdgeIndex>,
               EdgeProperty,
-              csr_edge_descriptor<Vertex, EdgeIndex> >
+              csr_edge_descriptor<Vertex, EdgeIndex>,
+              csr_edge_index_map<Vertex, EdgeIndex> >
       inherited_edge_properties;
 
     typedef Vertex vertices_size_type;
@@ -81,17 +101,9 @@ namespace detail {
 
     std::vector<EdgeIndex> m_rowstart;
     std::vector<Vertex> m_column;
-#ifdef BOOST_GRAPH_USE_OLD_CSR_INTERFACE
-    // This member is only needed to support add_edge(), which is not provided by
-    // the new interface
-    Vertex m_last_source; // Last source of added edge, plus one
-#endif // BOOST_GRAPH_USE_OLD_CSR_INTERFACE
 
     compressed_sparse_row_structure(Vertex numverts = 0)
       : m_rowstart(numverts + 1, EdgeIndex(0)), m_column()
-#ifdef BOOST_GRAPH_USE_OLD_CSR_INTERFACE
-        , m_last_source(numverts)
-#endif
       {}
     
     //  Rebuild graph from number of vertices and multi-pass unsorted list of
@@ -118,6 +130,7 @@ namespace detail {
          source_pred, boost::make_property_map_function(global_to_local));
 
       m_column.resize(m_rowstart.back());
+      inherited_edge_properties::resize(m_rowstart.back());
 
       boost::graph::detail::histogram_sort
         (sources_begin, sources_end, m_rowstart.begin(), numlocalverts,
@@ -251,11 +264,12 @@ namespace detail {
         (sources.begin(), sources.end(), m_rowstart.begin(), numverts,
          keep_all(), boost::make_property_map_function(global_to_local));
       boost::graph::detail::histogram_sort_inplace
-        (sources.begin(), sources.end(), m_rowstart.begin(), numverts,
+        (sources.begin(), m_rowstart.begin(), numverts,
          targets.begin(), boost::make_property_map_function(global_to_local));
       // Now targets is the correct vector (properly sorted by source) for
       // m_column
       m_column.swap(targets);
+      inherited_edge_properties::resize(m_rowstart.back());
     }
 
     // Replace graph with sources and targets and edge properties given, sorting
@@ -277,7 +291,7 @@ namespace detail {
         (sources.begin(), sources.end(), m_rowstart.begin(), numverts,
          keep_all(), boost::make_property_map_function(global_to_local));
       boost::graph::detail::histogram_sort_inplace
-        (sources.begin(), sources.end(), m_rowstart.begin(), numverts,
+        (sources.begin(), m_rowstart.begin(), numverts,
          targets.begin(), edge_props.begin(),
          boost::make_property_map_function(global_to_local));
       // Now targets is the correct vector (properly sorted by source) for
@@ -297,6 +311,7 @@ namespace detail {
     {
       m_rowstart.resize(numverts + 1);
       m_column.resize(numedges);
+      inherited_edge_properties::resize(numedges);
       EdgeIndex current_edge = 0;
       typedef typename boost::graph_traits<Graph>::vertex_descriptor g_vertex;
       typedef typename boost::graph_traits<Graph>::edge_descriptor g_edge;
@@ -310,24 +325,12 @@ namespace detail {
       for (Vertex i = 0; i != numverts; ++i) {
         m_rowstart[i] = current_edge;
         g_vertex v = ordered_verts_of_g[i];
-#ifdef BOOST_GRAPH_USE_OLD_CSR_INTERFACE
-        // Out edges in a single vertex are only sorted for the old interface
-        EdgeIndex num_edges_before_this_vertex = current_edge;
-#endif // BOOST_GRAPH_USE_OLD_CSR_INTERFACE
         g_out_edge_iter ei, ei_end;
-        for (tie(ei, ei_end) = out_edges(v, g); ei != ei_end; ++ei) {
+        for (boost::tie(ei, ei_end) = out_edges(v, g); ei != ei_end; ++ei) {
           m_column[current_edge++] = get(vi, target(*ei, g));
         }
-#ifdef BOOST_GRAPH_USE_OLD_CSR_INTERFACE
-        // Out edges in a single vertex are only sorted for the old interface
-        std::sort(m_column.begin() + num_edges_before_this_vertex,
-                  m_column.begin() + current_edge);
-#endif // BOOST_GRAPH_USE_OLD_CSR_INTERFACE
       }
       m_rowstart[numverts] = current_edge;
-#ifdef BOOST_GRAPH_USE_OLD_CSR_INTERFACE
-      m_last_source = numverts;
-#endif // BOOST_GRAPH_USE_OLD_CSR_INTERFACE
     }
 
     // Add edges from a sorted (smallest sources first) range of pairs and edge
@@ -522,18 +525,18 @@ namespace detail {
     typedef typename CSRGraph::edges_size_type EdgeIndex;
     typedef typename CSRGraph::edge_descriptor edge_descriptor;
 
-    csr_in_edge_iterator() {}
+    csr_in_edge_iterator(): m_graph(0) {}
     // Implicit copy constructor OK
     csr_in_edge_iterator(const CSRGraph& graph,
                          EdgeIndex index_in_backward_graph)
-      : m_graph(graph), m_index_in_backward_graph(index_in_backward_graph) {}
+      : m_index_in_backward_graph(index_in_backward_graph), m_graph(&graph) {}
 
    public: // See above
     // iterator_facade requirements
     edge_descriptor dereference() const {
       return edge_descriptor(
-               m_graph.m_backward.m_column[m_index_in_backward_graph],
-               m_graph.m_backward.m_edge_properties[m_index_in_backward_graph]);
+               m_graph->m_backward.m_column[m_index_in_backward_graph],
+               m_graph->m_backward.m_edge_properties[m_index_in_backward_graph]);
     }
 
     bool equal(const csr_in_edge_iterator& other) const
@@ -547,7 +550,7 @@ namespace detail {
     { return other.m_index_in_backward_graph - m_index_in_backward_graph; }
 
     EdgeIndex m_index_in_backward_graph;
-    const CSRGraph& m_graph;
+    const CSRGraph* m_graph;
 
     friend class iterator_core_access;
   };

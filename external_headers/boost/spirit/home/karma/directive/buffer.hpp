@@ -1,4 +1,4 @@
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,7 @@
 #include <boost/spirit/home/support/unused.hpp>
 #include <boost/spirit/home/support/info.hpp>
 #include <boost/spirit/home/support/common_terminals.hpp>
-#include <boost/spirit/home/support/attributes.hpp>
+#include <boost/spirit/home/karma/detail/attributes.hpp>
 
 namespace boost { namespace spirit
 {
@@ -97,6 +97,17 @@ namespace boost { namespace spirit { namespace karma
         }
     };
 
+    // make sure buffer[buffer[...]] does not result in double buffering
+    template <typename Subject, typename Modifiers>
+    struct make_directive<tag::buffer, buffer_directive<Subject>, Modifiers>
+    {
+        typedef buffer_directive<Subject> result_type;
+        result_type operator()(unused_type
+          , buffer_directive<Subject> const& subject, unused_type) const
+        {
+            return subject;
+        }
+    };
 }}}
 
 namespace boost { namespace spirit { namespace traits

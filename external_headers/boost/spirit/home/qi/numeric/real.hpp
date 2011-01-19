@@ -1,5 +1,5 @@
 /*=============================================================================
-    Copyright (c) 2001-2009 Joel de Guzman
+    Copyright (c) 2001-2010 Joel de Guzman
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -62,15 +62,30 @@ namespace boost { namespace spirit { namespace qi
             typedef T type;
         };
 
-        template <typename Iterator, typename Context
-          , typename Skipper, typename Attribute>
+        template <typename Iterator, typename Context, typename Skipper>
         bool parse(Iterator& first, Iterator const& last
           , Context& /*context*/, Skipper const& skipper
-          , Attribute& attr) const
+          , T& attr) const
         {
             qi::skip_over(first, last, skipper);
             return detail::real_impl<T, RealPolicies>::
                 parse(first, last, attr, RealPolicies());
+        }
+
+        template <typename Iterator, typename Context
+          , typename Skipper, typename Attribute>
+        bool parse(Iterator& first, Iterator const& last
+          , Context& context, Skipper const& skipper
+          , Attribute& attr_) const
+        {
+            // this case is called when Attribute is not T
+            T attr;
+            if (parse(first, last, context, skipper, attr))
+            {
+                traits::assign_to(attr, attr_);
+                return true;
+            }
+            return false;
         }
 
         template <typename Context>

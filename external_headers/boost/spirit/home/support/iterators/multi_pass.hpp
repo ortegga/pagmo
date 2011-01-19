@@ -1,5 +1,5 @@
 //  Copyright (c) 2001, Daniel C. Nuffer
-//  Copyright (c) 2001-2009 Hartmut Kaiser
+//  Copyright (c) 2001-2010 Hartmut Kaiser
 //  http://spirit.sourceforge.net/
 // 
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -58,12 +58,9 @@ namespace boost { namespace spirit
 
         multi_pass() : member_base((shared_data_type*)0) {}
 
-        // Newer versions of gcc (and perhaps other compilers) are known to 
-        // generate warnings about the base class and the 'shared' member 
-        // being initialized in the wrong order ('shared' is initialized before
-        // the base class). This is fully intended behavior as some policies
-        // rely on the fact that their shared part is initialized before their
-        // unique part. Please ignore the warnings, these are harmless.
+        explicit multi_pass(T& input)
+          : member_base(new shared_data_type(input)), policies_base_type(input) {}
+
         explicit multi_pass(T const& input)
           : member_base(new shared_data_type(input)), policies_base_type(input) {}
 
@@ -102,13 +99,13 @@ namespace boost { namespace spirit
 
         void swap(multi_pass& x)
         {
-            spirit::detail::swap(this->member, x.member);
+            boost::swap(this->member, x.member);
             this->policies_base_type::swap(x);
         }
 
         reference operator*() const
         {
-            policies_base_type::check(*this);
+            policies_base_type::docheck(*this);
             return policies_base_type::dereference(*this);
         }
         pointer operator->() const
@@ -118,7 +115,7 @@ namespace boost { namespace spirit
 
         multi_pass& operator++()
         {
-            policies_base_type::check(*this);
+            policies_base_type::docheck(*this);
             policies_base_type::increment(*this);
             return *this;
         }
@@ -158,6 +155,23 @@ namespace boost { namespace spirit
             return policies_base_type::less_than(*this, y);
         }
 
+        bool operator!=(multi_pass const& y)
+        {
+            return !(*this == y);
+        }
+        bool operator>(multi_pass const& y)
+        {
+            return y < *this;
+        }
+        bool operator>=(multi_pass const& y)
+        {
+            return !(*this < y);
+        }
+        bool operator<=(multi_pass const& y)
+        {
+            return !(y < *this);
+        }
+
         // allow access to base member
         shared_data_type* shared() const { return this->member; }
 
@@ -168,38 +182,15 @@ namespace boost { namespace spirit
         }
     };
 
-
-    template <typename T, typename Policies>
-    inline bool 
-    operator!=(multi_pass<T, Policies> const& x, multi_pass<T, Policies> const& y)
-    {
-        return !(x == y);
-    }
-
-    template <typename T, typename Policies>
-    inline bool 
-    operator>(multi_pass<T, Policies> const& x, multi_pass<T, Policies> const& y)
-    {
-        return y < x;
-    }
-
-    template <typename T, typename Policies>
-    inline bool 
-    operator>=(multi_pass<T, Policies> const& x, multi_pass<T, Policies> const& y)
-    {
-        return !(x < y);
-    }
-
-    template <typename T, typename Policies>
-    inline bool 
-    operator<=(multi_pass<T, Policies> const& x, multi_pass<T, Policies> const& y)
-    {
-        return !(y < x);
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     //  Generator function
     ///////////////////////////////////////////////////////////////////////////
+    template <typename Policies, typename T>
+    inline multi_pass<T, Policies>
+    make_multi_pass(T& i)
+    {
+        return multi_pass<T, Policies>(i);
+    }
     template <typename Policies, typename T>
     inline multi_pass<T, Policies>
     make_multi_pass(T const& i)
@@ -207,6 +198,13 @@ namespace boost { namespace spirit
         return multi_pass<T, Policies>(i);
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    template <typename T>
+    inline multi_pass<T>
+    make_default_multi_pass(T& i)
+    {
+        return multi_pass<T>(i);
+    }
     template <typename T>
     inline multi_pass<T>
     make_default_multi_pass(T const& i)
@@ -214,6 +212,7 @@ namespace boost { namespace spirit
         return multi_pass<T>(i);
     }
 
+    ///////////////////////////////////////////////////////////////////////////
     template <typename T, typename Policies>
     inline void 
     swap(multi_pass<T, Policies> &x, multi_pass<T, Policies> &y)
@@ -221,6 +220,7 @@ namespace boost { namespace spirit
         x.swap(y);
     }
 
+    ///////////////////////////////////////////////////////////////////////////
     // define special functions allowing to integrate any multi_pass iterator
     // with expectation points
     namespace traits

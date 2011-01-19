@@ -22,63 +22,96 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// 13/02/2008: Initial version by Francesco Biscani.
-
-#include <boost/cstdint.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/module.hpp>
+#include <boost/python/register_ptr_to_python.hpp>
+#include <boost/utility.hpp>
 
-#include "../../src/GOclasses/basic/topology/base_topology.h"
-#include "../../src/GOclasses/basic/topology/graph_topology.h"
-#include "../../src/GOclasses/basic/topology/ba_topology.h"
-#include "../../src/GOclasses/basic/topology/fully_connected_topology.h"
-#include "../../src/GOclasses/basic/topology/one_way_ring_topology.h"
-#include "../../src/GOclasses/basic/topology/ring_topology.h"
-#include "../../src/GOclasses/basic/topology/broadcast_topology.h"
-#include "../../src/GOclasses/basic/topology/chain_topology.h"
-#include "../../src/GOclasses/basic/topology/torus_topology.h"
-#include "../../src/GOclasses/basic/topology/cartwheel_topology.h"
-#include "../../src/GOclasses/basic/topology/lattice_topology.h"
-#include "../../src/GOclasses/basic/topology/hypercube_topology.h"
-#include "../../src/GOclasses/basic/topology/ring12_topology.h"
-#include "../../src/GOclasses/basic/topology/ring123_topology.h"
+#include "../../src/topologies.h"
 #include "../exceptions.h"
 #include "../utils.h"
 
 using namespace boost::python;
+using namespace pagmo;
 
 template <class Topology>
-static inline class_<Topology,bases<graph_topology> > topology_wrapper(const char *name, const char *descr)
+static inline class_<Topology,bases<topology::base> > topology_wrapper(const char *name, const char *descr)
 {
-	class_<Topology, bases<graph_topology> > retval(name, descr, init<const Topology &>());
-	retval.def("__copy__", &Py_copy_from_ctor<Topology>);
-	retval.def("__repr__", &Py_repr_from_stream<Topology>);
-	retval.add_property("id_name", &Topology::id_name, "Identification name.");
-	retval.add_property("id_object", &Topology::id_object, "Object identification name.");
+	class_<Topology,bases<topology::base> > retval(name,descr,init<const Topology &>());
+	retval.def(init<>());
+	retval.def_pickle(generic_pickle_suite<Topology>());
+	retval.def("cpp_loads", &py_cpp_loads<Topology>);
+	retval.def("cpp_dumps", &py_cpp_dumps<Topology>);
+	retval.def("__copy__", &Topology::clone);
 	return retval;
+}
+
+// Wrappers for methods taking unsinged ints with safe conversion from int.
+static inline bool topology_are_adjacent(const topology::base &t, int n, int m)
+{
+	return t.are_adjacent(boost::numeric_cast<topology::base::vertices_size_type>(n),boost::numeric_cast<topology::base::vertices_size_type>(m));
+}
+
+static inline bool topology_are_inv_adjacent(const topology::base &t, int n, int m)
+{
+	return t.are_inv_adjacent(boost::numeric_cast<topology::base::vertices_size_type>(n),boost::numeric_cast<topology::base::vertices_size_type>(m));
+}
+
+static inline std::vector<topology::base::vertices_size_type> topology_get_adjacent_vertices(const topology::base &t, int n)
+{
+	return t.get_v_adjacent_vertices(boost::numeric_cast<topology::base::vertices_size_type>(n));
+}
+
+static inline std::vector<topology::base::vertices_size_type> topology_get_inv_adjacent_vertices(const topology::base &t, int n)
+{
+	return t.get_v_inv_adjacent_vertices(boost::numeric_cast<topology::base::vertices_size_type>(n));
+}
+
+static inline topology::base::edges_size_type topology_get_num_adjacent_vertices(const topology::base &t, int n)
+{
+	return t.get_num_adjacent_vertices(boost::numeric_cast<topology::base::vertices_size_type>(n));
+}
+
+static inline topology::base::edges_size_type topology_get_num_inv_adjacent_vertices(const topology::base &t, int n)
+{
+	return t.get_num_inv_adjacent_vertices(boost::numeric_cast<topology::base::vertices_size_type>(n));
 }
 
 BOOST_PYTHON_MODULE(_topology) {
 	// Translate exceptions for this module.
 	translate_exceptions();
 
-	// Base topology.
-	class_<base_topology, boost::noncopyable> class_bt("__base_topology", "Base topology.", no_init);
-	
-	// Graph topology implementation
-	class_<graph_topology, bases<base_topology>, boost::noncopyable> graph_topo_class("__graph_topology", "Simple topology implementation.", no_init);
+	class_<topology::base,boost::noncopyable>("_base",no_init)
+		.def("__repr__", &topology::base::human_readable)
+		.add_property("number_of_vertices",&topology::base::get_number_of_vertices)
+		.add_property("number_of_edges",&topology::base::get_number_of_edges)
+		.def("get_average_shortest_path_length",&topology::base::get_average_shortest_path_length,"Calculate average shortest path length.")
+		.def("push_back",&topology::base::push_back,"Add vertex to the topology and connect it.")
+		.def("are_adjacent",&topology_are_adjacent,"Check whether two vertices are adjacent.")
+		.def("are_inv_adjacent",&topology_are_inv_adjacent,"Check whether two vertices are inversely adjacent.")
+		.def("get_adjacent_vertices",&topology_get_adjacent_vertices,"Return list of adjacent vertices.")
+		.def("get_inv_adjacent_vertices",&topology_get_inv_adjacent_vertices,"Return list of inversely adjacent vertices.")
+		.def("get_num_adjacent_vertices",&topology_get_num_adjacent_vertices,"Return number of adjacent vertices.")
+		.def("get_num_inv_adjacent_vertices",&topology_get_num_inv_adjacent_vertices,"Return number of inversely adjacent vertices.");
 
 	// Topologies.
-	topology_wrapper<ring_topology>("ring", "Ring topology.").def(init<>());
-	topology_wrapper<one_way_ring_topology>("one_way_ring", "One way ring topology.").def(init<>());
-	topology_wrapper<ba_topology>("ba", "BA model topology.").def(init<int, int, optional<boost::uint32_t> >());
-	topology_wrapper<fully_connected_topology>("fully_connected", "Fully connected topology.").def(init<>());
-	topology_wrapper<chain_topology>("chain", "Broadcast topology.").def(init<>());
-	topology_wrapper<broadcast_topology>("broadcast", "Broadcast topology.").def(init<>());
-	topology_wrapper<torus_topology>("torus", "Torus topology.").def(init<>());
-	topology_wrapper<cartwheel_topology>("cartwheel", "Cartwheel topology.").def(init<>());
-	topology_wrapper<lattice_topology>("lattice", "Lattice topology.").def(init<>()).def(init<size_t, size_t>());
-	topology_wrapper<hypercube_topology>("hypercube", "Hypercube topology.").def(init<>());
-	topology_wrapper<ring12_topology>("ring12", "+1+2 ring topology.").def(init<>());
-	topology_wrapper<ring123_topology>("ring123", "+1+2+3 ring topology.").def(init<>());
+	topology_wrapper<topology::barabasi_albert>("barabasi_albert", "Barabasi-Albert topology.").def(init<optional<int,int> >());
+	topology_wrapper<topology::custom>("custom", "Custom topology.")
+		.def(init<const topology::base &>())
+		.def("add_edge",&topology::custom::add_edge,"Add edge.")
+		.def("remove_edge",&topology::custom::remove_edge,"Remove edge.")
+		.def("remove_all_edges",&topology::custom::remove_all_edges,"Remove all edges.");
+
+	topology_wrapper<topology::erdos_renyi>("erdos_renyi", "Erdos-Renyi topology.").def(init<optional<const double &> >());
+	topology_wrapper<topology::fully_connected>("fully_connected", "Fully connected topology.");
+	topology_wrapper<topology::ring>("ring", "Ring topology.");
+	topology_wrapper<topology::one_way_ring>("one_way_ring", "One-way ring topology.");
+	topology_wrapper<topology::unconnected>("unconnected", "Unconnected topology.");
+	topology_wrapper<topology::watts_strogatz>("watts_strogatz", "Watts-Strogatz topology.").def(init<optional<int,const double &,int> >());
+	topology_wrapper<topology::pan>("pan", "Pan graph topology.");
+	topology_wrapper<topology::rim>("rim", "Wheel rim topology.");
+
+	// Register to_python conversion from smart pointer.
+	register_ptr_to_python<topology::base_ptr>();
 }
