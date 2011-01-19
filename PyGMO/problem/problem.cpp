@@ -28,20 +28,21 @@
 #include <boost/python/make_function.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/operators.hpp>
-#include <boost/python/pure_virtual.hpp>
 #include <boost/python/register_ptr_to_python.hpp>
 #include <boost/utility.hpp>
 #include <cstddef>
 #include <string>
 
 #include "../../src/exceptions.h"
-#include "../../src/keplerian_toolbox/keplerian_toolbox.h"
 #include "../../src/problems.h"
 #include "../../src/serialization.h"
 #include "../../src/types.h"
-#include "../exceptions.h"
 #include "../utils.h"
 #include "python_base.h"
+
+#ifdef PAGMO_ENABLE_KEP_TOOLBOX
+        #include "../../src/keplerian_toolbox/keplerian_toolbox.h"
+#endif
 
 using namespace boost::python;
 using namespace pagmo;
@@ -52,6 +53,8 @@ static inline class_<Problem,bases<problem::base> > problem_wrapper(const char *
 {
 	class_<Problem,bases<problem::base> > retval(name,descr,init<const Problem &>());
 	retval.def(init<>());
+	retval.def("__copy__", &Py_copy_from_ctor<Problem>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<Problem>);
 	retval.def_pickle(generic_pickle_suite<Problem>());
 	retval.def("cpp_loads", &py_cpp_loads<Problem>);
 	retval.def("cpp_dumps", &py_cpp_dumps<Problem>);
@@ -59,8 +62,7 @@ static inline class_<Problem,bases<problem::base> > problem_wrapper(const char *
 }
 
 BOOST_PYTHON_MODULE(_problem) {
-	// Translate exceptions for this module.
-	translate_exceptions();
+	common_module_init();
 
 	// Expose base problem class, including the virtual methods.
 	typedef void (problem::base::*bounds_setter)(const decision_vector &);
@@ -68,11 +70,9 @@ BOOST_PYTHON_MODULE(_problem) {
 	typedef void (problem::base::*bounds_setter_vectors)(const decision_vector &, const decision_vector &);
 	typedef constraint_vector (problem::base::*return_constraints)(const decision_vector &) const;
 	typedef fitness_vector (problem::base::*return_fitness)(const decision_vector &) const;
-	class_<problem::python_base>("_base",init<int,optional<int,int,int,int,const double &> >())
+	class_<problem::python_base, boost::noncopyable>("_base",init<int,optional<int,int,int,int,const double &> >())
 		.def(init<const decision_vector &, const decision_vector &, optional<int,int,int,int, const double &> >())
-		.def(init<const problem::base &>())
 		.def("__repr__", &problem::base::human_readable)
-		.def("is_thread_safe",&problem::base::is_thread_safe)
 		// Dimensions.
 		.add_property("dimension", &problem::base::get_dimension, "Global dimension.")
 		.add_property("f_dimension", &problem::base::get_f_dimension, "Fitness dimension.")
@@ -104,7 +104,6 @@ BOOST_PYTHON_MODULE(_problem) {
 		.def("objfun",return_fitness(&problem::base::objfun),"Compute and return fitness vector.")
 		.def("compare_fitness",&problem::base::compare_fitness,"Compare fitness vectors.")
 		// Virtual methods that can be (re)implemented.
-		.def("__copy__", pure_virtual(&problem::base::clone))
 		.def("get_name",&problem::base::get_name,&problem::python_base::default_get_name)
 		.def("human_readable_extra", &problem::base::human_readable_extra, &problem::python_base::default_human_readable_extra)
 		.def("_get_typename",&problem::python_base::get_typename)
@@ -129,27 +128,10 @@ BOOST_PYTHON_MODULE(_problem) {
 	problem_wrapper<problem::michalewicz>("michalewicz","Michalewicz's function.")
 		.def(init<int, optional<int> >());
 
-	// GTOC1 problem.
-	problem_wrapper<problem::gtoc_1>("gtoc_1","GTOC1 problem.");
+        // Inventory problem.
+        problem_wrapper<problem::inventory>("inventory","Inventory problem.")
+                .def(init<int, int>());
 
-	// GTOC2 problem.
-	problem_wrapper<problem::gtoc_2>("gtoc_2","GTOC problem.")
-		.def(init<int,int,int,int,optional<int,problem::gtoc_2::objective> >());
-
-	// GTOC2's objectives enum.
-	enum_<problem::gtoc_2::objective>("gtoc2_objective")
-		.value("MASS",problem::gtoc_2::MASS)
-		.value("TIME",problem::gtoc_2::TIME)
-		.value("MASS_TIME",problem::gtoc_2::MASS_TIME);
-
-	// Inventory problem.
-	problem_wrapper<problem::inventory>("inventory","Inventory problem.")
-		.def(init<int, int>());
-	
-	// Laplace problem.
-	problem_wrapper<problem::laplace>("laplace","Laplace problem.")
-		.def(init< const std::vector<int> &>());
-	
 	// Lennard Jones problem.
 	problem_wrapper<problem::lennard_jones>("lennard_jones","Lennard Jones problem.")
 		.def(init<int>());
@@ -158,19 +140,9 @@ BOOST_PYTHON_MODULE(_problem) {
 	problem_wrapper<problem::levy5>("levy5","Levy5 problem.")
 		.def(init<int>());
 	
-	// Paraboloid problem.
-	problem_wrapper<problem::paraboloid>("paraboloid","Multi-dimensional paraboloid miminisation.")
-		.def(init<const decision_vector &, const decision_vector &>());
-
 	// Rosenbrock problem.
 	problem_wrapper<problem::rosenbrock>("rosenbrock","Multi-dimensional Rosenbrock function.")
 		.def(init<int>());
-	
-	// Rosetta problem.
-	problem_wrapper<problem::rosetta>("rosetta","Rosetta problem.");
-	
-	// Sagas problem.
-	problem_wrapper<problem::sagas>("sagas","Sagas problem.");
 	
 	// Rastrigin problem.
 	problem_wrapper<problem::rastrigin>("rastrigin","Generalised Rastrigin function.")
@@ -213,22 +185,9 @@ BOOST_PYTHON_MODULE(_problem) {
 	problem_wrapper<problem::string_match>("string_match","String matching problem.")
 		.def(init<const std::string &>());
 
-	// Cassini 1.
-	problem_wrapper<problem::cassini_1>("cassini_1","Cassini 1 interplanetary trajectory problem.");
-
-	// Messenger full.
-	problem_wrapper<problem::messenger_full>("messenger_full","Full Messenger problem.");
-
-	// Cassini 2.
-	problem_wrapper<problem::cassini_2>("cassini_2","Cassini 2 interplanetary trajectory problem.");
-	
-	// Traveling salesman problem
+        // Traveling salesman problem
 	problem_wrapper<problem::tsp>("tsp","Traveling salesman problem")
 		.def(init<const std::vector<std::vector<double> > &>());
-	
-	// Tandem.
-	problem_wrapper<problem::tandem>("tandem","Tandem problem.")
-		.def(init< optional<int, double> >());
 	
 	// SCH
 	problem_wrapper<problem::sch>("sch","Shaffer's study problem.")
@@ -258,6 +217,7 @@ BOOST_PYTHON_MODULE(_problem) {
 	problem_wrapper<problem::zdt6>("zdt6","ZDT6")
 		.def(init<>());
 
+#ifdef PAGMO_ENABLE_KEP_TOOLBOX
 	// Human mission to asteroids.
 	problem_wrapper<problem::sample_return>("sample_return","Asteroid sample return problem.")
 		.def(init<const ::kep_toolbox::planet &, optional<const double &> >())
@@ -291,6 +251,43 @@ BOOST_PYTHON_MODULE(_problem) {
 	// GTOC5 self flyby.
 	problem_wrapper<problem::gtoc5_self_flyby>("gtoc5_self_flyby","GTOC5 self flyby phase.")
 		.def(init< optional<int, int, const double &, const double &, const double &> >());
+
+	// GTOC1 problem.
+	problem_wrapper<problem::gtoc_1>("gtoc_1","GTOC1 problem.");
+
+	// GTOC2 problem.
+	problem_wrapper<problem::gtoc_2>("gtoc_2","GTOC problem.")
+		.def(init<int,int,int,int,optional<int,problem::gtoc_2::objective> >());
+
+	// GTOC2's objectives enum.
+	enum_<problem::gtoc_2::objective>("gtoc2_objective")
+		.value("MASS",problem::gtoc_2::MASS)
+		.value("TIME",problem::gtoc_2::TIME)
+		.value("MASS_TIME",problem::gtoc_2::MASS_TIME);
+
+	// Laplace problem.
+	problem_wrapper<problem::laplace>("laplace","Laplace problem.")
+		.def(init< const std::vector<int> &>());
+
+	// Cassini 1.
+	problem_wrapper<problem::cassini_1>("cassini_1","Cassini 1 interplanetary trajectory problem.");
+
+	// Messenger full.
+	problem_wrapper<problem::messenger_full>("messenger_full","Full Messenger problem.");
+
+	// Cassini 2.
+	problem_wrapper<problem::cassini_2>("cassini_2","Cassini 2 interplanetary trajectory problem.");
+
+	// Rosetta problem.
+	problem_wrapper<problem::rosetta>("rosetta","Rosetta problem.");
+
+	// Sagas problem.
+	problem_wrapper<problem::sagas>("sagas","Sagas problem.");
+
+	// Tandem.
+	problem_wrapper<problem::tandem>("tandem","Tandem problem.")
+		.def(init< optional<int, double> >());
+#endif
 
 	// Register to_python conversion from smart pointer.
 	register_ptr_to_python<problem::base_ptr>();

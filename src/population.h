@@ -42,7 +42,7 @@ namespace pagmo
 
 // Forward declarations.
 class base_island;
-class population_access;
+struct population_access;
 
 /// Population class.
 /**
@@ -59,7 +59,7 @@ class population_access;
 class __PAGMO_VISIBLE population
 {
 		friend class base_island;
-		friend class population_access;
+		friend struct population_access;
 	public:
 		/// Individuals stored in the population.
 		/**
@@ -101,15 +101,31 @@ class __PAGMO_VISIBLE population
 			private:
 				friend class boost::serialization::access;
 				template <class Archive>
-				void serialize(Archive &ar, const unsigned int)
+				void save(Archive &ar, const unsigned int version) const
 				{
-					ar & cur_x;
-					ar & cur_v;
-					ar & cur_c;
-					ar & cur_f;
-					ar & best_x;
-					ar & best_c;
-					ar & best_f;
+					custom_vector_double_save(ar,cur_x,version);
+					custom_vector_double_save(ar,cur_v,version);
+					custom_vector_double_save(ar,cur_c,version);
+					custom_vector_double_save(ar,cur_f,version);
+					custom_vector_double_save(ar,best_x,version);
+					custom_vector_double_save(ar,best_c,version);
+					custom_vector_double_save(ar,best_f,version);
+				}
+				template <class Archive>
+				void load(Archive &ar, const unsigned int version)
+				{
+					custom_vector_double_load(ar,cur_x,version);
+					custom_vector_double_load(ar,cur_v,version);
+					custom_vector_double_load(ar,cur_c,version);
+					custom_vector_double_load(ar,cur_f,version);
+					custom_vector_double_load(ar,best_x,version);
+					custom_vector_double_load(ar,best_c,version);
+					custom_vector_double_load(ar,best_f,version);
+				}
+				template <class Archive>
+				void serialize(Archive &ar, const unsigned int version)
+				{
+					boost::serialization::split_member(ar,*this,version);
 				}
 		};
 		/// Population champion.
@@ -139,11 +155,23 @@ class __PAGMO_VISIBLE population
 			private:
 				friend class boost::serialization::access;
 				template <class Archive>
-				void serialize(Archive &ar, const unsigned int)
+				void save(Archive &ar, const unsigned int version) const
 				{
-					ar & x;
-					ar & c;
-					ar & f;
+					custom_vector_double_save(ar,x,version);
+					custom_vector_double_save(ar,c,version);
+					custom_vector_double_save(ar,f,version);
+				}
+				template <class Archive>
+				void load(Archive &ar, const unsigned int version)
+				{
+					custom_vector_double_load(ar,x,version);
+					custom_vector_double_load(ar,c,version);
+					custom_vector_double_load(ar,f,version);
+				}
+				template <class Archive>
+				void serialize(Archive &ar, const unsigned int version)
+				{
+					boost::serialization::split_member(ar,*this,version);
 				}
 		};
 		/// Underlying container type.

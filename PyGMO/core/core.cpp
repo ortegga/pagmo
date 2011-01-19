@@ -30,30 +30,27 @@
 #include <boost/python/make_function.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/operators.hpp>
-#include <boost/python/pure_virtual.hpp>
 #include <boost/python/register_ptr_to_python.hpp>
 #include <boost/python/tuple.hpp>
-#include <stdexcept>
+#include <boost/utility.hpp> // For boost::noncopyable.
+#include <sstream>
 #include <vector>
 
 #include "../../src/algorithm/base.h"
 #include "../../src/archipelago.h"
 #include "../../src/base_island.h"
-// NOTE: here probably we need to re-put python island for the future.
-#include "../../src/island.h"
+#include "../../src/exceptions.h"
 #include "../../src/migration/base_r_policy.h"
 #include "../../src/migration/base_s_policy.h"
 #include "../../src/migration/best_s_policy.h"
 #include "../../src/migration/fair_r_policy.h"
 #include "../../src/population.h"
-#include "../../src/python_locks.h"
 #include "../../src/problem/base.h"
 #include "../../src/topology/base.h"
 #include "../boost_python_container_conversions.h"
-#include "../exceptions.h"
 #include "../utils.h"
-//#include "python_island.h"
 #include "python_base_island.h"
+#include "python_island.h"
 
 using namespace boost::python;
 using namespace pagmo;
@@ -91,6 +88,11 @@ inline static base_island_ptr archipelago_get_island(const archipelago &a, int n
 	return a.get_island(boost::numeric_cast<archipelago::size_type>(n));
 }
 
+inline static void archipelago_set_island(archipelago &a, int n, const base_island &isl)
+{
+	a.set_island(boost::numeric_cast<archipelago::size_type>(n),isl);
+}
+
 inline static void archipelago_set_algorithm(archipelago &archi, int n, const algorithm::base &a)
 {
 	archi.set_algorithm(boost::numeric_cast<archipelago::size_type>(n),a);
@@ -115,12 +117,10 @@ struct population_pickle_suite : boost::python::pickle_suite
 {
 	static boost::python::tuple getinitargs(const population &pop)
 	{
-		gil_state_lock lock;
 		return boost::python::make_tuple(pop.problem().clone());
 	}
 	static boost::python::tuple getstate(const population &pop)
 	{
-		gil_state_lock lock;
 		std::stringstream ss;
 		boost::archive::text_oarchive oa(ss);
 		oa << pop;
@@ -128,7 +128,6 @@ struct population_pickle_suite : boost::python::pickle_suite
 	}
 	static void setstate(population &pop, boost::python::tuple state)
 	{
-		gil_state_lock lock;
 		if (len(state) != 2)
 		{
 			PyErr_SetObject(PyExc_ValueError,("expected 2-item tuple in call to __setstate__; got %s" % state).ptr());
@@ -148,16 +147,47 @@ struct island_pickle_suite : boost::python::pickle_suite
 {
 	static boost::python::tuple getinitargs(const Island &isl)
 	{
-		return boost::python::make_tuple(isl.get_problem(),isl.get_algorithm());
+		return boost::python::make_tuple(isl.get_algorithm(),isl.get_problem());
 	}
 	static boost::python::tuple getstate(const Island &isl)
 	{
 		std::stringstream ss;
 		boost::archive::text_oarchive oa(ss);
 		oa << isl;
-		return boost::python::make_tuple(ss.str(),isl.get_algorithm());
+		return boost::python::make_tuple(ss.str(),isl.get_algorithm(),isl.get_population());
 	}
 	static void setstate(Island &isl, boost::python::tuple state)
+	{
+		if (len(state) != 3)
+		{
+			PyErr_SetObject(PyExc_ValueError,("expected 3-item tuple in call to __setstate__; got %s" % state).ptr());
+			throw_error_already_set();
+		}
+		const std::string str = extract<std::string>(state[0]);
+		std::stringstream ss(str);
+		boost::archive::text_iarchive ia(ss);
+		ia >> isl;
+		const algorithm::base_ptr algo = boost::python::extract<algorithm::base_ptr>(state[1]);
+		isl.set_algorithm(*algo);
+		const population pop = boost::python::extract<population>(state[2]);
+		isl.set_population(pop);
+	}
+};
+
+struct archipelago_pickle_suite : boost::python::pickle_suite
+{
+	static boost::python::tuple getinitargs(const archipelago &)
+	{
+		return boost::python::make_tuple();
+	}
+	static boost::python::tuple getstate(const archipelago &archi)
+	{
+		std::stringstream ss;
+		boost::archive::text_oarchive oa(ss);
+		oa << archi;
+		return boost::python::make_tuple(ss.str(),archi.get_islands());
+	}
+	static void setstate(archipelago &archi, boost::python::tuple state)
 	{
 		if (len(state) != 2)
 		{
@@ -167,17 +197,20 @@ struct island_pickle_suite : boost::python::pickle_suite
 		const std::string str = extract<std::string>(state[0]);
 		std::stringstream ss(str);
 		boost::archive::text_iarchive ia(ss);
-		ia >> isl;
-		const algorithm::base_ptr algo = boost::python::extract<algorithm::base_ptr>(state[1]);
-		isl.set_algorithm(*algo);
+		ia >> archi;
+		// Recover seaparately the islands.
+		const std::vector<base_island_ptr> islands = extract<std::vector<base_island_ptr> >(state[1]);
+		pagmo_assert(islands.size() == archi.get_size());
+		for (std::vector<base_island_ptr>::size_type i = 0; i < islands.size(); ++i) {
+			archi.set_island(i,*islands[i]);
+		}
 	}
 };
 
 // Instantiate the core module.
 BOOST_PYTHON_MODULE(_core)
 {
-	// Translate exceptions for this module.
-	translate_exceptions();
+	common_module_init();
 
 	// Enable handy automatic conversions.
 	to_tuple_mapping<std::vector<double> >();
@@ -192,11 +225,14 @@ BOOST_PYTHON_MODULE(_core)
 	from_python_sequence<std::vector<std::vector<int> >,variable_capacity_policy>();
 	to_tuple_mapping<std::vector<std::vector<topology::base::vertices_size_type> > >();
 	from_python_sequence<std::vector<std::vector<topology::base::vertices_size_type> >,variable_capacity_policy>();
+	to_tuple_mapping<std::vector<base_island_ptr> >();
+	from_python_sequence<std::vector<base_island_ptr>,variable_capacity_policy>();
 
 	// Expose population class.
 	class_<population>("population", "Population class.", init<const problem::base &,optional<int> >())
 		.def(init<const population &>())
 		.def("__copy__", &Py_copy_from_ctor<population>)
+		.def("__deepcopy__", &Py_deepcopy_from_ctor<population>)
 		.def("__getitem__", &population_get_individual)
 		.def("__len__", &population::size)
 		.def("__repr__", &population::human_readable)
@@ -214,6 +250,8 @@ BOOST_PYTHON_MODULE(_core)
 	// Individual and champion.
 	class_<population::individual_type>("individual","Individual class.",init<>())
 		.def("__repr__",&population::individual_type::human_readable)
+		.def("__copy__", &Py_copy_from_ctor<population::individual_type>)
+		.def("__deepcopy__", &Py_deepcopy_from_ctor<population::individual_type>)
 		.add_property("cur_x",&get_cur_x,&set_cur_x)
 		.add_property("cur_f",&get_cur_f,&set_cur_f)
 		.add_property("cur_c",&get_cur_c,&set_cur_c)
@@ -227,6 +265,8 @@ BOOST_PYTHON_MODULE(_core)
 
 	class_<population::champion_type>("champion","Champion class.",init<>())
 		.def("__repr__",&population::champion_type::human_readable)
+		.def("__copy__", &Py_copy_from_ctor<population::champion_type>)
+		.def("__deepcopy__", &Py_deepcopy_from_ctor<population::champion_type>)
 		.add_property("x",&get_x,&set_x)
 		.add_property("f",&get_f,&set_f)
 		.add_property("c",&get_c,&set_c)
@@ -235,17 +275,14 @@ BOOST_PYTHON_MODULE(_core)
 		.def_pickle(generic_pickle_suite<population::champion_type>());
 
 	// Base island class for Python implementation.
-	class_<python_base_island>("_base_island",init<const problem::base &, const algorithm::base &,optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
-		.def(init<const population &, const algorithm::base &,optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
-		.def(init<const python_base_island &>())
+	class_<python_base_island, boost::noncopyable>("_base_island",init<const algorithm::base &, const problem::base &, optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const algorithm::base &, const population &, optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
 		.def("__repr__",&base_island::human_readable)
 		.def("__len__", &base_island::get_size)
 		.def("evolve", &base_island::evolve,"Evolve island n times.")
 		.def("evolve_t", &base_island::evolve_t,"Evolve island for at least n milliseconds.")
 		.def("join", &base_island::join,"Wait for evolution to complete.")
 		.def("busy", &base_island::busy,"Check if island is evolving.")
-		.def("is_thread_safe", &base_island::is_thread_safe,"Check if island is thread-safe.")
-		.def("is_blocking", &base_island::is_blocking,"Check if island is blocking.")
 		.def("interrupt", &base_island::interrupt,"Interrupt evolution.")
 		.add_property("problem",&base_island::get_problem)
 		.add_property("algorithm",&base_island::get_algorithm,&island::set_algorithm)
@@ -254,48 +291,59 @@ BOOST_PYTHON_MODULE(_core)
 		.add_property("r_policy",&base_island::get_r_policy)
 		.add_property("migration_probability",&base_island::get_migration_probability)
 		// Virtual methods.
-		.def("__copy__",pure_virtual(&base_island::clone))
 		.def("get_name", &base_island::get_name,&python_base_island::default_get_name)
 		.def("_perform_evolution",&python_base_island::py_perform_evolution)
-		.def_pickle(python_class_pickle_suite<python_base_island>());
+		.def_pickle(python_base_island_pickle_suite());
 
 	// Local island class.
-	class_<island,bases<base_island> >("island", "Local island class.",init<const problem::base &, const algorithm::base &,optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
-		.def(init<const population &, const algorithm::base &,optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
-		.def(init<const island &>())
-		.def("cpp_loads", &py_cpp_loads<island>)
-		.def("cpp_dumps", &py_cpp_dumps<island>)
-		.def_pickle(island_pickle_suite<island>());
+	class_<python_island,bases<base_island> >("local_island", "Local island class.",init<const algorithm::base &, const problem::base &, optional<int,const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const algorithm::base &, const population &, optional<const double &,const migration::base_s_policy &,const migration::base_r_policy &> >())
+		.def(init<const python_island &>())
+		.def("__copy__", &Py_copy_from_ctor<python_island>)
+		.def("__deepcopy__", &Py_deepcopy_from_ctor<python_island>)
+		.def("cpp_loads", &py_cpp_loads<python_island>)
+		.def("cpp_dumps", &py_cpp_dumps<python_island>)
+		.def("is_pythonic", &python_island::is_pythonic)
+		.def_pickle(island_pickle_suite<python_island>());
 
 	// Register to_python conversion from smart pointer.
 	register_ptr_to_python<base_island_ptr>();
 
 	// Expose archipelago class.
-	class_<archipelago>("archipelago", "Archipelago class.", init<const problem::base &, const algorithm::base &,
+	class_<archipelago>("archipelago", "Archipelago class.", init<const algorithm::base &, const problem::base &,
 		int,int,optional<const topology::base &,archipelago::distribution_type,archipelago::migration_direction> >())
 		.def(init<optional<archipelago::distribution_type,archipelago::migration_direction> >())
 		.def(init<const topology::base &, optional<archipelago::distribution_type,archipelago::migration_direction> >())
 		.def(init<archipelago::distribution_type, archipelago::migration_direction>())
 		.def(init<const archipelago &>())
 		.def("__copy__", &Py_copy_from_ctor<archipelago>)
+		.def("__deepcopy__", &Py_deepcopy_from_ctor<archipelago>)
 		.def("__len__", &archipelago::get_size)
 		.def("__repr__", &archipelago::human_readable)
 		.def("__getitem__", &archipelago_get_island)
-		.def("evolve", &archipelago::evolve,"Evolve archipelago n times.")
-		.def("evolve_t", &archipelago::evolve_t,"Evolve archipelago for at least n milliseconds.")
+		.def("__setitem__", &archipelago_set_island)
+		.def("get_islands", &archipelago::get_islands)
+		.def("evolve", &archipelago::evolve,"Evolve archipelago *n* times.",boost::python::args("n"))
+		.def("evolve_t", &archipelago::evolve_t,"Evolve archipelago for at least *n* milliseconds.",boost::python::args("n"))
 		.def("join", &archipelago::join,"Wait for evolution to complete.")
 		.def("interrupt", &archipelago::interrupt,"Interrupt evolution.")
 		.def("busy", &archipelago::busy,"Check if archipelago is evolving.")
 		.def("push_back", &archipelago::push_back,"Append island.")
 		.def("set_algorithm", &archipelago_set_algorithm,"Set algorithm on island.")
-		.def("is_thread_safe", &archipelago::is_thread_safe,"Check if archipelago is thread_safe.")
-		.def("is_blocking", &archipelago::is_blocking,"Check if archipelago is blocking.")
 		.def("dump_migr_history", &archipelago::dump_migr_history)
 		.def("clear_migr_history", &archipelago::clear_migr_history)
-		.def("cpp_loads", &py_cpp_loads<archipelago>)
-		.def("cpp_dumps", &py_cpp_dumps<archipelago>)
-		.add_property("topology", &archipelago::get_topology, &archipelago::set_topology)
-		.def_pickle(generic_pickle_suite<archipelago>());
+		.def("cpp_loads", &py_cpp_loads<archipelago>,
+			"Load C++ serialized representation from string *str*.\n\n"
+			":Parameters:\n"
+			"  str: string\n",
+			boost::python::args("str"))
+		.def("cpp_dumps", &py_cpp_dumps<archipelago>,
+			"Dump C++ serialized representation.\n\n"
+			":Returns:\n"
+			"   string representing the serialized C++ representation\n"
+		)
+		.add_property("topology", &archipelago::get_topology, &archipelago::set_topology,"Topology property.")
+		.def_pickle(archipelago_pickle_suite());
 
 	// Archipelago's migration strategies.
 	enum_<archipelago::distribution_type>("distribution_type")

@@ -27,20 +27,29 @@
 #ifndef PYGMO_UTILS_H
 #define PYGMO_UTILS_H
 
+#include <Python.h>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/dict.hpp>
+#include <boost/python/docstring_options.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python/tuple.hpp>
+#include <csignal>
 #include <sstream>
 #include <string>
 
-#include "../src/python_locks.h"
+#include "exceptions.h"
 
 template <class T>
 inline T Py_copy_from_ctor(const T &x)
+{
+	return T(x);
+}
+
+template <class T>
+inline T Py_deepcopy_from_ctor(const T &x, boost::python::dict)
 {
 	return T(x);
 }
@@ -54,19 +63,16 @@ void serialize(Archive &, boost::python::wrapper<T> &, const unsigned int)
 
 }}
 
+// Generic pickle suite for C++ classes with default constructor.
 template <class T>
 struct generic_pickle_suite : boost::python::pickle_suite
 {
 	static boost::python::tuple getinitargs(const T &)
 	{
-		// NOTE: I _think_ this is needed here, as we are (maybe?) going to use the Python interpreter
-		// through Boost Python. In any case, better safe than sorry.
-		pagmo::gil_state_lock lock;
 		return boost::python::make_tuple();
 	}
 	static boost::python::tuple getstate(const T &x)
 	{
-		pagmo::gil_state_lock lock;
 		std::stringstream ss;
 		boost::archive::text_oarchive oa(ss);
 		oa << x;
@@ -74,7 +80,6 @@ struct generic_pickle_suite : boost::python::pickle_suite
 	}
 	static void setstate(T &x, boost::python::tuple state)
 	{
-		pagmo::gil_state_lock lock;
 		using namespace boost::python;
 		if (len(state) != 1)
 		{
@@ -88,17 +93,17 @@ struct generic_pickle_suite : boost::python::pickle_suite
 	}
 };
 
+// Generic pickle suite for C++ classes with default constructor extensible from Python.
+// Difference from above is that we need to take care of handling the derived class' dict.
 template <class T>
 struct python_class_pickle_suite: boost::python::pickle_suite
 {
 	static boost::python::tuple getinitargs(const T &)
 	{
-		pagmo::gil_state_lock lock;
 		return boost::python::make_tuple();
 	}
 	static boost::python::tuple getstate(boost::python::object obj)
 	{
-		pagmo::gil_state_lock lock;
 		T const &x = boost::python::extract<T const &>(obj)();
 		std::stringstream ss;
 		boost::archive::text_oarchive oa(ss);
@@ -107,7 +112,6 @@ struct python_class_pickle_suite: boost::python::pickle_suite
 	}
 	static void setstate(boost::python::object obj, boost::python::tuple state)
 	{
-		pagmo::gil_state_lock lock;
 		using namespace boost::python;
 		T &x = extract<T &>(obj)();
 		if (len(state) != 2)
@@ -146,5 +150,14 @@ inline std::string py_cpp_dumps(const T &x)
 	oa << x;
 	return ss.str();
 }
+
+#define common_module_init() \
+/* Initialise Python thread support. */ \
+PyEval_InitThreads(); \
+/* Translate exceptions for this module. */ \
+translate_exceptions(); \
+/* Disable docstring C++ signature. */ \
+boost::python::docstring_options doc_options; \
+doc_options.disable_cpp_signatures();
 
 #endif

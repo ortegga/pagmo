@@ -32,7 +32,6 @@
 #include "../../src/config.h"
 #include "../../src/exceptions.h"
 #include "../../src/population.h"
-#include "../../src/python_locks.h"
 #include "../../src/serialization.h"
 #include "../utils.h"
 
@@ -43,19 +42,16 @@ class __PAGMO_VISIBLE python_base: public base, public boost::python::wrapper<ba
 {
 	public:
 		python_base():base() {}
-		python_base(const base &p):base(p) {}
 		base_ptr clone() const
 		{
-			gil_state_lock lock;
-			base_ptr retval = this->get_override("__copy__")();
+			base_ptr retval = this->get_override("__get_deepcopy__")();
 			if (!retval) {
-				pagmo_throw(std::runtime_error,"algorithms's __copy__() method returns a NULL pointer, please check the implementation");
+				pagmo_throw(std::runtime_error,"algorithms's __get_deepcopy__() method returns a NULL pointer, please check the implementation");
 			}
 			return retval;
 		}
 		std::string human_readable_extra() const
 		{
-			gil_state_lock lock;
 			if (boost::python::override f = this->get_override("human_readable_extra")) {
 				return f();
 			}
@@ -67,7 +63,6 @@ class __PAGMO_VISIBLE python_base: public base, public boost::python::wrapper<ba
 		}
 		std::string get_name() const
 		{
-			gil_state_lock lock;
 			if (boost::python::override f = this->get_override("get_name")) {
 				return f();
 			}
@@ -77,12 +72,6 @@ class __PAGMO_VISIBLE python_base: public base, public boost::python::wrapper<ba
 		{
 			return this->base::get_name();
 		}
-		bool is_thread_safe() const
-		{
-			// All calls re-implementable from Python are protected by a mutex and hence thread-safe.
-			// TODO: correct this to make it match with the comment above :)
-			return false;
-		}
 		void evolve(population &p) const
 		{
 			p = py_evolve(p);
@@ -90,7 +79,6 @@ class __PAGMO_VISIBLE python_base: public base, public boost::python::wrapper<ba
 		// Changed implementations from Python.
 		population py_evolve(const population &p) const
 		{
-			gil_state_lock lock;
 			if (boost::python::override f = this->get_override("evolve")) {
 				const population retval = f(p);
 				return retval;

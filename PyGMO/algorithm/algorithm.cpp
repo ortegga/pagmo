@@ -24,13 +24,13 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/module.hpp>
-#include <boost/python/pure_virtual.hpp>
 #include <boost/python/register_ptr_to_python.hpp>
+#include <boost/utility.hpp>
+#include <sstream>
 #include <string>
 
 #include "../../src/algorithms.h"
 #include "../../src/population.h"
-#include "../exceptions.h"
 #include "../utils.h"
 #include "python_base.h"
 
@@ -51,6 +51,8 @@ static inline class_<Algorithm,bases<algorithm::base> > algorithm_wrapper(const 
 {
 	class_<Algorithm,bases<algorithm::base> > retval(name,descr,init<const Algorithm &>());
 	retval.def(init<>());
+	retval.def("__copy__", &Py_copy_from_ctor<Algorithm>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<Algorithm>);
 	retval.def("evolve", &evolve_copy);
 	retval.def_pickle(generic_pickle_suite<Algorithm>());
 	retval.def("cpp_loads", &py_cpp_loads<Algorithm>);
@@ -58,17 +60,72 @@ static inline class_<Algorithm,bases<algorithm::base> > algorithm_wrapper(const 
 	return retval;
 }
 
+// Meta-algorithms need specialised pickle suites, as they contains pointers to classes that can be implemented in Python.
+template <class Algorithm>
+struct meta_algorithm_pickle_suite : boost::python::pickle_suite
+{
+	static boost::python::tuple getinitargs(const Algorithm &)
+	{
+		return boost::python::make_tuple();
+	}
+	static boost::python::tuple getstate(const Algorithm &algo)
+	{
+		std::stringstream ss;
+		boost::archive::text_oarchive oa(ss);
+		oa << algo;
+		return boost::python::make_tuple(ss.str(),algo.get_algorithm());
+	}
+	static void setstate(Algorithm &algo, boost::python::tuple state)
+	{
+		if (len(state) != 2)
+		{
+			PyErr_SetObject(PyExc_ValueError,("expected 2-item tuple in call to __setstate__; got %s" % state).ptr());
+			throw_error_already_set();
+		}
+		const std::string str = extract<std::string>(state[0]);
+		std::stringstream ss(str);
+		boost::archive::text_iarchive ia(ss);
+		ia >> algo;
+		const algorithm::base_ptr internal_algo = boost::python::extract<algorithm::base_ptr>(state[1]);
+		algo.set_algorithm(*internal_algo);
+	}
+};
+
+template <>
+inline class_<algorithm::ms,bases<algorithm::base> > algorithm_wrapper(const char *name, const char *descr)
+{
+	class_<algorithm::ms,bases<algorithm::base> > retval(name,descr,init<const algorithm::ms &>());
+	retval.def(init<>());
+	retval.def("__copy__", &Py_copy_from_ctor<algorithm::ms>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<algorithm::ms>);
+	retval.def("evolve", &evolve_copy);
+	retval.def_pickle(meta_algorithm_pickle_suite<algorithm::ms>());
+	retval.def("cpp_loads", &py_cpp_loads<algorithm::ms>);
+	retval.def("cpp_dumps", &py_cpp_dumps<algorithm::ms>);
+	return retval;
+}
+
+template <>
+inline class_<algorithm::mbh,bases<algorithm::base> > algorithm_wrapper(const char *name, const char *descr)
+{
+	class_<algorithm::mbh,bases<algorithm::base> > retval(name,descr,init<const algorithm::mbh &>());
+	retval.def(init<>());
+	retval.def("__copy__", &Py_copy_from_ctor<algorithm::mbh>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<algorithm::mbh>);
+	retval.def("evolve", &evolve_copy);
+	retval.def_pickle(meta_algorithm_pickle_suite<algorithm::mbh>());
+	retval.def("cpp_loads", &py_cpp_loads<algorithm::mbh>);
+	retval.def("cpp_dumps", &py_cpp_dumps<algorithm::mbh>);
+	return retval;
+}
+
 BOOST_PYTHON_MODULE(_algorithm) {
-	// Translate exceptions for this module.
-	translate_exceptions();
+	common_module_init();
 
 	// Expose base algorithm class, including the virtual methods.
-	class_<algorithm::python_base>("_base",init<>())
-		.def(init<const algorithm::python_base &>())
+	class_<algorithm::python_base, boost::noncopyable>("_base",init<>())
 		.def("__repr__",&algorithm::base::human_readable)
-		.def("is_thread_safe",&algorithm::base::is_thread_safe)
 		// Virtual methods that can be (re)implemented.
-		.def("__copy__",pure_virtual(&algorithm::base::clone))
 		.def("get_name", &algorithm::base::get_name, &algorithm::python_base::default_get_name)
 		// NOTE: This needs special treatment because its prototype changes in the wrapper.
 		.def("evolve",&algorithm::python_base::py_evolve)
@@ -108,11 +165,13 @@ BOOST_PYTHON_MODULE(_algorithm) {
 	algorithm_wrapper<algorithm::mbh>("mbh","Monotonic Basin Hopping.")
 		.def(init<const algorithm::base &,optional<int, double> >())
 		.def(init<const algorithm::base &,optional<int, const std::vector<double> &> >())
+		.add_property("algorithm",&algorithm::mbh::get_algorithm,&algorithm::mbh::set_algorithm)
 		.def("screen_output",&algorithm::mbh::screen_output);
 	
 	// Multistart.
 	algorithm_wrapper<algorithm::ms>("ms","Multistart.")
-		.def(init<const algorithm::base &, int >());
+		.def(init<const algorithm::base &, int>())
+		.add_property("algorithm",&algorithm::ms::get_algorithm,&algorithm::ms::set_algorithm);
 	
 	// Particle Swarm Optimization.
 	algorithm_wrapper<algorithm::pso>("pso","Particle swarm optimization.")
@@ -185,6 +244,14 @@ BOOST_PYTHON_MODULE(_algorithm) {
 		.def("screen_output",&algorithm::snopt::screen_output);
 	
 	#endif
+		
+	// Ipopt solver.
+	#ifdef PAGMO_ENABLE_IPOPT
+	algorithm_wrapper<algorithm::ipopt>("ipopt","Ipopt solver.")
+		.def(init<int, optional<double, double,double> >())
+		.def("screen_output",&algorithm::ipopt::screen_output);
+	
+	#endif	
 
 	// Register to_python conversion from smart pointer.
 	register_ptr_to_python<algorithm::base_ptr>();

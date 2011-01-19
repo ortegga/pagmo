@@ -68,8 +68,11 @@ std::string base::get_name() const
 std::string base::human_readable() const
 {
 	std::ostringstream s;
-	s << get_name() << " - ";
-	s << human_readable_extra();
+	s << "Algorithm name: " << get_name();
+	const std::string tmp(human_readable_extra());
+	if (tmp.size()) {
+		s << " - " << tmp;
+	}
 	return s.str();
 }
 
@@ -82,18 +85,6 @@ std::string base::human_readable() const
 std::string base::human_readable_extra() const
 {
 	return std::string();
-}
-
-/// Algorithm's thread safety property.
-/**
- * Return true if the algorithm is thread-safe.
- * Default implementation returns true.
- *
- * @return true if the algorithm is thread-safe, false otherwise.
- */
-bool base::is_thread_safe() const
-{
-	return true;
 }
 
 /// Overload stream operator for algorithm::base.

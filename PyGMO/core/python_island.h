@@ -25,6 +25,8 @@
 #ifndef PAGMO_PYTHON_ISLAND_H
 #define PAGMO_PYTHON_ISLAND_H
 
+#include <Python.h>
+#include <typeinfo>
 #include "../../src/config.h"
 #include "../../src/base_island.h"
 #include "../../src/island.h"
@@ -36,6 +38,8 @@
 #include "../../src/population.h"
 #include "../../src/problem/base.h"
 #include "../../src/serialization.h"
+#include "../algorithm/python_base.h"
+#include "../problem/python_base.h"
 
 // Forward declarations.
 namespace pagmo {
@@ -56,33 +60,87 @@ inline void load_construct_data(Archive &, pagmo::python_island *, const unsigne
 
 namespace pagmo {
 
-// We need to reimplement the local island class to make it conditionally blocking in Python.
+// We need to reimplement the local island class to handle the case in which the island is instantiated with
+// algorithms/problems implemented in Python and to re-implement the join() method not to block other Python
+// computations.
 class __PAGMO_VISIBLE python_island: public island
 {
+		// RAII gil releaser.
+		class scoped_gil_release
+		{
+			public:
+				scoped_gil_release()
+				{
+					m_thread_state = PyEval_SaveThread();
+				}
+				~scoped_gil_release()
+				{
+					PyEval_RestoreThread(m_thread_state);
+					m_thread_state = NULL;
+				}
+			private:
+				PyThreadState *m_thread_state;
+		};
 	public:
-		explicit python_island(const problem::base &prob, const algorithm::base &algo, int n = 0,
+		explicit python_island(const algorithm::base &algo, const problem::base &prob, int n = 0,
 			const double &migr_prob = 1,
 			const migration::base_s_policy &s_policy = migration::best_s_policy(),
 			const migration::base_r_policy &r_policy = migration::fair_r_policy()):
-			island(prob,algo,n,migr_prob,s_policy,r_policy) {}
-		explicit python_island(const population &pop, const algorithm::base &algo,
+			island(algo,prob,n,migr_prob,s_policy,r_policy),m_gstate() {}
+		explicit python_island(const algorithm::base &algo, const population &pop,
 			const double &migr_prob = 1,
 			const migration::base_s_policy &s_policy = migration::best_s_policy(),
 			const migration::base_r_policy &r_policy = migration::fair_r_policy()):
-			island(pop,algo,migr_prob,s_policy,r_policy) {}
+			island(algo,pop,migr_prob,s_policy,r_policy),m_gstate() {}
+		python_island(const python_island &isl):island(isl),m_gstate() {}
+		~python_island()
+		{
+			// Call the re-implemented join().
+			python_island::join();
+			pagmo_assert(m_gstate == PyGILState_STATE());
+		}
 		python_island &operator=(const python_island &other)
 		{
 			island::operator=(other);
+			pagmo_assert(m_gstate == PyGILState_STATE());
 			return *this;
 		}
 		base_island_ptr clone() const
 		{
 			return base_island_ptr(new python_island(*this));
 		}
-	protected:
-		bool is_blocking_impl() const
+		void join() const
 		{
-			return false;
+			scoped_gil_release release;
+			base_island::join();
+		}
+	protected:
+		void thread_entry()
+		{
+			if (is_pythonic()) {
+				m_gstate = PyGILState_Ensure();
+			}
+		}
+		void thread_exit()
+		{
+			if (is_pythonic()) {
+				PyGILState_Release(m_gstate);
+				m_gstate = PyGILState_STATE();
+			}
+		}
+	public:
+		bool is_pythonic() const
+		{
+			int n_pythonic_items = 0;
+			try {
+				dynamic_cast<algorithm::python_base &>(*m_algo);
+				++n_pythonic_items;
+			} catch (const std::bad_cast &) {}
+			try {
+				dynamic_cast<problem::python_base const &>(m_pop.problem());
+				++n_pythonic_items;
+			} catch (const std::bad_cast &) {}
+			return (n_pythonic_items > 0);
 		}
 	private:
 		template <class Archive>
@@ -96,6 +154,8 @@ class __PAGMO_VISIBLE python_island: public island
 			// Join will be done here already.
 			ar & boost::serialization::base_object<island>(*this);
 		}
+		// The only data member is the GIL state variable.
+		PyGILState_STATE m_gstate;
 };
 
 }
@@ -103,25 +163,13 @@ class __PAGMO_VISIBLE python_island: public island
 namespace boost { namespace serialization {
 
 template <class Archive>
-inline void save_construct_data(Archive &ar, const pagmo::python_island *isl, const unsigned int)
-{
-	// Save data required to construct instance.
-	pagmo::problem::base_ptr prob = isl->m_pop.problem().clone();
-	pagmo::algorithm::base_ptr algo = isl->m_algo->clone();
-	ar << prob;
-	ar << algo;
-}
+inline void save_construct_data(Archive &, const pagmo::python_island *, const unsigned int)
+{}
 
 template <class Archive>
-inline void load_construct_data(Archive &ar, pagmo::python_island *isl, const unsigned int)
+inline void load_construct_data(Archive &, pagmo::python_island *isl, const unsigned int)
 {
-	// Retrieve data from archive required to construct new instance.
-	pagmo::problem::base_ptr prob;
-	pagmo::algorithm::base_ptr algo;
-	ar >> prob;
-	ar >> algo;
-	// Invoke inplace constructor to initialize instance of the island.
-	::new(isl)pagmo::python_island(*prob,*algo);
+	::new(isl)pagmo::python_island(pagmo::algorithm::island_init(),pagmo::problem::island_init());
 }
 
 }} //namespaces

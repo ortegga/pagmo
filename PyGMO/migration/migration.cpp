@@ -29,7 +29,6 @@
 #include <boost/utility.hpp>
 
 #include "../../src/migration.h"
-#include "../exceptions.h"
 #include "../utils.h"
 
 using namespace boost::python;
@@ -40,7 +39,8 @@ static inline class_<MSPolicy,bases<migration::base_s_policy> > migration_s_poli
 {
 	class_<MSPolicy,bases<migration::base_s_policy> > retval(name,descr,init<const MSPolicy &>());
 	retval.def(init<>());
-	retval.def("__copy__", &MSPolicy::clone);
+	retval.def("__copy__", &Py_copy_from_ctor<MSPolicy>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<MSPolicy>);
 	retval.def_pickle(generic_pickle_suite<MSPolicy>());
 	retval.def("cpp_loads", &py_cpp_loads<MSPolicy>);
 	retval.def("cpp_dumps", &py_cpp_dumps<MSPolicy>);
@@ -52,7 +52,8 @@ static inline class_<MRPolicy,bases<migration::base_r_policy> > migration_r_poli
 {
 	class_<MRPolicy,bases<migration::base_r_policy> > retval(name,descr,init<const MRPolicy &>());
 	retval.def(init<>());
-	retval.def("__copy__", &MRPolicy::clone);
+	retval.def("__copy__", &Py_copy_from_ctor<MRPolicy>);
+	retval.def("__deepcopy__", &Py_deepcopy_from_ctor<MRPolicy>);
 	retval.def_pickle(generic_pickle_suite<MRPolicy>());
 	retval.def("cpp_loads", &py_cpp_loads<MRPolicy>);
 	retval.def("cpp_dumps", &py_cpp_dumps<MRPolicy>);
@@ -60,8 +61,7 @@ static inline class_<MRPolicy,bases<migration::base_r_policy> > migration_r_poli
 }
 
 BOOST_PYTHON_MODULE(_migration) {
-	// Translate exceptions for this module.
-	translate_exceptions();
+	common_module_init();
 
 	// Migration rate type enum.
 	enum_<migration::rate_type>("rate_type")
@@ -71,7 +71,7 @@ BOOST_PYTHON_MODULE(_migration) {
 	// Expose migration selection policies.
 
 	// Base.
-	class_<migration::base_s_policy,boost::noncopyable>("base_s_policy",no_init);
+	class_<migration::base_s_policy,boost::noncopyable>("_base_s_policy",no_init);
 
 	// Best selection policy.
 	migration_s_policy_wrapper<migration::best_s_policy>("best_s_policy","Best migration selection policy.")
@@ -80,7 +80,7 @@ BOOST_PYTHON_MODULE(_migration) {
 	// Expose migration replacement policies.	
 
 	// Base.
-	class_<migration::base_r_policy,boost::noncopyable>("base_r_policy",no_init);
+	class_<migration::base_r_policy,boost::noncopyable>("_base_r_policy",no_init);
 
 	// Fair replacement policy.
 	migration_r_policy_wrapper<migration::fair_r_policy>("fair_r_policy","Fair migration replacement policy.")

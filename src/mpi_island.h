@@ -26,8 +26,9 @@
 #define PAGMO_MPI_ISLAND_H
 
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread/locks.hpp>
+#include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
+#include <list>
 #include <set>
 #include <string>
 
@@ -62,44 +63,39 @@ inline void load_construct_data(Archive &, pagmo::mpi_island *, const unsigned i
 namespace pagmo
 {
 
-/// mpi island class.
+/// MPI island class.
 /**
- * This island class will launch evolutions using local threads.
+ * This island class will dispatch evolutions to participants to an MPI cluster. This class can be used like any other island class,
+ * the only difference being that before calling any evolution a pagmo::mpi_environment instance must have been created.
+ * More information about the MPI support in PaGMO is available in \ref mpi_support "this page".
+ * 
+ * <b>NOTE</b>: this class is available only if PaGMO was compiled with MPI support.
  *
+ * @author Francesco Biscani (bluescarni@gmail.com)
  * @author Dante Stroe (dante.stroe@gmail.com)
  */
 class __PAGMO_VISIBLE mpi_island: public base_island
 {
-		typedef boost::lock_guard<boost::mutex> lock_type;
 		template <class Archive>
 		friend void boost::serialization::save_construct_data(Archive &, const pagmo::mpi_island *, const unsigned int);
 		template <class Archive>
 		friend void boost::serialization::load_construct_data(Archive &, pagmo::mpi_island *, const unsigned int);
 	public:
 		mpi_island(const mpi_island &);
-		explicit mpi_island(const problem::base &, const algorithm::base &, int = 0,
+		explicit mpi_island(const algorithm::base &, const problem::base &, int = 0,
 			const double & = 1,
 			const migration::base_s_policy & = migration::best_s_policy(),
 			const migration::base_r_policy & = migration::fair_r_policy());
-		explicit mpi_island(const population &, const algorithm::base &,
+		explicit mpi_island(const algorithm::base &, const population &,
 			const double & = 1,
 			const migration::base_s_policy & = migration::best_s_policy(),
 			const migration::base_r_policy & = migration::fair_r_policy());
 		mpi_island &operator=(const mpi_island &);
 		base_island_ptr clone() const;
 	protected:
-		/** @name Evolution.
-		 * Methods related to island evolution.
-		 */
-		//@{
-		bool is_blocking_impl() const;
 		void perform_evolution(const algorithm::base &, population &) const;
-		//@}
 	public:
-		/** @name Input/output.*/
-		//@{
 		std::string get_name() const;
-		//@}
 	private:
 		friend class boost::serialization::access;
 		template <class Archive>
@@ -109,11 +105,14 @@ class __PAGMO_VISIBLE mpi_island: public base_island
 			ar & boost::serialization::base_object<base_island>(*this);
 		}
 		static void init_processors();
-		static int acquire_processor();
-		static void release_processor(int);
+		int acquire_processor() const;
+		void release_processor(int) const;
 	private:
-		static boost::mutex				m_mutex;
+		static boost::mutex				m_proc_mutex;
+		static boost::condition_variable		m_proc_cond;
+		static boost::mutex				m_mpi_mutex;
 		static boost::scoped_ptr<std::set<int> >	m_available_processors;
+		static std::list<mpi_island const *>		m_queue;
 };
 
 }
@@ -124,22 +123,22 @@ template <class Archive>
 inline void save_construct_data(Archive &ar, const pagmo::mpi_island *isl, const unsigned int)
 {
 	// Save data required to construct instance.
-	pagmo::problem::base_ptr prob = isl->m_pop.problem().clone();
 	pagmo::algorithm::base_ptr algo = isl->m_algo->clone();
-	ar << prob;
+	pagmo::problem::base_ptr prob = isl->m_pop.problem().clone();
 	ar << algo;
+	ar << prob;
 }
 
 template <class Archive>
 inline void load_construct_data(Archive &ar, pagmo::mpi_island *isl, const unsigned int)
 {
 	// Retrieve data from archive required to construct new instance.
-	pagmo::problem::base_ptr prob;
 	pagmo::algorithm::base_ptr algo;
-	ar >> prob;
+	pagmo::problem::base_ptr prob;
 	ar >> algo;
+	ar >> prob;
 	// Invoke inplace constructor to initialize instance of the algorithm.
-	::new(isl)pagmo::mpi_island(*prob,*algo);
+	::new(isl)pagmo::mpi_island(*algo,*prob);
 }
 
 }} //namespaces

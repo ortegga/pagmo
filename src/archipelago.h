@@ -123,7 +123,7 @@ class __PAGMO_VISIBLE archipelago
 	public:
 		explicit archipelago(distribution_type = point_to_point, migration_direction = destination);
 		explicit archipelago(const topology::base &, distribution_type = point_to_point, migration_direction = destination);
-		explicit archipelago(const problem::base &, const algorithm::base &, int, int, const topology::base & = topology::unconnected(),
+		explicit archipelago(const algorithm::base &, const problem::base &, int, int, const topology::base & = topology::unconnected(),
 			distribution_type = point_to_point, migration_direction = destination);
 		archipelago(const archipelago &);
 		archipelago &operator=(const archipelago &);
@@ -142,9 +142,9 @@ class __PAGMO_VISIBLE archipelago
 		void interrupt();
 		std::string dump_migr_history() const;
 		void clear_migr_history();
+		void set_island(const size_type &, const base_island &);
+		std::vector<base_island_ptr> get_islands() const;
 		base_island_ptr get_island(const size_type &) const;
-		bool is_blocking() const;
-		bool is_thread_safe() const;
 	private:
 		void pre_evolution(base_island &);
 		void post_evolution(base_island &);
@@ -153,11 +153,9 @@ class __PAGMO_VISIBLE archipelago
 			base_island &, const std::vector<individual_type> &, migr_hist_type &) const;
 		void check_migr_attributes() const;
 		void sync_island_start() const;
-		struct count_if_blocking;
-		bool is_blocking_impl() const;
-		struct count_if_thread_safe;
-		bool is_thread_safe_impl() const;
 		size_type locate_island(const base_island &) const;
+		bool destruction_checks() const;
+		void reevaluate_immigrants(std::vector<individual_type> &, const base_island &) const;
 	private:
 		friend class boost::serialization::access;
 		template <class Archive>

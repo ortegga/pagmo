@@ -69,7 +69,7 @@ typedef boost::shared_ptr<base> base_ptr;
  * - the total number of constraints,
  * - the number of inequality constraints (never exceeding the total number of constraints),
  * - a constraint computation function,
- * - an objective function that take as input a decision vector and returns a vector of fitnesses,
+ * - an objective function that takes as input a decision vector and returns a vector of fitnesses,
  * - a fitness dimension, i.e., the length of the fitness vector returned by the objective function,
  * - a constraints tolerance.
  *
@@ -416,7 +416,6 @@ return base_ptr(new derived_problem(*this));
 		bool compare_x(const decision_vector &, const decision_vector &) const;
 		bool verify_x(const decision_vector &) const;
 		bool compare_fc(const fitness_vector &, const constraint_vector &, const fitness_vector &, const constraint_vector &) const;
-		virtual bool is_thread_safe() const;
 		virtual void pre_evolution(population &) const;
 		virtual void post_evolution(population &) const;
 	protected:

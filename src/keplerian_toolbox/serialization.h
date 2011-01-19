@@ -22,55 +22,33 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// 01/02/10 Created by Francesco Biscani.
+#ifndef KEP_TOOLBOX_SERIALIZATION_H
+#define KEP_TOOLBOX_SERIALIZATION_H
 
-#include <string>
+// Headers needed for serialization purposes.
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
+#include <boost/serialization/assume_abstract.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/export.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/split_free.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/version.hpp>
 
-#include "../exceptions.h"
-#include "../types.h"
-#include "base.h"
-#include "paraboloid.h"
+// Serialization of circular buffer, unordered map.
+// TODO: serialize the functors.. allocator, Hash, Pred, etc.
+#include <boost/circular_buffer.hpp>
+#include <boost/unordered_map.hpp>
+#include <utility>
 
-namespace pagmo { namespace problem {
 
-static const double paraboloid_default_lb[1] = {-1};
-static const double paraboloid_default_ub[1] = {1};
 
-/// Default constructor.
-/**
- * Will construct a one-dimensional problem with bounds [-1,1].
- */
-paraboloid::paraboloid():base(paraboloid_default_lb,paraboloid_default_ub) {}
-
-/// Constructor from lower/upper bounds.
-/**
- * @see problem::base
- */
-paraboloid::paraboloid(const decision_vector &lb, const decision_vector &ub):base(lb,ub) {}
-
-/// Clone method.
-base_ptr paraboloid::clone() const
-{
-	return base_ptr(new paraboloid(*this));
-}
-
-/// Implementation of the objective function.
-void paraboloid::objfun_impl(fitness_vector &f, const decision_vector &x) const
-{
-	pagmo_assert(f.size() == 1);
-	typedef decision_vector::size_type size_type;
-	const size_type size = x.size();
-	f[0] = 0;
-	for (size_type i = 0; i < size; ++i) {
-		f[0] += x[i] * x[i];
-	}
-}
-
-std::string paraboloid::get_name() const
-{
-	return "Paraboloid";
-}
-
-}}
-
-BOOST_CLASS_EXPORT_IMPLEMENT(pagmo::problem::paraboloid);
+#endif //KEP_TOOLBOX_SERIALIZATION_H

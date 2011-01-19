@@ -8,7 +8,7 @@
  *                                                                           *
  *   This program is free software; you can redistribute it and/or modify    *
  *   it under the terms of the GNU General Public License as published by    *
- *   the Free Software Foundation; either version 3 of the License, or       *
+ *   the Free Software Foundation; either version 2 of the License, or       *
  *   (at your option) any later version.                                     *
  *                                                                           *
  *   This program is distributed in the hope that it will be useful,         *
@@ -22,35 +22,24 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-#ifndef PAGMO_PYTHON_LOCKS_H
-#define PAGMO_PYTHON_LOCKS_H
+#include "../src/pagmo.h"
 
-#include <Python.h>
-#include <boost/thread/thread.hpp>
-#include <boost/utility.hpp>
+using namespace pagmo;
 
-namespace pagmo {
-
-class gil_state_lock: private boost::noncopyable
+int main()
 {
-	public:
-		gil_state_lock();
-		~gil_state_lock();
-	private:
-		const boost::thread::id		m_cur_thread_id;
-		PyGILState_STATE		m_gstate;
-		static const boost::thread::id	m_main_thread_id;
-};
-
-class gil_releaser: private boost::noncopyable
-{
-	public:
-		gil_releaser();
-		~gil_releaser();
-	private:
-		PyThreadState *m_thread_state;
-};
-
+	problem::dejong prob(1);
+	algorithm::monte_carlo algo(1);
+	archipelago a;
+	a.set_topology(topology::ring());
+	for (int i = 0; i < 10; ++i) {
+		a.push_back(island(algo,prob,1));
+	}
+	for (int i = 0; i < 1000; ++i) {
+		a.evolve(1);
+		a.join();
+	}
+	a.evolve(10000);
+	a.join();
+	return 0;
 }
-
-#endif

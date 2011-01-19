@@ -32,7 +32,11 @@
 #include "../planet.h"
 #include "sc_state.h"
 #include "../exceptions.h"
-#include "../../serialization.h"
+#include "spacecraft.h"
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+#include "../serialization.h"
+#endif
 
 namespace kep_toolbox { namespace sims_flanagan{
 
@@ -108,11 +112,9 @@ public:
 		}
 
 		array3D start_pos, start_vel, end_pos, end_vel;
-		planets[0]->get_eph(coding.leg_start_epoch(0, b), end_pos, end_vel);
 		for(int i = 0; i < n; i++){
-			start_pos = end_pos;
-			start_vel = end_vel;
-			planets[i + 1]->get_eph(coding.leg_end_epoch(i, b), end_pos, end_vel);
+		        planets[i]->get_eph(coding.leg_start_epoch(i, b), start_pos, start_vel);		
+		        planets[i + 1]->get_eph(coding.leg_end_epoch(i, b), end_pos, end_vel);
 
 			legs[i].set_t_i(coding.leg_start_epoch(i, b));
 			array3D dv = coding.leg_start_velocity(i, b);
@@ -200,14 +202,17 @@ private:
 	     * \f$T\f$ id the leg time duration (sec).
 	     *
 	     */
-	friend class boost::serialization::access;
+
+#ifdef KEP_TOOLBOX_ENABLE_SERIALIZATION
+        friend class boost::serialization::access;
 	template <class Archive>
 	void serialize(Archive &ar, const unsigned int)
 	{
 		ar & legs;
 		ar & planets;
 		ar & total_n_seg;
-	}
+        }
+#endif
 };
 
 std::ostream &operator<<(std::ostream &s, const fb_traj &in );
