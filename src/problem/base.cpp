@@ -457,6 +457,7 @@ void base::objfun(fitness_vector &f, const decision_vector &x) const
 {
 	// Some checks on the input values.
 	if (f.size() != m_f_dimension) {
+		std::cout << m_f_dimension << "," << f.size() << std::endl;
 		pagmo_throw(value_error,"wrong fitness vector size when calling objective function");
 	}
 	if (x.size() != get_dimension()) {

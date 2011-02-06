@@ -387,14 +387,19 @@ int main(int argc, char *argv[]){
 	prob.set_vicinity_distance(vicinity_distance);
 	prob.set_vicinity_speed(vicinity_speed);
 	prob.set_vicinity_orientation(vicinity_orientation);
-			
-	algorithm::sga algo(algo_generations, 	// Generations
+
+	////////////////////////////////////////////////
+	// Define the algorithm	
+/*	algorithm::sga algo(algo_generations, 	// Generations
 						algo_crossover/100.0,	// CR
 						algo_mutation/100.0,	// Mutation	
 						algo_elitism );/*, 	// Elitism
 						0.0,
 						  2,	//random
 						  0); 	// no roulette selection*/
+
+	// try using cma_es
+	algorithm::cma_es algo;
 
 
 
@@ -418,7 +423,7 @@ int main(int argc, char *argv[]){
 //					//probability, one individual per island, up to 100% of the population can be replaced (1.0)
 //	migration_policy mig_p(0.2, ChooseBestMigrationSelectionPolicy(1), RandomMigrationReplacementPolicy(1.0));	
 //	migration mig(mig_s, mig_p);
-	archipelago arch = archipelago(prob, algo, islands, individuals, top);
+	archipelago arch = archipelago(algo, prob, 1/*islands*/, individuals, top, archipelago::point_to_point, archipelago::destination);
 	std::cout << "Created!";
 
 

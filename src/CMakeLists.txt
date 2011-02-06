@@ -16,6 +16,7 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/sa_corana.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/mbh.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/ms.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/cma_es.cpp	
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/neural_network.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/elman_network.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/ann_toolbox/multilayer_perceptron.cpp

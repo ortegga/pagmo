@@ -43,6 +43,13 @@
 #include "algorithm/aco.h"
 #include "algorithm/nsga2.h"
 
+
+
+
+#include "algorithm/cma_es.h"
+
+
+
 // Hyper-heuristics
 #include "algorithm/mbh.h"
 #include "algorithm/ms.h"
