@@ -12,7 +12,7 @@ namespace pagmo
     {
 
 	using namespace cuda;
-	template <typename ty, size_t order, typename system>
+	template <typename ty, typename system, size_t in_, size_t out_, size_t system_params>
 	    class integrator : public task<ty>
 	{
 	public:
@@ -43,9 +43,9 @@ namespace pagmo
 
 	    virtual bool set_dynamical_inputs(const data_item & item, const std::vector<ty> & inputs)
 	    {
-		if (inputs.size() == 2)//<TODO> incomplete type
+		if (inputs.size() == system_params)
 		{
-		    return cuda::task<ty>::set_inputs (item, this->param_o, inputs, 2, "inputs");
+		    return task<ty>::set_inputs (item, this->param_o, inputs, system_params, "dynamical inputs");
 		}
 		return false;
 	    }
@@ -61,7 +61,12 @@ namespace pagmo
 	    }
 	    unsigned int get_size()
 	    {
-		return order;
+		return in_;
+	    }
+
+	    unsigned int get_system_size()
+	    {
+		return system_params;
 	    }
 
 	    void set_params(ty t, ty dt, ty scale_limits)

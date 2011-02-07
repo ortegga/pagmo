@@ -14,7 +14,7 @@ struct sigmoid_functor
 {
     __device__ __forceinline__ cuda_type operator ()( cuda_type val)
 	{
-	    return 1.0f/(1 + exp(-val));
+	    return val;// 1.0f/(1 + exp(-val));
 	}
 };
 
@@ -23,7 +23,6 @@ struct linear_functor
 {
     __device__ __forceinline__ cuda_type operator () ( cuda_type val)
 	{
-	    //Needs to be a better way to do this
 	    return val > 0.0f ? 1.0f : 0.0f;
 	}
 };
@@ -51,9 +50,9 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 {
 
     size_t netsize = (inputs + 1)*outputs;
-    size_t block_individuals = tasks_per_block / (points * outputs);
-    size_t tx = blockIdx.x * tasks_per_block + threadIdx.x;
-    size_t individ = tx / (points * outputs);
+    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, outputs, points);
+    size_t tx = GLOBAL_ADJUSTED_TX(tasks_per_block);
+    size_t individ = GLOBAL_INDIV_ID(tasks_per_block,outputs, points);
 
 
     //0. load shared memory with inputs and weights. 
@@ -61,23 +60,25 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
     cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*netsize];// inputs come after the weights
 
     copy_to_shared_mem<cuda_type, pre_exec>(Ws, W, block_individuals * netsize);
-    copy_to_shared_mem<cuda_type, pre_exec>(Xs, X, block_individuals * points * inputs);
+    copy_to_shared_mem<cuda_type, pre_exec>(Xs, X, BLOCK_POINTS(tasks_per_block,outputs) * inputs);
     __syncthreads();
 
     //Add check for last block that will be running less than normal threads
-    if (threadIdx.x < tasks_per_block && individ < individuals)
+    if (IS_VALID_FOR_BLOCK(tasks_per_block,points, outputs))
     {
 
-	size_t taskid = tx / outputs;
+	size_t taskid = GLOBAL_POINT_ID(tasks_per_block,outputs);
 	size_t yid = tx % outputs;
-	size_t sha_individ = threadIdx.x / (outputs*points);
-	size_t sha_taskid = threadIdx.x / outputs;   
+	size_t sha_individ = BLOCK_INDIV_ID(tasks_per_block, outputs,points); 
+	size_t sha_taskid = BLOCK_POINT_ID(tasks_per_block, outputs);   
+	cuda_type * Wc = &Ws[netsize * sha_individ];
+
 	//1. load in the bias
-	cuda_type value = Ws[netsize*sha_individ + (inputs + 1)*yid + inputs];
+	cuda_type value = Wc[(inputs + 1)*yid];// + inputs];
 	//2. Add the weights * inputs.
 	for (int i=0; i < inputs; ++i)
 	{
-	    value += Xs[inputs*sha_taskid+i]*Ws[ netsize*sha_individ + (inputs + 1)*yid + i];
+	    value += Xs[inputs*sha_taskid+i]*Wc[(inputs + 1)*yid + i + 1];
 	}
 	//3. save to output
 	Y[taskid*outputs+yid] = activator ( value );     
@@ -86,10 +87,10 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
-    /*printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
+    printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
 	   name, dims_->get_grid_dims().x, dims_->get_block_dims().x, dims_->get_shared_mem_size(), dims_->get_tasks_per_block());
     printf(" individuals = %d\n points = %d\n task size = %d\n ", 
-    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());*/
+    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());
 
 }
 

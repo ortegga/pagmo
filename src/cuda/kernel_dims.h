@@ -120,7 +120,7 @@ namespace cuda
 
 	virtual dim3 get_block_dims()
 	{
-	    return dim3(m_block_size,1,1);
+	    return dim3(m_block_size ,1,1);
 	}
 
 	virtual dim3 get_grid_dims()

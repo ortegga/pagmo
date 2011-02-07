@@ -6,11 +6,11 @@
 ////////////////////////////////////////////////////////////////////////////////////////////
 // activation types
 
-template <typename cuda_type>
+template <typename cty>
 struct sigmoid_functor;
 
 
-template <typename cuda_type>
+template <typename cty>
 struct linear_functor;
 
 
@@ -23,8 +23,8 @@ namespace cuda
 }
 
 
-template <typename cuda_type, typename pre_exec, typename activ_type>
-    __host__   cudaError_t cu_compute_layer(cuda_type *X, cuda_type *W,  cuda_type *Y, 
+template <typename cty, typename pre_exec, typename activ_type>
+    __host__   cudaError_t cu_compute_layer(cty *X, cty *W,  cty *Y, 
 				     size_t inputs, 
 				     cuda::kernel_dimensions * dimensions_);
 

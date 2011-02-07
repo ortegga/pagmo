@@ -3,22 +3,23 @@
 #include <vector>
 
 
-#include "src/cuda/cudainfo.h"
-#include "src/cuda/cudatimer.h"
-#include "src/cuda/cudatask.h"
-#include "src/cuda/nnet.h"
+#include "../src/cuda/cudainfo.h"
+#include "../src/cuda/cudatimer.h"
+#include "../src/cuda/cudatask.h"
+#include "../src/cuda/nnet.h"
 //#include "src/odeint/runge_kutta_4.h"
 
-#include "src/ann_toolbox/multilayer_perceptron.h"
-#include "src/ann_toolbox/perceptron.h"
+#include "../src/ann_toolbox/multilayer_perceptron.h"
+#include "../src/ann_toolbox/perceptron.h"
 
 
 using namespace cuda;
 
 #define CUDA_TY float
 
-//typedef ann_toolbox::multilayer_perceptron<CUDA_TY, 2, 3, 2, linear_functor <CUDA_TY>  >  multilayer_nnet;
-typedef ann_toolbox::perceptron<CUDA_TY, 3, 3, nop_functor<CUDA_TY>, linear_functor <CUDA_TY>  >  multilayer_nnet;
+
+typedef ann_toolbox::multilayer_perceptron<CUDA_TY, 2, 3, 2, adhoc_dimensions<256>,  adhoc_dimensions<256> >  multilayer_nnet;
+//typedef ann_toolbox::perceptron<CUDA_TY, 2, 2, adhoc_dimensions<256> >  multilayer_nnet;
 
 int load_subtask( int individualid, int taskid, multilayer_nnet * pNet);
 int print_subtask(int individualid, int taskid, multilayer_nnet * pNet);
@@ -30,8 +31,8 @@ int main( int argc, char **argv )
   info & inf = *pInf;
   std::cout << inf << std::endl;
 
-  unsigned int taskCount = 10;
-  unsigned int individuals = 20;
+  unsigned int taskCount = 30;
+  unsigned int individuals = 40;
 
   //task might need to know the complete type of the subtasks.
 
@@ -75,22 +76,26 @@ int load_subtask(int individualid, int taskid, multilayer_nnet * pNet)
   std::vector<CUDA_TY> X (pNet->get_number_of_inputs(), x);
   std::vector<CUDA_TY> W;
 
-  //std::cout<<"weight count"<<pNet->get_number_of_weights()<<std::endl;
   if (taskid == 0)
     {
       for (unsigned int j=0; j< pNet->get_number_of_weights(); j++)
 	{
-	  //  std::cout<<j+1+taskid<<" ";
 	  W.push_back(j + 1 + individualid);
 	}
-      std::cout<<"Setting weights for individual "<<individualid<<std::endl;
-      std::cout<<pNet->set_weights(data_item::individual_data(0,individualid), W)<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
+      //std::cout<<"Setting weights for individual "<<individualid<<std::endl;
+      //std::cout<<
+      pNet->set_weights(data_item::individual_data(0,individualid), W);
+	  //<<std::endl;//" "<<taskid<<" "<<individualid<<std::endl;
     }
 
-  std::cout<<pNet->set_inputs(data_item::point_data(0,individualid, taskid), X)<<" "<<taskid<<" "<<individualid<<std::endl;
+//  std::cout<<
+  pNet->set_inputs(data_item::point_data(0,individualid, taskid), X);
+  //<<" "<<taskid<<" "<<individualid<<std::endl;
 
   if(!individualid && !taskid)
-    std::cout<<pNet->prepare_outputs()<<std::endl;
+//    std::cout<<
+      pNet->prepare_outputs();
+	    //<<std::endl;
   return 0;
 };
 
@@ -100,20 +105,7 @@ int print_subtask(int individualid, int taskid, multilayer_nnet * pNet)
 
   std::vector<CUDA_TY> O;
 
-
-  /*  if(!pNet->get_hidden(individual, taskid, O))
-      {
-      std::cout<<" Error: could not get data"<<std::endl;
-      return 0;
-      }
-
-      std::cout<<"hidden: ";
-      for(std::vector<CUDA_TY>::iterator iter = O.begin(); iter != O.end(); ++iter)
-      {
-      std::cout<<*iter<<" ";
-      }*/
-
-  std::cout <<std::endl<<individualid<<"/"<<taskid<<" outputs: ";
+  //std::cout <<std::endl<<individualid<<"/"<<taskid<<" outputs: ";
 
   O.clear();
   

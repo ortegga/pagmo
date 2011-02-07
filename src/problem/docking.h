@@ -30,7 +30,7 @@ namespace pagmo
 
 	    typedef ann_toolbox::neural_network <fty, 7, 2 >  neural_network;
 	    typedef hills_dynamical_system<fty > dynamic_system;
-	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , adhoc_dimensions<256> > integrator;
+	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , 6, 2, 2, adhoc_dimensions<128>, scale_functor<fty> > integrator;
 	    typedef fitness::evaluate_fitness_task<fty, adhoc_dimensions<256> > fitness_type;
 
 

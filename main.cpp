@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
     problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
     problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator",  problem::docking<float_type>::fitness_type::minimal_distance,
-						    individuals, prob_positions, vicinity_distance, vicinity_speed, prob_maximum_time);
+						    individuals, prob_positions, vicinity_distance, vicinity_speed, vicinity_orientation, prob_maximum_time);
     ////////////////////////////////////////////////
     // Define the problem						positions, strategy, 				max_time, max_thrust
     problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, &fitt, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);

@@ -5,10 +5,16 @@
 #include "common.h"
 
 
+
 template <typename ty>
 struct nop_functor 
 {
     __device__ __forceinline__ ty operator() ( ty val )
+	{
+	    return val;
+	}
+    
+    __device__ __forceinline__ ty operator() ( ty val, ty )
 	{
 	    return val;
 	}
@@ -42,22 +48,22 @@ struct apply
 template <typename ty, typename ftor >
 __device__ __forceinline__ void copy_to_shared_mem(ty * shared, ty * global, size_t size, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
     for (int i=0; i < segment ; ++i)
     {
-	if (i*segment + threadIdx.x < size)
-	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x]);
+	if (i*blockDim.x + threadIdx.x < size)
+	    shared [i*blockDim.x + threadIdx.x] = f(global[blockIdx.x*size +  i*blockDim.x + threadIdx.x]);
     }
 }
 
 template <typename ty, typename ftor >
 __device__ __forceinline__ void copy_to_shared_mem1(ty * shared, ty * global, size_t size, ty param, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
     for (int i=0; i < segment ; ++i)
     {
-	if (i*segment + threadIdx.x < size)
-	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x], param);
+	if (i*blockDim.x + threadIdx.x < size)
+	    shared [i*blockDim.x + threadIdx.x] = f(global[blockIdx.x*size +  i*blockDim.x + threadIdx.x], param);
     }
 }
 
@@ -65,21 +71,58 @@ __device__ __forceinline__ void copy_to_shared_mem1(ty * shared, ty * global, si
 template <typename ty, typename ftor >
 __device__ __forceinline__ void copy_to_global_mem(ty * global, ty * shared, size_t size, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
     for (int i=0; i < segment ; ++i)
     {
-	if (i*segment + threadIdx.x < size)
-	    global[blockIdx.x*size +  i*segment + threadIdx.x] = f(shared [i*segment + threadIdx.x]);
+	if (i*blockDim.x + threadIdx.x < size)
+	    global[blockIdx.x*size +  i*blockDim.x + threadIdx.x] = f(shared [i*blockDim.x + threadIdx.x]);
     }
 }
 
 template <typename ty, typename ftor >
 __device__ __forceinline__ void copy_to_global_mem1(ty * global, ty * shared, size_t size, ty param, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);//bad bad bad
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
+    for (int i=0; i < segment ; ++i)
+    {
+	if (i*blockDim.x + threadIdx.x < size)
+	    global[blockIdx.x*size +  i*blockDim.x + threadIdx.x] = f(shared [i*blockDim.x + threadIdx.x],param);
+    }
+}
+
+
+template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_mem(ty * to, ty * from, size_t size, ftor f = ftor())
+{
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
     for (int i=0; i < segment ; ++i)
     {
 	if (i*segment + threadIdx.x < size)
-	    global[blockIdx.x*size +  i*segment + threadIdx.x] = f(shared [i*segment + threadIdx.x],param);
+	    to[i*segment + threadIdx.x] = f(from [i*segment + threadIdx.x]);
     }
 }
+
+template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_mem1(ty * to, ty * from, size_t size, ty param, ftor f = ftor())
+{
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
+    for (int i=0; i < segment ; ++i)
+    {
+	if (i*segment + threadIdx.x < size)
+	    to[i*segment + threadIdx.x] = f(from [i*segment + threadIdx.x],param);
+    }
+}
+
+
+/*template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_shared_mem(ty * shared, ty * global, size_t count, size_t size, ftor f = ftor())
+{
+    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
+    for (int i=0; i < segment ; ++i)
+    {
+	if (i*segment + threadIdx.x < size)
+	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x]);
+    }
+}
+
+*/

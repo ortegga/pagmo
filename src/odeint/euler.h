@@ -11,12 +11,13 @@ namespace pagmo
     namespace odeint
     {
 
-	template <typename ty, typename system, typename kernel_dims1 = block_complete_dimensions, typename pre_exec, typename post_exec >
-	    class euler_integrator : public integrator<ty, 1, system>
+	template <typename ty, typename system, size_t in_, size_t out_, size_t system_params, 
+	    typename kernel_dims1 = block_complete_dimensions, typename pre_exec, typename post_exec >
+	    class euler_integrator : public integrator<ty, system, in_, out, system_params>
 	{
 	public:
 
-	    typedef typename integrator<ty, 1, system> base;
+	typedef typename integrator<ty, system, in_, out_, system_params> base;
     
 	    euler_integrator (cuda::info & inf, const std::string & name, size_t individuals, size_t task_count_) : base(inf, name, individuals, task_count_)
 	    {
