@@ -14,7 +14,7 @@ struct sigmoid_functor
 {
     __device__ __forceinline__ cuda_type operator ()( cuda_type val)
 	{
-	    return val;// 1.0f/(1 + exp(-val));
+	    return 1.0f/(1 + exp(-val));
 	}
 };
 
@@ -87,10 +87,10 @@ __global__ void cu_compute_layer_kernel(cuda_type *X, cuda_type *W,
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
-    printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
+/*    printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
 	   name, dims_->get_grid_dims().x, dims_->get_block_dims().x, dims_->get_shared_mem_size(), dims_->get_tasks_per_block());
     printf(" individuals = %d\n points = %d\n task size = %d\n ", 
-    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());
+    dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());*/
 
 }
 

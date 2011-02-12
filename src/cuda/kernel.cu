@@ -276,7 +276,7 @@ cudaError_t runge_kutta_integrate (fty  * X , fty * O, fty t , fty dt , fty max_
 } 
 
 template <>
-cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2, 
+cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 7, 2, 
 				   scale_functor<float>, nop_functor<float> , nop_functor<float> >
                                                                                            (float  * X , float * O, float t , float dt , 
 											    float max_val, 
@@ -284,7 +284,7 @@ cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2,
 {
 
     print_parameters("runge_kutta_integrate", dims_);
-    cu_runge_kutta_integrate <float, hills_dynamical_sys_float ,  6, 2, scale_functor<float>, nop_functor<double>, nop_functor<double> >
+    cu_runge_kutta_integrate <float, hills_dynamical_sys_float ,  7, 2, scale_functor<float>, nop_functor<double>, nop_functor<double> >
 	<<<dims_->get_grid_dims(),
 	dims_->get_block_dims(), 
 	dims_->get_shared_mem_size()>>>
@@ -300,14 +300,14 @@ cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2,
 
 
 template <>
-cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double , 6, 2, 
+cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double , 7, 2, 
 				   scale_functor<double>, nop_functor<double>, nop_functor<double> > (double  * X , double * O, double t , double dt , 
 												      double max_val, 
 												      cuda::kernel_dimensions * dims_)
 {
 
     print_parameters("runge_kutta_integrate", dims_);
-    cu_runge_kutta_integrate <double, hills_dynamical_sys_double ,6, 2, scale_functor<double>, nop_functor<double>, nop_functor<double> >
+    cu_runge_kutta_integrate <double, hills_dynamical_sys_double ,7, 2, scale_functor<double>, nop_functor<double>, nop_functor<double> >
 	<<<dims_->get_grid_dims(),
 	dims_->get_block_dims(), 
 	dims_->get_shared_mem_size()>>>
@@ -323,7 +323,7 @@ cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double , 6, 2,
 
 
 template <>
-cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2, 
+cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 7, 2, 
 				   nop_functor<float>, nop_functor<float> , nop_functor<float> >
                                                                                            (float  * X , float * O, float t , float dt , 
 											    float max_val, 
@@ -331,7 +331,7 @@ cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2,
 {
 
     print_parameters("runge_kutta_integrate3n", dims_);
-    cu_runge_kutta_integrate <float, hills_dynamical_sys_float ,  6, 2, nop_functor<float>, nop_functor<double>, nop_functor<double> >
+    cu_runge_kutta_integrate <float, hills_dynamical_sys_float ,  7, 2, nop_functor<float>, nop_functor<double>, nop_functor<double> >
 	<<<dims_->get_grid_dims(),
 	dims_->get_block_dims(), 
 	dims_->get_shared_mem_size()>>>
@@ -347,14 +347,14 @@ cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float , 6, 2,
 
 
 template <>
-cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double , 6, 2, 
+cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double , 7, 2, 
 				   nop_functor<double>, nop_functor<double>, nop_functor<double> > (double  * X , double * O, double t , double dt , 
 												      double max_val, 
 												      cuda::kernel_dimensions * dims_)
 {
 
     print_parameters("runge_kutta_integrate", dims_);
-    cu_runge_kutta_integrate <double, hills_dynamical_sys_double ,6, 2, nop_functor<double>, nop_functor<double>, nop_functor<double> >
+    cu_runge_kutta_integrate <double, hills_dynamical_sys_double ,7, 2, nop_functor<double>, nop_functor<double>, nop_functor<double> >
 	<<<dims_->get_grid_dims(),
 	dims_->get_block_dims(), 
 	dims_->get_shared_mem_size()>>>
@@ -382,20 +382,18 @@ __global__ void cu_compute_fitness_mindis_kernel(ty *S , ty *O, ty *F, ty *I, si
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
-
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
     
 
     ty * Ss = (ty *) rk_mindis_kernel_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -408,8 +406,7 @@ __global__ void cu_compute_fitness_mindis_kernel(ty *S , ty *O, ty *F, ty *I, si
 	F[globaloffset*4] =  1/( 1 + distance );
 	F[globaloffset*4 + 1] =   distance;
 	F[globaloffset*4 + 2] =  speed;
-	F[globaloffset*4 + 3] =  Ss[offset + 4];
-
+	F[globaloffset*4 + 3] =  Ss[offset + 4];//theta
     }
     __syncthreads();
 }
@@ -478,21 +475,19 @@ __global__ void cu_compute_fitness_mindis_theta_kernel(ty *S , ty *O, ty *F, ty 
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -579,21 +574,19 @@ __global__ void cu_compute_fitness_mindis_simple_kernel(ty *S , ty *O, ty *F, ty
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -686,21 +679,19 @@ __global__ void cu_compute_fitness_mindis_noatt_kernel(ty *S , ty *O, ty *F, ty 
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -798,21 +789,19 @@ __global__ void cu_compute_fitness_twodee1_kernel(ty *S , ty *O, ty *F, ty *I, t
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -911,21 +900,19 @@ __global__ void cu_compute_fitness_twodee2_kernel(ty *S , ty *O, ty *F, ty *I, 	
 						 post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 
@@ -1031,21 +1018,19 @@ __global__ void cu_compute_fitness_twodee3_kernel(ty *S , ty *O, ty *F, ty *I,
 						  post_exec post = post_exec() )
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block, task_size, points);
+    size_t block_points = BLOCK_POINTS(tasks_per_block, task_size);
 
 
     //0. load shared memory with inputs and outputs. 
-    const size_t order = 4;
-    //size_t offset = block_individuals*task_size*points*order;
     
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    size_t globaloffset = GLOBAL_RAW_TX();
+    size_t globaloffset = GLOBAL_ADJUSTED_TX(tasks_per_block);
 
-    size_t offset = threadIdx.x*order;
+    size_t offset = BLOCK_ADJUSTED_TX(tasks_per_block)*width;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_individuals * points * order);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points * width);
 
     __syncthreads();
 

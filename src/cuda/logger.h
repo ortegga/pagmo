@@ -10,6 +10,7 @@
 #define CUDA_LOG_WARN(N, X, Y) (std::cout <<std::endl<< "[W] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
 #define CUDA_LOG_ERR(N, X, Y)  (std::cout <<std::endl<< "[E] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
 #define CUDA_LOG_INFO(n, x, y) ;
+#define CUDA_LOG_DATASET(n, x) (log_dataset(n,x))
 
 #else
 
@@ -65,6 +66,17 @@ namespace cuda
 	    std::cout << t;
 	}
 	return logger;
+    }
+
+    template <typename tt>
+    void log_dataset(const std::string & str, const tt & vec)
+    {
+	std::cout<<str<<": ";
+	for (int i=0; i < vec.size(); ++i)
+	{
+	    std::cout<<vec[i]<<" ";
+	}
+	std::cout<<std::endl;
     }
 
     Logger& operator << (Logger & logger, cudaError_t & err) ;    

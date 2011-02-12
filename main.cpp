@@ -63,11 +63,11 @@ int main(int argc, char *argv[])
     const int ann_output_neurons = 2;
 	
     int prob_positions = 1;
-    int prob_pos_strategy = problem::docking<float_type>::CLOUD_POS;
+    int prob_pos_strategy = problem::docking<float_type>::SPOKE_POS;
     int prob_fitness_function = 99;
     int prob_timeneuron_threshold = 99;
     //int prob_maximum_time = 25;
-    int prob_maximum_time = 1;
+    int prob_maximum_time = 25;
 
     float integrator_timestep = 0.1f;
     int evolution_stuck_threshold = 11;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
                                 		
     int islands = 1;
     //int individuals = 10;
-    int individuals = 10;
+    int individuals = 33;
 
     float vicinity_distance = 0.1;
     float vicinity_speed = 0.1;
@@ -128,18 +128,17 @@ int main(int argc, char *argv[])
 //    std::cout<<inf;
 
     ann_toolbox::multilayer_perceptron
-	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons,  adhoc_dimensions<256>,  adhoc_dimensions<256> >  
+	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons,  adhoc_dimensions<128>,  adhoc_dimensions<128> >  
 	ann(inf,"multilayer perceptron",  individuals, prob_positions);
 
     problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
-    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator",  problem::docking<float_type>::fitness_type::minimal_distance,
-						    individuals, prob_positions, vicinity_distance, vicinity_speed, vicinity_orientation, prob_maximum_time);
+    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator",  //problem::docking<float_type>::fitness_type::cristos_twodee_fitness2,
+						    problem::docking<float_type>::fitness_type::minimal_distance,
+						    individuals, prob_positions, 6, 2, vicinity_distance, vicinity_speed, vicinity_orientation, prob_maximum_time);
     ////////////////////////////////////////////////
     // Define the problem						positions, strategy, 				max_time, max_thrust
     problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, &fitt, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 
-    std::cout<<"initializing tasks"<<std::endl;
-    //prob.initialize_tasks();
     prob.set_start_condition(start_cnd, 6);	
     prob.set_log_genome(true);
 
@@ -194,7 +193,12 @@ int main(int argc, char *argv[])
 	i++;
 
 	//cout << "] best: " << arch.best().get_fitness() << ": " 
-	cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+	//cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+	fitness_vector maxfit;
+	decision_vector maxdec;
+	prob.fittest(maxfit, maxdec);
+	
+	cout << "] best: " << maxfit.size() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
 			
 	//////////////////////////////////////////
 	// logging
@@ -206,6 +210,7 @@ int main(int argc, char *argv[])
 	    std::string h = "id_" + run_id + "_bestrun.dat";
 	    myfile.open (h.c_str());
 //			myfile << "ID: " << run_id << endl;
+
 	    myfile << configs << endl;//expected
 	    myfile << max_log_string << endl;
 	    myfile.close();	

@@ -30,7 +30,7 @@ namespace pagmo
 
 	    typedef ann_toolbox::neural_network <fty, 7, 2 >  neural_network;
 	    typedef hills_dynamical_system<fty > dynamic_system;
-	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , 6, 2, 2, adhoc_dimensions<128>, scale_functor<fty> > integrator;
+	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , 7, 2, 2, adhoc_dimensions<128>, scale_functor<fty> > integrator;
 	    typedef fitness::evaluate_fitness_task<fty, adhoc_dimensions<256> > fitness_type;
 
 
@@ -344,10 +344,7 @@ namespace pagmo
 
 	    void objfun_impl(population & pop) const
 	    {
-		//if (!initialized)
-		{
-		    initialize_tasks();
-		}
+		initialize_tasks();
 		population::size_type size = pop.size();
 		std::vector<fty> inputs;
 
@@ -359,8 +356,7 @@ namespace pagmo
 		    population::individual_type indiv = pop.get_individual(s);
 		    decision_vector wi = indiv.cur_x;
 
-		    //necessary if we're working with floats while pagmo works with doubles
-		    std::vector<fty> wv;// (indiv.cur_x.size(), s + 1);
+		    std::vector<fty> wv;
 		    wv.insert(wv.begin(),indiv.cur_x.begin(),indiv.cur_x.end());
 		    ann->set_weights(data_item::individual_data(0,s),wv);
 
@@ -429,11 +425,6 @@ namespace pagmo
 		    ann->get_weights(data_item::individual_data(0,s),wv);
 		    decision_vector d;
 		    d.insert(d.begin(), wv.begin(), wv.end());
-		    /*for (int i=0; i < d.size(); ++i)
-		    {
-			std::cout<<" "<<d[i];
-		    }
-		    std::cout<<std::endl;*/
 		    pop.set_x(s, d);
 		    decision_vector dv = d;
 		    std::transform(dv.begin(), dv.end(), indiv.cur_x.begin(), dv.begin(),std::minus<double>());
@@ -457,15 +448,18 @@ namespace pagmo
 		    {
 			max_log_fitness = result;
 		    }
-		    CUDA_LOG_INFO("docking", " result of launch is ", result);
+
+		    //CUDA_LOG_WARN("docking", " result of launch is ", result);
+
 		    indiv.cur_f[0] = result;
-		    if ( first || base::compare_fitness(indiv.cur_f, max_fit)) {
-			max_fit = indiv.cur_f;
-			max_dec = indiv.cur_x;
+		    if ( first || base::compare_fitness(indiv.cur_f, this->max_fit)) {
+			this->max_fit = indiv.cur_f;
+			this->max_dec = indiv.cur_x;
 			first = false;
 		    }
 		}
-		std::cout<<max_fit<<std::endl;
+		CUDA_LOG_WARN("docking", " max_fit ", max_fit);
+		//std::cout<<max_fit<<std::endl;
 		clear_tasks();
 	    }	    
 				

@@ -32,7 +32,7 @@ int main( int argc, char **argv )
 
   //task might need to know the complete type of the subtasks.
 
-  fitness_type fit(inf, "fitness evaluator", fitness_type::minimal_distance, individuals, taskCount, 
+  fitness_type fit(inf, "fitness evaluator", fitness_type::minimal_distance, individuals, taskCount, 6, 2, 
 		   0.1, 0.1, 0.1, 1);
   //Timer scope
   {
@@ -79,7 +79,7 @@ int load_subtask(int individualid, int taskid, fitness_type * pFit)
   pFit->set_initial_distance(data_item::point_data(0,individualid, taskid), x);
 
   if(!individualid && !taskid)
-    std::cout<<pFit->prepare_outputs()<<std::endl;
+      pFit->prepare_outputs();
   return 0;
 };
 
@@ -88,7 +88,6 @@ int print_subtask(int individualid, int taskid, fitness_type * pFit)
 {
 
   std::vector<CUDA_TY> O;
-  O.clear();
   
   if(!pFit->get_fitness(data_item::point_data(0,individualid, taskid), O))
     {
@@ -96,12 +95,12 @@ int print_subtask(int individualid, int taskid, fitness_type * pFit)
       return 0;
     }
 
-  for(std::vector<CUDA_TY>::iterator iter = O.begin(); iter != O.end(); ++iter)
-    {
-      std::cout<<*iter<<" ";
-    }
-
+  for (int i=0; i < O.size() - 1; ++i)
+  {
+      std::cout<<O[i]<<" ";
+  }
   std::cout<<std::endl;
+ 
 
   return 0;
 };

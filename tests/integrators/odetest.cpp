@@ -16,7 +16,7 @@ using namespace pagmo;
 
 
 typedef hills_dynamical_system<CUDA_TY > dynamic_system;
-typedef odeint::ode_step_runge_kutta_4< CUDA_TY, dynamic_system , 6, 2, 2, adhoc_dimensions<128> > rk_integrator;
+typedef odeint::ode_step_runge_kutta_4< CUDA_TY, dynamic_system , 7, 2, 2, adhoc_dimensions<128> > rk_integrator;
 
 
 int load_subtask( int individualid, int taskid, rk_integrator * pNet);

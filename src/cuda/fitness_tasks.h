@@ -30,10 +30,10 @@ namespace pagmo
 	    };
 
 	evaluate_fitness_task(info & inf, const std::string & name, fitness_type type , size_t individuals, 
-			      size_t taskCount, ty vicinity_distance, 
+			      size_t taskCount, size_t inputs_, size_t outputs_, ty vicinity_distance, 
 			      ty vicinity_speed, ty vic_orientation, ty max_docking_time ) : 
 	task<ty>::task(inf, name, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
-	m_inputs (6), m_outputs (3), m_fitness(4), 
+	m_inputs (inputs_/*6*/), m_outputs (outputs_/*3*/), m_fitness(4), 
 	m_vicinity_distance(vicinity_distance), 
 	m_vicinity_speed(vicinity_speed), 
 	m_max_docking_time(max_docking_time),
@@ -101,7 +101,7 @@ namespace pagmo
 
 	    virtual bool prepare_outputs()
 	    {
-		return task<ty>::prepare_dataset(data_item::point_mask, param_fitness, 1);
+		return task<ty>::prepare_dataset(data_item::point_mask, param_fitness, m_fitness);
 	    }
 
 	    virtual bool launch()
@@ -130,36 +130,36 @@ namespace pagmo
 		{
 		case  minimal_distance:
 		    err = cu_compute_fitness_mindis<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(), *pFitness->get_data(), 
-									     *pInitDistance->get_data(), pOutData->get_task_size(), this->m_dims.get()); 
+									     *pInitDistance->get_data(), pState->get_task_size(), this->m_dims.get()); 
 		    break;				
 		case  minimal_distance_speed_theta:
 		    cu_compute_fitness_mindis_theta<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(), *pFitness->get_data(), 
-									     *pInitDistance->get_data(), pOutData->get_task_size(), this->m_dims.get());
+									     *pInitDistance->get_data(), pState->get_task_size(), this->m_dims.get());
 		    break;
 		case  minimal_distance_simple:
 		    cu_compute_fitness_mindis_simple<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(),*pFitness->get_data(),
-									      *pInitDistance->get_data(), pOutData->get_task_size(), this->m_dims.get());
+									      *pInitDistance->get_data(), pState->get_task_size(), this->m_dims.get());
 		    break;
 		case no_attitude_fitness:
 		    cu_compute_fitness_mindis_noatt<ty, pre_exec, post_exec>(*pState->get_data() ,*pOutData->get_data(), *pFitness->get_data(), 
 									     *pInitDistance->get_data(), m_vicinity_distance, m_vicinity_speed,  
-									     m_max_docking_time, m_tdt, pOutData->get_task_size(), this->m_dims.get());
+									     m_max_docking_time, m_tdt, pState->get_task_size(), this->m_dims.get());
 		    break;
 		case cristos_twodee_fitness1:
 		    cu_compute_fitness_twodee1<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(),*pFitness->get_data(), *pInitDistance->get_data(), 
-									m_max_docking_time, m_tdt, pOutData->get_task_size(), this->m_dims.get());
+									m_max_docking_time, m_tdt, pState->get_task_size(), this->m_dims.get());
 		    break;
 		case  cristos_twodee_fitness2:
 		    cu_compute_fitness_twodee2<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(),*pFitness->get_data(), *pInitDistance->get_data(), 
 									m_vicinity_distance,m_vicinity_speed, m_vic_orientation, m_max_docking_time, m_tdt, 
-									pOutData->get_task_size(), this->m_dims.get());
+									pState->get_task_size(), this->m_dims.get());
 		    break;
 		case cristos_twodee_fitness3:
 		    //TODO orientation?
 		    cu_compute_fitness_twodee3<ty, pre_exec, post_exec>(*pState->get_data(),*pOutData->get_data(),*pFitness->get_data(),
 									*pInitDistance->get_data(), m_vicinity_distance,
 									m_vicinity_speed, m_vic_orientation, m_max_docking_time, m_tdt, 
-									pOutData->get_task_size(), this->m_dims.get()); 
+									pState->get_task_size(), this->m_dims.get()); 
 		    break;
 		default:
 		    return false;

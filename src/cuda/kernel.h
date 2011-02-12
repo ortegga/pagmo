@@ -23,27 +23,27 @@ template <typename cuda_type, typename dynamicalsystem, size_t order, size_t sys
 				       cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, 6, 2, 
+cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, 7, 2, 
     scale_functor<float>, nop_functor<float>, nop_functor<float>  > 
     (float  * X , float * O, 
      float t , float dt , float max_val, 
      cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, 6, 2, scale_functor<double>, nop_functor<double>, nop_functor<double> > 
+cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, 7, 2, scale_functor<double>, nop_functor<double>, nop_functor<double> > 
     (double  * X , double * O, double t ,
      double dt , double max_val, 
      cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, 6, 2, 
+cudaError_t runge_kutta_integrate <float, hills_dynamical_sys_float, 7, 2, 
     nop_functor<float>, nop_functor<float>, nop_functor<float>  > 
     (float  * X , float * O, 
      float t , float dt , float max_val, 
      cuda::kernel_dimensions * dimensions_);
 
 template <>
-cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, 6, 2, 
+cudaError_t runge_kutta_integrate <double, hills_dynamical_sys_double, 7, 2, 
     nop_functor<double>, nop_functor<double>, nop_functor<double> > 
     (double  * X , double * O, double t ,
      double dt , double max_val, 
