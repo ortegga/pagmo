@@ -166,21 +166,22 @@ namespace pagmo
 		{
 		    // depending on the ann->get_number_of_inputs() we use 4 or 6
 		    // i.e. (we use the attitude or not)
+		    random_start.clear();
 		    if(random_starting_positions >= 1) 
 		    {
-			fty cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			fty cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
 		    }
 
 		    if(random_starting_positions >= 2) 
 		    {
-			fty cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
+			fty cnd[] = { 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };		
 			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
 		    }
 		
 		    if(random_starting_positions >= 3) 
 		    {
-			fty cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0 };		
+			fty cnd[] = { -1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0 };		
 			random_start.push_back(std::vector<fty> (cnd, cnd + ann->get_number_of_inputs()));
 		    }
 		    return;
@@ -359,7 +360,6 @@ namespace pagmo
 		    std::vector<fty> wv;
 		    wv.insert(wv.begin(),indiv.cur_x.begin(),indiv.cur_x.end());
 		    ann->set_weights(data_item::individual_data(0,s),wv);
-
 		    for(size_t i = 0;i < random_start.size();i++) 
 		    {	
 			inputs = random_start[i];
@@ -440,7 +440,7 @@ namespace pagmo
 			    clear_tasks();
 			    pagmo_throw(value_error, "failed to retrieve fitness results");
 			}
-			result += out[0];
+			result += - out[0];
 		    }
 		    result /= random_start.size();
 
@@ -449,8 +449,6 @@ namespace pagmo
 			max_log_fitness = result;
 		    }
 
-		    //CUDA_LOG_WARN("docking", " result of launch is ", result);
-
 		    indiv.cur_f[0] = result;
 		    if ( first || base::compare_fitness(indiv.cur_f, this->max_fit)) {
 			this->max_fit = indiv.cur_f;
@@ -458,8 +456,6 @@ namespace pagmo
 			first = false;
 		    }
 		}
-		CUDA_LOG_WARN("docking", " max_fit ", max_fit);
-		//std::cout<<max_fit<<std::endl;
 		clear_tasks();
 	    }	    
 				

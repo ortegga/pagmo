@@ -48,9 +48,12 @@ extern bool pre_evolve = false;
 typedef float float_type;
 
 
+fitness_vector problem::cuda_problem::max_fit = fitness_vector();
+decision_vector problem::cuda_problem::max_dec = decision_vector();
+
 int main(int argc, char *argv[])
 {
-    float start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+    float start_cnd[] = { -2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
 	
     char *config_filename;
     if ( argc >= 2 ) config_filename = argv[1];
@@ -63,10 +66,11 @@ int main(int argc, char *argv[])
     const int ann_output_neurons = 2;
 	
     int prob_positions = 1;
-    int prob_pos_strategy = problem::docking<float_type>::SPOKE_POS;
+    int prob_pos_strategy = problem::docking<float_type>::FIXED_POS;
+    //int prob_pos_strategy = problem::docking::SPOKE_POS;
+
     int prob_fitness_function = 99;
     int prob_timeneuron_threshold = 99;
-    //int prob_maximum_time = 25;
     int prob_maximum_time = 25;
 
     float integrator_timestep = 0.1f;
@@ -132,14 +136,13 @@ int main(int argc, char *argv[])
 	ann(inf,"multilayer perceptron",  individuals, prob_positions);
 
     problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
-    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator",  //problem::docking<float_type>::fitness_type::cristos_twodee_fitness2,
-						    problem::docking<float_type>::fitness_type::minimal_distance,
+    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator", problem::docking<float_type>::fitness_type::minimal_distance,
 						    individuals, prob_positions, 6, 2, vicinity_distance, vicinity_speed, vicinity_orientation, prob_maximum_time);
     ////////////////////////////////////////////////
     // Define the problem						positions, strategy, 				max_time, max_thrust
     problem::docking<float_type> prob = problem::docking<float_type>(&ann, &integ, &fitt, inf, prob_positions, prob_pos_strategy, prob_maximum_time, 0.1);
 
-    prob.set_start_condition(start_cnd, 6);	
+    prob.set_start_condition(start_cnd, 7);	
     prob.set_log_genome(true);
 
     prob.set_fitness_function(prob_fitness_function);
@@ -188,17 +191,20 @@ int main(int argc, char *argv[])
 	cout << "\rGeneration #" << i << " ["; cout.flush();
 		
 	max_log_fitness	= 0.0;		
-	arch.evolve();
-	arch.join();
+	{
+	    scoped_timer launchTimer("archipelago evolve timer");
+	    arch.evolve();
+	    arch.join();
+	}
 	i++;
 
-	//cout << "] best: " << arch.best().get_fitness() << ": " 
-	//cout << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
 	fitness_vector maxfit;
 	decision_vector maxdec;
 	prob.fittest(maxfit, maxdec);
+
 	
-	cout << "] best: " << maxfit.size() << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+	cout << "] best: " << maxfit[0] << ": " << best_fitness << ":" << last_fitness << "--" << i-lasti-1 << endl;
+	//std::cout<<arch<<std::endl;
 			
 	//////////////////////////////////////////
 	// logging
