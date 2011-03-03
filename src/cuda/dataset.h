@@ -33,6 +33,7 @@ namespace cuda
 	static const int individual_mask = island_type | individual_type;
 	static const int point_mask = island_type | individual_type | point_type;
 	static const int point_only_mask = island_type | point_type;
+	static const int island_mask = island_type ;
 
 	static data_item individual_data(size_t island, size_t individual)
 	    {
@@ -46,6 +47,11 @@ namespace cuda
 	static data_item point_only_data(size_t island, size_t point)
 	    {
 		return data_item(island,0, point, point_only_mask);
+	    }
+
+	static data_item island_data(size_t island)
+	    {
+		return data_item(island,0, 0, island_mask);
 	    }
 
 	friend std::ostream & operator << (std::ostream & os, const data_item & it)
@@ -138,39 +144,31 @@ namespace cuda
 	  
 	}
 
-	bool get_values(const data_item & item, cuda_type * sub_data)
+
+	virtual bool get_data (const data_item& item, std::vector<cuda_type> & data)
 	{
 
-	    CUDA_LOG_INFO(m_name,"get dataset values for task:", item);
-	    CUDA_LOG_INFO(m_name,"get dataset values for task:", get_serial(item));
-	    cudaError_t err = cudaMemcpy(sub_data, &m_data[get_serial(item)], 
-					 m_size * sizeof(cuda_type), cudaMemcpyDeviceToHost);
-	    if (err != cudaSuccess)
+	    data.clear();
+	    cuda_type * temp = new cuda_type[this->get_task_size()];
+	    bool bSuccess = this->get_values(item, temp);
+	    if (bSuccess)
 	    {
-		CUDA_LOG_ERR(m_name,"Could not get dataset values", err);
-		return false;
+		data.insert(data.begin(),temp, temp + this->get_task_size());
 	    }
-	    return true; 
+	    delete temp;
+	    return bSuccess;
 	}
 
-	bool set_values(const data_item & item, const cuda_type * sub_data)
+	virtual bool set_data (const data_item & item, const std::vector<cuda_type> & data)
 	{
-
-	    CUDA_LOG_INFO(m_name,"set dataset values for task:", item);
-	    CUDA_LOG_INFO(m_name,"serialized:", m_count.serialize(item));
-	    cudaError_t err = cudaMemcpy(&m_data[get_serial(item)], sub_data , 
-					 m_size * sizeof(cuda_type), cudaMemcpyHostToDevice);
-	    if (err != cudaSuccess)
-	    {
-		CUDA_LOG_ERR(m_name,"Could not set dataset values ", err);
-		CUDA_LOG_ERR(m_name,"\n:item: ", item);
-		CUDA_LOG_ERR(m_name,"\nsize: ", m_size);
-		return false;
-	    }
-	    return true;
+	    cuda_type * temp = new cuda_type[this->get_task_size()];
+	    std::copy(data.begin(), data.end(), temp);
+	    bool bSuccess = this->set_values(item, temp);
+	    delete temp;
+	    return bSuccess;
 	}
 
-	~dataset()
+	virtual ~dataset()
 	{
 	    cudaError_t err;
 	    if (m_host)
@@ -213,6 +211,40 @@ namespace cuda
 	    return m_count.serialize(item) * m_size;
 	}
 
+    protected:
+
+	bool get_values(const data_item & item, cuda_type * sub_data)
+	{
+
+	    CUDA_LOG_INFO(m_name,"get dataset values for task:", item);
+	    CUDA_LOG_INFO(m_name,"get dataset values for task:", get_serial(item));
+	    cudaError_t err = cudaMemcpy(sub_data, &m_data[get_serial(item)], 
+					 m_size * sizeof(cuda_type), cudaMemcpyDeviceToHost);
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(m_name,"Could not get dataset values", err);
+		return false;
+	    }
+	    return true; 
+	}
+
+	bool set_values(const data_item & item, const cuda_type * sub_data)
+	{
+
+	    CUDA_LOG_INFO(m_name,"set dataset values for task:", item);
+	    CUDA_LOG_INFO(m_name,"serialized:", m_count.serialize(item));
+	    cudaError_t err = cudaMemcpy(&m_data[get_serial(item)], sub_data , 
+					 m_size * sizeof(cuda_type), cudaMemcpyHostToDevice);
+	    if (err != cudaSuccess)
+	    {
+		CUDA_LOG_ERR(m_name,"Could not set dataset values ", err);
+		CUDA_LOG_ERR(m_name,"\n:item: ", item);
+		CUDA_LOG_ERR(m_name,"\nsize: ", m_size);
+		return false;
+	    }
+	    return true;
+	}
+
     private:
 	cuda_type * m_data;
 	data_dimensions m_count;
@@ -223,7 +255,82 @@ namespace cuda
     public:	
 	typedef  boost::shared_ptr<dataset<cuda_type> > ptr;
     };
-    
+
+
+    template<typename ty>
+	class individual_dataset : dataset<ty> 
+    {
+    public:
+    individual_dataset(info & info, size_t islands, size_t individuals,  
+		       size_t size_, const std::string & name, bool bHost):
+	dataset<ty>::dataset(info,data_dimensions( islands, individuals, 1, data_item::individual_mask),size_, name, bHost )
+	{
+
+	}
+	virtual bool get_data (size_t island, size_t individual, std::vector<ty> & data)
+	{
+	    return dataset<ty>::get_data(data_item::individual_data(island, individual), data);
+	}
+	virtual bool set_data (size_t island, size_t individual, const std::vector<ty> & data)
+	{
+	    return dataset<ty>::set_data(data_item::individual_data(island, individual), data);
+	}
+    };
+
+    template<typename ty>
+	class point_dataset : dataset<ty> 
+    {
+    public:
+    point_dataset(info & info, size_t islands, size_t individuals, size_t points, 
+		       size_t size_, const std::string & name, bool bHost):
+	dataset<ty>::dataset(info,data_dimensions( islands, individuals, points, data_item::point_mask),size_, name, bHost )
+	{}
+	virtual bool get_data (size_t island, size_t individual, size_t point, std::vector<ty> & data)
+	{
+	    return dataset<ty>::get_data(data_item::point_data(island, individual, point), data);
+	}
+	virtual bool set_data (size_t island, size_t individual, size_t point, const std::vector<ty> & data)
+	{
+	    return dataset<ty>::set_data(data_item::point_data(island, individual, point), data);
+	}
+    };
+
+    template<typename ty>
+	class point_only_dataset : dataset<ty> 
+    {
+    public:
+    point_only_dataset(info & info, size_t islands, size_t points, 
+		       size_t size_, const std::string & name, bool bHost):
+	dataset<ty>::dataset(info,data_dimensions( islands, 1, points, data_item::point_only_mask),size_, name, bHost )
+	{}
+	virtual bool get_data (size_t island, size_t point, std::vector<ty> & data)
+	{
+	    return dataset<ty>::get_data(data_item::point_only_data(island, point), data);
+	}
+	virtual bool set_data (size_t island, size_t point, const std::vector<ty> & data)
+	{
+	    return dataset<ty>::set_data(data_item::point_only_data(island, point), data);
+	}
+    };
+
+    template<typename ty>
+	class island_dataset : dataset<ty> 
+    {
+    public:
+    island_dataset(info & info, size_t islands, size_t size_, const std::string & name, bool bHost):
+	dataset<ty>::dataset(info,data_dimensions( islands, 1, 1, data_item::island_mask),size_, name, bHost )
+	{}
+	virtual bool get_data (size_t island, std::vector<ty> & data)
+	{
+	    return dataset<ty>::get_data(data_item::island_data(island), data);
+	}
+	virtual bool set_data (size_t island, const std::vector<ty> & data)
+	{
+	    return dataset<ty>::set_data(data_item::island_data(island), data);
+	}
+    };
+
+
 }
 
 

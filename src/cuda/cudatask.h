@@ -311,16 +311,7 @@ namespace cuda
 		CUDA_LOG_ERR(m_name, "failed to get data", parameterid);
 		return false;
 	    }
-
-	    data.clear();
-	    cuda_type * temp = new cuda_type[pData->get_task_size()];
-	    bool bSuccess = pData->get_values(item, temp);
-	    if (bSuccess)
-	    {
-		data.insert(data.begin(),temp, temp + pData->get_task_size());
-	    }
-	    delete temp;
-	    return bSuccess;
+	    return pData->get_data(item, data);
 	}
 
 
@@ -333,11 +324,7 @@ namespace cuda
 		return false;
 	    }
 
-	    cuda_type * temp = new cuda_type[pData->get_task_size()];
-	    std::copy(data.begin(), data.end(), temp);
-	    bool bSuccess = pData->set_values(item, temp);
-	    delete temp;
-	    return bSuccess;
+	    return pData->set_data(item, data);
 	}
 
 	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, const std::string & name, bool bHost)
@@ -345,7 +332,8 @@ namespace cuda
 
 	    if (!has_data(parameterid)) 
 	    {
-		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, this->m_name + ":" + name, bHost));
+		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, 
+													      this->m_name + ":" + name, bHost));
 		m_data[parameterid] = s;
 		return true;
 	    }
