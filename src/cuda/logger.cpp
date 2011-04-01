@@ -17,6 +17,12 @@ namespace cuda
 	}
 	return logger;
     }
+
+    Logger& operator << (Logger& logger, const dim3 & d)
+    {
+	logger << "< " << d.x <<", "<< d.y<<", "<< d.z << " >";
+	return logger;
+    }
   
 }
 
@@ -26,3 +32,10 @@ std::ostream& operator << (std::ostream & logger, cudaError_t & err)
     logger << cudaGetErrorString(err);
     return logger;
 }
+
+
+    std::ostream& operator << (std::ostream & logger, const dim3 & d)
+    {
+	logger << "< " << d.x <<", "<< d.y<<", "<< d.z << " >";
+	return logger;
+    }

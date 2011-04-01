@@ -44,7 +44,7 @@ namespace pagmo
 		CUDA_LOG_ERR(this->m_name, " outputs ",  pO);
 		return false;
 	    }
-	    cudaError_t err =  runge_kutta_integrate<ty, system, in_, system_params, pre_exec_o, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), 
+	    cudaError_t err =  runge_kutta_integrate<ty, system, in_, system_params, pre_exec_o, pre_exec, post_exec>(pX->get_data(), pO->get_data(), 
 													      this->m_param_t, this->m_param_dt,
 													      this->m_param_scale_limits, 
 													      this->m_dims.get());

@@ -45,84 +45,89 @@ struct apply
 	}
 };
 
-template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_shared_mem(ty * shared, ty * global, size_t size, ftor f = ftor())
-{
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
-    {
-	if (i*blockDim.x + threadIdx.x < size)
-	    shared [i*blockDim.x + threadIdx.x] = f(global[blockIdx.x*size +  i*blockDim.x + threadIdx.x]);
-    }
-}
 
 template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_shared_mem1(ty * shared, ty * global, size_t size, ty param, ftor f = ftor())
+__device__ __forceinline__ void copy_to_shared_mem(ty * shared, cudaPitchedPtr global, size_t count, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
+    for (int i=0; i < count; i += blockDim.x )
     {
-	if (i*blockDim.x + threadIdx.x < size)
-	    shared [i*blockDim.x + threadIdx.x] = f(global[blockIdx.x*size +  i*blockDim.x + threadIdx.x], param);
-    }
-}
-
-
-template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_global_mem(ty * global, ty * shared, size_t size, ftor f = ftor())
-{
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
-    {
-	if (i*blockDim.x + threadIdx.x < size)
-	    global[blockIdx.x*size +  i*blockDim.x + threadIdx.x] = f(shared [i*blockDim.x + threadIdx.x]);
+	size_t col = i + threadIdx.x;
+	if (col < count)
+	{
+	    for (int j = 0; j < global.ysize; j+= blockDim.y )
+	    {
+		size_t row = j  + threadIdx.y;
+		char * gr = ((char *) global.ptr + row * global.pitch);
+		if (row < global.ysize)
+		{
+		    shared[ row * count + col] = f( ((ty *)gr)[blockIdx.x * count + col] );
+		}
+	    }
+	}
     }
 }
 
 template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_global_mem1(ty * global, ty * shared, size_t size, ty param, ftor f = ftor())
+__device__ __forceinline__ void copy_to_shared_mem1(ty * shared, cudaPitchedPtr global, size_t count, ty param, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
+    for (int i=0; i < count; i += blockDim.x )
     {
-	if (i*blockDim.x + threadIdx.x < size)
-	    global[blockIdx.x*size +  i*blockDim.x + threadIdx.x] = f(shared [i*blockDim.x + threadIdx.x],param);
-    }
-}
-
-
-template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_mem(ty * to, ty * from, size_t size, ftor f = ftor())
-{
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
-    {
-	if (i*segment + threadIdx.x < size)
-	    to[i*segment + threadIdx.x] = f(from [i*segment + threadIdx.x]);
+	size_t col = i + threadIdx.x;
+	if (col < count)
+	{
+	    for (int j = 0; j < global.ysize; j+= blockDim.y )
+	    {
+		size_t row = j  + threadIdx.y;
+		char * gr = ((char *) global.ptr + row * global.pitch);
+		if (row < global.ysize)
+		{
+		    shared[ row * count + col] = f( ((ty *)gr)[blockIdx.x * count + col], param );
+		}
+	    }
+	}
     }
 }
 
 template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_mem1(ty * to, ty * from, size_t size, ty param, ftor f = ftor())
+__device__ __forceinline__ void copy_to_global_mem(cudaPitchedPtr global, ty * shared, size_t count, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
+
+    for (int i=0; i < count; i += blockDim.x )
     {
-	if (i*segment + threadIdx.x < size)
-	    to[i*segment + threadIdx.x] = f(from [i*segment + threadIdx.x],param);
+	size_t col = i + threadIdx.x;
+	if (col < count)
+	{
+	    for (int j = 0; j < global.ysize; j+= blockDim.y )
+	    {
+		size_t row = j  + threadIdx.y;
+		char * gr = ((char *) global.ptr + row * global.pitch);
+		if (row < global.ysize)
+		{
+		    ((ty *)gr)[blockIdx.x * count + col] = f(shared[ row * count + col]);
+		}
+	    }
+	}
     }
 }
 
-
-/*template <typename ty, typename ftor >
-__device__ __forceinline__ void copy_to_shared_mem(ty * shared, ty * global, size_t count, size_t size, ftor f = ftor())
+template <typename ty, typename ftor >
+__device__ __forceinline__ void copy_to_global_mem(cudaPitchedPtr global, ty * shared, size_t count, ty param, ftor f = ftor())
 {
-    size_t segment = size / blockDim.x + (size % blockDim.x ? 1 : 0);
-    for (int i=0; i < segment ; ++i)
+    for (int i=0; i < count; i += blockDim.x )
     {
-	if (i*segment + threadIdx.x < size)
-	    shared [i*segment + threadIdx.x] = f(global[blockIdx.x*size +  i*segment + threadIdx.x]);
+	size_t col = i + threadIdx.x;
+	if (col < count)
+	{
+	    for (int j = 0; j < global.ysize; j+= blockDim.y )
+	    {
+		size_t row = j  + threadIdx.y;
+		char * gr = ((char *) global.ptr + row * global.pitch);
+		if (row < global.ysize)
+		{
+		    ((ty *)gr)[blockIdx.x * count + col] = f(shared[ row * count + col], param);
+		}
+	    }
+	}
     }
 }
 
-*/

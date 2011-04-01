@@ -61,12 +61,6 @@ namespace cuda
 	    return true;
 	}
 
-	//Possibly unused
-	virtual size_t get_tasks_per_thread()
-	{
-	    return 1;
-	}
-
 	// simple attributes
 	virtual size_t get_task_size()
 	{
@@ -113,19 +107,19 @@ namespace cuda
     {
     public:
 	adhoc_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
-	kernel_dimensions(inf, prof, name), m_block_count(0),  m_block_size(block_size), m_block_shared_mem(0),m_indivs_per_block(1)
+	kernel_dimensions(inf, prof, name), m_block_shared_mem(0),m_indivs_per_block(1)
 	{
 	    refresh();
 	}
 
 	virtual dim3 get_block_dims()
 	{
-	    return dim3(m_block_size ,1,1);
+	    return m_block_size;
 	}
 
 	virtual dim3 get_grid_dims()
 	{
-	    return dim3(m_block_count,1,1);
+	    return m_grid_size;
 	}
 
 	virtual size_t get_shared_mem_size()
@@ -135,45 +129,49 @@ namespace cuda
 
 	virtual size_t get_tasks_per_block()
 	{
-	    return m_indivs_per_block * m_prof->get_individual_job_count();
+	    return m_indivs_per_block * m_prof->points;
 	}
 
 
 	virtual bool refresh()
 	{
-	    const cudaDeviceProp * props = m_inf->get_prop();	    
+	    const cudaDeviceProp * props = m_inf->get_prop();
+	    m_block_size.z = 1;
+	    m_block_size.y = m_prof->get_task_size();
+	    CUDA_LOG_INFO(m_name, "block_size", block_size);
+	    m_block_size.x = block_size / m_block_size.y;
+	    CUDA_LOG_INFO(m_name, "m_block_size.x", m_block_size.x);
 
-	    size_t indiv_jobs = m_prof->get_individual_job_count();
-
-	    m_block_size -= m_block_size % indiv_jobs; // remove unused threads	    
-	    if (m_block_size > indiv_jobs * m_prof->individuals )
+	    m_block_size.x -= m_block_size.x % m_prof->points;
+	    if (m_block_size.x > m_prof->islands * m_prof->individuals * m_prof->points )
 	    {
-		m_block_size = indiv_jobs * m_prof->individuals;
+		m_block_size.x = m_prof->islands * m_prof->individuals * m_prof->points;
 	    }
 
-	    if (m_block_size % props->warpSize)
+	    if (m_block_size.x * m_block_size.y % props->warpSize)
 	    {
-		CUDA_LOG_WARN(m_name, " adhoc kernel dimensions dont match warp size, occupancy is not optimal ", m_block_size);
+		CUDA_LOG_WARN(m_name, " adhoc kernel dimensions dont match warp size, occupancy is not optimal ", m_block_size.x);
 	    }
 
-	    if ( m_block_size / indiv_jobs == 0)
+	    if ( m_block_size.x / m_prof->points == 0)
 	    {
-		CUDA_LOG_ERR(m_name, " block size is too small for job", m_block_size);
+		CUDA_LOG_ERR(m_name, " block size is too small for job", m_block_size.x);
 	    }
 
-	    m_indivs_per_block = m_block_size / m_prof->get_individual_job_count();
+	    m_indivs_per_block = m_block_size.x / m_prof->points; 
 	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
-	    m_block_count = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
+	    m_grid_size.x = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
+	    m_grid_size.y = m_grid_size.z = 1;
 
 	    CUDA_LOG_INFO(m_name, "m_indivs_per_block ", m_indivs_per_block);
 	    return true;
 	}
     protected:
 
-	size_t m_block_count;
-	size_t m_block_size;
 	size_t m_block_shared_mem;
 	size_t m_indivs_per_block;
+	dim3 m_block_size;
+	dim3 m_grid_size;
     
     };
 
@@ -211,8 +209,6 @@ namespace cuda
 
 	virtual bool refresh()
 	{
-	    const cudaDeviceProp * props = m_inf->get_prop();	    
-
 	    m_block_count = m_prof->individuals;
 	    m_indivs_per_block = m_prof->individuals / m_block_count;
 	    m_block_size = m_indivs_per_block * m_prof->get_individual_job_count();
@@ -232,7 +228,7 @@ namespace cuda
 	size_t m_block_shared_mem;
 	size_t m_indivs_per_block;
     
-    };
+	};
 }
 
 #endif

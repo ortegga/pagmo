@@ -24,26 +24,26 @@ namespace cuda
 
 
 template <typename cty, typename pre_exec, typename activ_type>
-    __host__   cudaError_t cu_compute_layer(cty *X, cty *W,  cty *Y, 
+    __host__   cudaError_t cu_compute_layer(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, 
 				     size_t inputs, 
 				     cuda::kernel_dimensions * dimensions_);
 
 template <>
-__host__ cudaError_t cu_compute_layer<float, nop_functor<float>, linear_functor<float> >(float *X, float *W,  float *Y, 
+__host__ cudaError_t cu_compute_layer<float, nop_functor<float>, linear_functor<float> >(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, 
 							      size_t inputs, 
 							      cuda::kernel_dimensions * dimensions_);
 template <>
-__host__ cudaError_t cu_compute_layer<float, nop_functor<float>, sigmoid_functor<float> >(float *X, float *W,  float *Y, 
+__host__ cudaError_t cu_compute_layer<float, nop_functor<float>, sigmoid_functor<float> >(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, 
 							       size_t inputs, 
 							       cuda::kernel_dimensions * dimensions_);
 
 template <>
-__host__ cudaError_t cu_compute_layer<double, nop_functor<float>, linear_functor<double> >(double *X, double *W, double *Y, 
+__host__ cudaError_t cu_compute_layer<double, nop_functor<float>, linear_functor<double> >(cudaPitchedPtr *X, cudaPitchedPtr *W, cudaPitchedPtr *Y, 
 								size_t inputs, 
 								cuda::kernel_dimensions * dimensions_);
 
 template <>
-__host__ cudaError_t cu_compute_layer<double, nop_functor<float>, sigmoid_functor<double> >(double *X, double *W,  double *Y, 
+__host__ cudaError_t cu_compute_layer<double, nop_functor<float>, sigmoid_functor<double> >(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, 
 								 size_t inputs, 
 								 cuda::kernel_dimensions * dimensions_);
 

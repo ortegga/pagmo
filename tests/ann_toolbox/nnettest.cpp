@@ -18,8 +18,8 @@ using namespace cuda;
 #define CUDA_TY float
 
 
-typedef ann_toolbox::multilayer_perceptron<CUDA_TY, 2, 3, 2, adhoc_dimensions<256>,  adhoc_dimensions<256> >  multilayer_nnet;
-//typedef ann_toolbox::perceptron<CUDA_TY, 2, 2, adhoc_dimensions<256> >  multilayer_nnet;
+//typedef ann_toolbox::multilayer_perceptron<CUDA_TY, 2, 2, 2, adhoc_dimensions<256>,  adhoc_dimensions<256> >  multilayer_nnet;
+typedef ann_toolbox::perceptron<CUDA_TY, 2, 3, adhoc_dimensions<256> >  multilayer_nnet;
 
 int load_subtask( int individualid, int taskid, multilayer_nnet * pNet);
 int print_subtask(int individualid, int taskid, multilayer_nnet * pNet);
@@ -29,10 +29,10 @@ int main( int argc, char **argv )
 
   info * pInf = new cuda::info();
   info & inf = *pInf;
-  std::cout << inf << std::endl;
+//  std::cout << inf << std::endl;
 
   unsigned int taskCount = 30;
-  unsigned int individuals = 40;
+  unsigned int individuals = 20;
 
   //task might need to know the complete type of the subtasks.
 

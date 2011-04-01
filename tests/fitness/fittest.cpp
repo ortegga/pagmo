@@ -94,7 +94,9 @@ int print_subtask(int individualid, int taskid, fitness_type * pFit)
       std::cout<<" Error: could not get data"<<std::endl;
       return 0;
     }
-
+  
+  std::cout.precision(2);
+      
   for (int i=0; i < O.size() - 1; ++i)
   {
       std::cout<<O[i]<<" ";

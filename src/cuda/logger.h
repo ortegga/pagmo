@@ -10,6 +10,7 @@
 #define CUDA_LOG_WARN(N, X, Y) (std::cout <<std::endl<< "[W] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
 #define CUDA_LOG_ERR(N, X, Y)  (std::cout <<std::endl<< "[E] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl)
 #define CUDA_LOG_INFO(n, x, y) ;
+//#define CUDA_LOG_INFO(N, X, Y) (std::cout <<std::endl<< "[I] "<< (N) <<" "<< (X) <<" "<< (Y) << std::endl);
 #define CUDA_LOG_DATASET(n, x) (log_dataset(n,x))
 
 #else
@@ -80,6 +81,7 @@ namespace cuda
     }
 
     Logger& operator << (Logger & logger, cudaError_t & err) ;    
+    Logger& operator << (Logger & logger, const dim3 & d) ;    
 
     extern Logger logger_info;
     extern Logger logger_warn;

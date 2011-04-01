@@ -42,7 +42,7 @@ namespace pagmo
 		}
 	  
 		//TODO handle shared memory and different individuals
-		cudaError_t err =  euler_integrate<ty, system, pre_exec, post_exec>(*pX->get_data()  , *pO->get_data(), m_param_t, m_param_dt,pX->get_tasksize(), 
+		cudaError_t err =  euler_integrate<ty, system, pre_exec, post_exec>(pX->get_data(), pO->get_data(), m_param_t, m_param_dt,pX->get_tasksize(), 
 										    m_param_scale_limits, task_data_size, this->m_dims.get());
 		
 		if (err != cudaSuccess)

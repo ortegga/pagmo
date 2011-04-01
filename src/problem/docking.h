@@ -327,7 +327,7 @@ namespace pagmo
 	    }
 
 	    void generate_full_grid_positions(int h, int v) const {
-		fty r, theta, x, y;	
+		fty theta, x, y;	
 		fty minx = -2, maxx = 2;
 		fty miny = -2, maxy = 2;	
 		for(int i = 0; i < h; i++) {

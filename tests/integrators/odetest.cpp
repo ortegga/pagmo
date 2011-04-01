@@ -100,7 +100,8 @@ int print_subtask(int individualid, int taskid, rk_integrator * pInt)
       return 0;
     }
 
-  for(std::vector<CUDA_TY>::iterator iter = O.begin(); iter != O.end(); ++iter)
+  int i=0;
+  for(std::vector<CUDA_TY>::iterator iter = O.begin(); i < 6 && iter != O.end(); ++iter, ++i)
     {
       std::cout<<*iter<<" ";
     }

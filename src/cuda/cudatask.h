@@ -170,7 +170,7 @@ namespace cuda
 	    if (!has_data(parameter))
 	    {
 		data_dimensions dims = create_data_dims(item.m_type);
-		create_data(parameter, size, dims, name, false);
+		create_data(parameter, size, dims, name);
 	    }
 	    return set_data(item, parameter, inputs);
 	}
@@ -193,7 +193,7 @@ namespace cuda
 	    {
 		CUDA_LOG_INFO(m_name, "prepare_dataset creating dataset:", parameter);		
 		data_dimensions dims = create_data_dims(type);
-		return create_data(parameter, size, dims, this->m_name + ":" + name, false);
+		return create_data(parameter, size, dims, this->m_name + ":" + name);
 	    }
 	    CUDA_LOG_WARN(m_name, "prepare_dataset dataset already exists:", name);
 	    return false;
@@ -327,13 +327,13 @@ namespace cuda
 	    return pData->set_data(item, data);
 	}
 
-	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, const std::string & name, bool bHost)
+	virtual bool create_data(size_t parameterid, size_t stride, const data_dimensions & dims, const std::string & name)
 	{
 
 	    if (!has_data(parameterid)) 
 	    {
 		typename dataset<cuda_type>::ptr  s = typename dataset<cuda_type>::ptr(new dataset<cuda_type>(m_info, dims, stride, 
-													      this->m_name + ":" + name, bHost));
+													      this->m_name + ":" + name));
 		m_data[parameterid] = s;
 		return true;
 	    }

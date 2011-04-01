@@ -5,6 +5,7 @@
 #include "pagmo_cuda.h"
 #include "logger.h"
 #include "boost/shared_ptr.hpp"
+#include "stdio.h"
 
 
 namespace cuda
@@ -120,25 +121,20 @@ namespace cuda
 	class dataset
     {
     public:
-    dataset(info & info, const data_dimensions & count,  size_t size_, const std::string & name, bool bhost):
-	m_data(0),  m_count(count), m_size(size_),m_host(bhost), m_info(info), m_name(name)
+    dataset(info & info, const data_dimensions & count,  size_t size_, const std::string & name):
+	m_count(count), m_size(size_),m_info(info), m_name(name)
 	{
 	    cudaError_t err;
 	    
 	    CUDA_LOG_INFO(m_name, "Data size:", m_count);
-	    size_t size = get_byte_size();
-	    if (m_host)
-	    {
-		CUDA_LOG_INFO(m_name,"Allocating host dataset:", size);
-		err = cudaMallocHost((void **)&m_data, size);
-	    }
-	    else
-	    {
-		CUDA_LOG_INFO(m_name,"Allocating device dataset:", size);
-		err = cudaMalloc((void **)&m_data, size);
-		CUDA_LOG_INFO(m_name,"Allocating device dataset: ", m_data);
-	    }
-	
+	    size_t tasks = m_count.get_count();
+	    struct cudaExtent extent;
+	    extent.width = tasks * sizeof(cuda_type);
+	    extent.height = get_task_size();
+	    extent.depth = 1;
+	    CUDA_LOG_INFO(m_name,"Allocating device dataset:", size_);
+	    err = cudaMalloc3D(&m_data, extent);
+	    CUDA_LOG_INFO(m_name,"Allocating device dataset: ", m_data.ptr);
 	    if (err != cudaSuccess)
 		CUDA_LOG_ERR(m_name,"Could not allocate dataset:", err);
 	  
@@ -150,6 +146,7 @@ namespace cuda
 
 	    data.clear();
 	    cuda_type * temp = new cuda_type[this->get_task_size()];
+
 	    bool bSuccess = this->get_values(item, temp);
 	    if (bSuccess)
 	    {
@@ -170,15 +167,7 @@ namespace cuda
 
 	virtual ~dataset()
 	{
-	    cudaError_t err;
-	    if (m_host)
-	    {
-		err = cudaFreeHost(m_data);
-	    }
-	    else
-	    {
-		err = cudaFree(m_data);
-	    }
+	    cudaError_t err = cudaFree(m_data.ptr);
 	    if (err != cudaSuccess)
 	    {
 		CUDA_LOG_ERR(m_name,"Failed to deallocate dataset", err);
@@ -201,14 +190,14 @@ namespace cuda
 	{
 	    return m_count.get_count() * get_task_byte_size();
 	}
-	cuda_type ** get_data() 
+	struct cudaPitchedPtr* get_data() 
 	{
 	    return &m_data;
 	}
 
 	size_t get_serial(const data_item & item)
 	{
-	    return m_count.serialize(item) * m_size;
+	    return m_count.serialize(item);
 	}
 
     protected:
@@ -216,10 +205,27 @@ namespace cuda
 	bool get_values(const data_item & item, cuda_type * sub_data)
 	{
 
+	    struct cudaMemcpy3DParms copy_params = {0};
+
 	    CUDA_LOG_INFO(m_name,"get dataset values for task:", item);
-	    CUDA_LOG_INFO(m_name,"get dataset values for task:", get_serial(item));
-	    cudaError_t err = cudaMemcpy(sub_data, &m_data[get_serial(item)], 
-					 m_size * sizeof(cuda_type), cudaMemcpyDeviceToHost);
+	    CUDA_LOG_INFO(m_name,"get dataset values for task:", m_count.serialize(item));
+	    copy_params.srcPtr = m_data;
+	    copy_params.dstPtr = make_cudaPitchedPtr((void *)sub_data, sizeof(cuda_type), 1 , m_size);
+
+	    copy_params.dstPos.x = 0;
+	    copy_params.dstPos.y = 0;
+	    copy_params.dstPos.z = 0;
+
+	    copy_params.srcPos.x = sizeof(cuda_type)*m_count.serialize(item);
+	    copy_params.srcPos.y = 0;
+	    copy_params.srcPos.z = 0;
+
+	    copy_params.extent.width  = sizeof(cuda_type);
+	    copy_params.extent.height =  m_size;
+	    copy_params.extent.depth = 1;
+	    copy_params.kind = cudaMemcpyDeviceToHost;
+
+	    cudaError_t err = cudaMemcpy3D(&copy_params);
 	    if (err != cudaSuccess)
 	    {
 		CUDA_LOG_ERR(m_name,"Could not get dataset values", err);
@@ -228,13 +234,36 @@ namespace cuda
 	    return true; 
 	}
 
-	bool set_values(const data_item & item, const cuda_type * sub_data)
+	bool set_values(const data_item & item, cuda_type * sub_data)
 	{
-
 	    CUDA_LOG_INFO(m_name,"set dataset values for task:", item);
-	    CUDA_LOG_INFO(m_name,"serialized:", m_count.serialize(item));
-	    cudaError_t err = cudaMemcpy(&m_data[get_serial(item)], sub_data , 
-					 m_size * sizeof(cuda_type), cudaMemcpyHostToDevice);
+	    CUDA_LOG_INFO(m_name,"set dataset values for task:", m_count.serialize(item));
+
+	    struct cudaMemcpy3DParms copy_params = {0};
+
+	    copy_params.srcPtr = make_cudaPitchedPtr((void *)sub_data, sizeof(cuda_type), 1, m_size);
+	    copy_params.dstPtr = m_data;
+
+
+	    CUDA_LOG_INFO(m_name,"set dataset values for task:", m_data.ysize);
+	    CUDA_LOG_INFO(m_name,"size:", m_size);
+
+	    copy_params.srcPos.x = 0;
+	    copy_params.srcPos.y = 0;
+	    copy_params.srcPos.z = 0;
+
+	    copy_params.dstPos.x = sizeof(cuda_type)*m_count.serialize(item);
+	    copy_params.dstPos.y = 0;
+	    copy_params.dstPos.z = 0;
+
+	    copy_params.extent.width = sizeof(cuda_type);
+	    copy_params.extent.height =  m_size;
+	    copy_params.extent.depth = 1;
+
+	    copy_params.kind = cudaMemcpyHostToDevice;
+
+	    cudaError_t err = cudaMemcpy3D(&copy_params);
+
 	    if (err != cudaSuccess)
 	    {
 		CUDA_LOG_ERR(m_name,"Could not set dataset values ", err);
@@ -246,10 +275,9 @@ namespace cuda
 	}
 
     private:
-	cuda_type * m_data;
+	struct cudaPitchedPtr m_data;
 	data_dimensions m_count;
 	size_t m_size;
-	bool m_host;
 	info & m_info;
 	std::string m_name;
     public:	
@@ -262,8 +290,8 @@ namespace cuda
     {
     public:
     individual_dataset(info & info, size_t islands, size_t individuals,  
-		       size_t size_, const std::string & name, bool bHost):
-	dataset<ty>::dataset(info,data_dimensions( islands, individuals, 1, data_item::individual_mask),size_, name, bHost )
+		       size_t size_, const std::string & name):
+	dataset<ty>::dataset(info,data_dimensions( islands, individuals, 1, data_item::individual_mask),size_, name )
 	{
 
 	}
@@ -282,8 +310,8 @@ namespace cuda
     {
     public:
     point_dataset(info & info, size_t islands, size_t individuals, size_t points, 
-		       size_t size_, const std::string & name, bool bHost):
-	dataset<ty>::dataset(info,data_dimensions( islands, individuals, points, data_item::point_mask),size_, name, bHost )
+		       size_t size_, const std::string & name):
+	dataset<ty>::dataset(info,data_dimensions( islands, individuals, points, data_item::point_mask),size_, name)
 	{}
 	virtual bool get_data (size_t island, size_t individual, size_t point, std::vector<ty> & data)
 	{
@@ -300,8 +328,8 @@ namespace cuda
     {
     public:
     point_only_dataset(info & info, size_t islands, size_t points, 
-		       size_t size_, const std::string & name, bool bHost):
-	dataset<ty>::dataset(info,data_dimensions( islands, 1, points, data_item::point_only_mask),size_, name, bHost )
+		       size_t size_, const std::string & name):
+	dataset<ty>::dataset(info,data_dimensions( islands, 1, points, data_item::point_only_mask),size_, name )
 	{}
 	virtual bool get_data (size_t island, size_t point, std::vector<ty> & data)
 	{
@@ -317,8 +345,8 @@ namespace cuda
 	class island_dataset : dataset<ty> 
     {
     public:
-    island_dataset(info & info, size_t islands, size_t size_, const std::string & name, bool bHost):
-	dataset<ty>::dataset(info,data_dimensions( islands, 1, 1, data_item::island_mask),size_, name, bHost )
+    island_dataset(info & info, size_t islands, size_t size_, const std::string & name):
+	dataset<ty>::dataset(info,data_dimensions( islands, 1, 1, data_item::island_mask),size_, name)
 	{}
 	virtual bool get_data (size_t island, std::vector<ty> & data)
 	{
