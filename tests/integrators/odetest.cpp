@@ -16,7 +16,7 @@ using namespace pagmo;
 
 
 typedef hills_dynamical_system<CUDA_TY > dynamic_system;
-typedef odeint::ode_step_runge_kutta_4< CUDA_TY, dynamic_system , 7, 2, 2, adhoc_dimensions<128> > rk_integrator;
+typedef odeint::ode_step_runge_kutta_4< CUDA_TY, dynamic_system , 7, 2, 2, adhoc_dimensions<64> > rk_integrator;
 
 
 int load_subtask( int individualid, int taskid, rk_integrator * pNet);
@@ -34,7 +34,7 @@ int main( int argc, char **argv )
 
   //task might need to know the complete type of the subtasks.
 
-  rk_integrator integ(inf, "runge kutta integrator", individuals, taskCount);
+  rk_integrator integ(inf, "runge kutta integrator", 1, individuals, taskCount);
   //Timer scope
   {
     scoped_timer tim("runge_kutta cumulative timer");

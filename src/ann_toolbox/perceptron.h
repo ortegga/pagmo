@@ -47,8 +47,8 @@ namespace ann_toolbox {
 
 	typedef neural_network<ty, in_, out_> base;
     
-    perceptron(cuda::info & in, const std::string & name, size_t individuals, size_t task_count) : 
-	neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count)
+    perceptron(cuda::info & in, const std::string & name, size_t islands, size_t individuals, size_t task_count) : 
+    neural_network<ty, in_, out_>::neural_network(in, name, islands, individuals, task_count)
 	{
 	    this->m_weights = (in_ + 1) * out_;
 	    this->set_shared_chunk(0, this->m_weights * sizeof(ty) , in_ * sizeof(ty) );

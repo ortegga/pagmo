@@ -1,3 +1,28 @@
+/*****************************************************************************
+ *   Copyright (C) 2004-2009 The PaGMO development team,                     *
+ *   Advanced Concepts Team (ACT), European Space Agency (ESA)               *
+ *   http://apps.sourceforge.net/mediawiki/pagmo                             *
+ *   http://apps.sourceforge.net/mediawiki/pagmo/index.php?title=Developers  *
+ *   http://apps.sourceforge.net/mediawiki/pagmo/index.php?title=Credits     *
+ *   act@esa.int                                                             *
+ *                                                                           *
+ *   This program is free software; you can redistribute it and/or modify    *
+ *   it under the terms of the GNU General Public License as published by    *
+ *   the Free Software Foundation; either version 2 of the License, or       *
+ *   (at your option) any later version.                                     *
+ *                                                                           *
+ *   This program is distributed in the hope that it will be useful,         *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ *   GNU General Public License for more details.                            *
+ *                                                                           *
+ *   You should have received a copy of the GNU General Public License       *
+ *   along with this program; if not, write to the                           *
+ *   Free Software Foundation, Inc.,                                         *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
+ *****************************************************************************/
+
+
 #ifndef PAGMO_PROBLEM_DOCKING_H
 #define PAGMO_PROBLEM_DOCKING_H
 
@@ -30,7 +55,7 @@ namespace pagmo
 
 	    typedef ann_toolbox::neural_network <fty, 7, 2 >  neural_network;
 	    typedef hills_dynamical_system<fty > dynamic_system;
-	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , 7, 2, 2, adhoc_dimensions<128>, scale_functor<fty> > integrator;
+	    typedef odeint::ode_step_runge_kutta_4< fty, dynamic_system , 7, 2, 2, adhoc_dimensions<64>, scale_functor<fty> > integrator;
 	    typedef fitness::evaluate_fitness_task<fty, adhoc_dimensions<256> > fitness_type;
 
 
@@ -60,6 +85,7 @@ namespace pagmo
 		    this->needed_count_at_goal = 5;
 		    this->vicinity_distance = vicinity_speed = 0.1;
 		    this->vicinity_orientation = M_PI/8;	
+		    gen_count = 0;
 		}
       
       
@@ -136,6 +162,7 @@ namespace pagmo
 		}
 	    }
 
+	    mutable int gen_count;
 	    void initialize_tasks() const
 	    {
 		//Ann controls most of the data
@@ -151,10 +178,12 @@ namespace pagmo
 		fitness_task->add_association(integrator_task, integrator::param_x, fitness_type::param_inputs);
 		fitness_task->prepare_outputs();
 		initialized = true;
-		
-		generate_starting_positions();
-	    }
 
+		if (gen_count % 10 == 0)
+		    generate_starting_positions();
+		++gen_count;
+	    }
+	    
 	    
 // generating the starting positions
 // depends on the strategy chosen
@@ -432,6 +461,7 @@ namespace pagmo
 
 		    std::vector<fty> out;
 		    fty result = 0; 
+		    std::cout<<"results"<<std::endl;
 		    for(size_t i = 0;i < random_start.size();i++) 
 		    {	
 			out.clear();
@@ -440,6 +470,7 @@ namespace pagmo
 			    clear_tasks();
 			    pagmo_throw(value_error, "failed to retrieve fitness results");
 			}
+			std::cout<<out[0]<<" ";
 			result += - out[0];
 		    }
 		    result /= random_start.size();

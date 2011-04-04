@@ -65,9 +65,10 @@ int main(int argc, char *argv[])
     const int ann_hidden_neurons = 11;
     const int ann_output_neurons = 2;
 	
-    int prob_positions = 1;
-    int prob_pos_strategy = problem::docking<float_type>::FIXED_POS;
-    //int prob_pos_strategy = problem::docking::SPOKE_POS;
+    //int prob_positions = 10;
+    int prob_positions = 2;
+    //int prob_pos_strategy = problem::docking<float_type>::FIXED_POS;
+    int prob_pos_strategy = problem::docking<float_type>::SPOKE_POS;
 
     int prob_fitness_function = 99;
     int prob_timeneuron_threshold = 99;
@@ -129,14 +130,14 @@ int main(int argc, char *argv[])
     // MultiLayer Perceptron
 
     cuda::info inf;
-//    std::cout<<inf;
+    std::cout<<inf;
 
     ann_toolbox::multilayer_perceptron
-	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons,  adhoc_dimensions<128>,  adhoc_dimensions<128> >  
-	ann(inf,"multilayer perceptron",  individuals, prob_positions);
+	<float, ann_input_neurons, ann_hidden_neurons, ann_output_neurons,  adhoc_dimensions<128>,  adhoc_dimensions<64> >  
+	ann(inf,"multilayer perceptron",  islands, individuals, prob_positions);
 
-    problem::docking<float_type>::integrator integ(inf, "rk integrator", individuals, prob_positions);
-    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator", problem::docking<float_type>::fitness_type::minimal_distance,
+    problem::docking<float_type>::integrator integ(inf, "rk integrator", islands, individuals, prob_positions);
+    problem::docking<float_type>::fitness_type fitt(inf, "fitness evaluator", problem::docking<float_type>::fitness_type::minimal_distance, islands, 
 						    individuals, prob_positions, 6, 2, vicinity_distance, vicinity_speed, vicinity_orientation, prob_maximum_time);
     ////////////////////////////////////////////////
     // Define the problem						positions, strategy, 				max_time, max_thrust

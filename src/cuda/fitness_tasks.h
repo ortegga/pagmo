@@ -1,3 +1,28 @@
+/*****************************************************************************
+ *   Copyright (C) 2004-2009 The PaGMO development team,                     *
+ *   Advanced Concepts Team (ACT), European Space Agency (ESA)               *
+ *   http://apps.sourceforge.net/mediawiki/pagmo                             *
+ *   http://apps.sourceforge.net/mediawiki/pagmo/index.php?title=Developers  *
+ *   http://apps.sourceforge.net/mediawiki/pagmo/index.php?title=Credits     *
+ *   act@esa.int                                                             *
+ *                                                                           *
+ *   This program is free software; you can redistribute it and/or modify    *
+ *   it under the terms of the GNU General Public License as published by    *
+ *   the Free Software Foundation; either version 2 of the License, or       *
+ *   (at your option) any later version.                                     *
+ *                                                                           *
+ *   This program is distributed in the hope that it will be useful,         *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ *   GNU General Public License for more details.                            *
+ *                                                                           *
+ *   You should have received a copy of the GNU General Public License       *
+ *   along with this program; if not, write to the                           *
+ *   Free Software Foundation, Inc.,                                         *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
+ *****************************************************************************/
+
+
 #ifndef __CUDA_PAGMO_FITNESS_TASKS__
 #define __CUDA_PAGMO_FITNESS_TASKS__
 
@@ -29,10 +54,10 @@ namespace pagmo
 		cristos_twodee_fitness3
 	    };
 
-	evaluate_fitness_task(info & inf, const std::string & name, fitness_type type , size_t individuals, 
+	evaluate_fitness_task(info & inf, const std::string & name, fitness_type type , size_t islands, size_t individuals, 
 			      size_t taskCount, size_t inputs_, size_t outputs_, ty vicinity_distance, 
 			      ty vicinity_speed, ty vic_orientation, ty max_docking_time ) : 
-	task<ty>::task(inf, name, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
+	task<ty>::task(inf, name, islands, individuals, taskCount, 1), m_fitness_type(type), //<TODO> not sure that the task size is 1
 	m_inputs (inputs_/*6*/), m_outputs (outputs_/*3*/), m_fitness(4), 
 	m_vicinity_distance(vicinity_distance), 
 	m_vicinity_speed(vicinity_speed), 

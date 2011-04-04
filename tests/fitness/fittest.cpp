@@ -32,7 +32,7 @@ int main( int argc, char **argv )
 
   //task might need to know the complete type of the subtasks.
 
-  fitness_type fit(inf, "fitness evaluator", fitness_type::minimal_distance, individuals, taskCount, 6, 2, 
+  fitness_type fit(inf, "fitness evaluator", fitness_type::minimal_distance, 1, individuals, taskCount, 6, 2, 
 		   0.1, 0.1, 0.1, 1);
   //Timer scope
   {

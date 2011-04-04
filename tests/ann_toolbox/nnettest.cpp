@@ -36,7 +36,7 @@ int main( int argc, char **argv )
 
   //task might need to know the complete type of the subtasks.
 
-  multilayer_nnet perc(inf, "test network", individuals, taskCount);
+  multilayer_nnet perc(inf, "test network", 1, individuals, taskCount);
   //Timer scope
   {
     scoped_timer tim("multilayer nnet cumulative timer");

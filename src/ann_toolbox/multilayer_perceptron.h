@@ -50,9 +50,9 @@ namespace ann_toolbox {
     {
     public:
 
-    multilayer_perceptron(cuda::info & in, const std::string & name, size_t individuals, size_t task_count) : 
-    neural_network<ty, in_, out_>::neural_network(in, name, individuals, task_count), 
-    m_hidden_task(1, individuals, task_count, hid_)
+    multilayer_perceptron(cuda::info & in, const std::string & name, size_t islands, size_t individuals, size_t task_count) : 
+    neural_network<ty, in_, out_>::neural_network(in, name, islands, individuals, task_count), 
+    m_hidden_task(islands, individuals, task_count, hid_)
 	    {
 
 		this->m_hidden_weights = (in_ + 1) * hid_ ;

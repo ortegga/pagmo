@@ -22,7 +22,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.               *
  *****************************************************************************/
 
-// Created by Juxi Leitner on 2009-12-21.
+
 
 #ifndef ANN_TB_NEURALNETWORK_H
 #define ANN_TB_NEURALNETWORK_H
@@ -41,8 +41,8 @@ namespace ann_toolbox {
 	class neural_network : public task<ty>
     {
     public:
-    neural_network(info & in, const std::string & name, size_t individuals, size_t task_count): 
-    task<ty> ( in, name, individuals, task_count, out_) , 
+    neural_network(info & in, const std::string & name, size_t islands, size_t individuals, size_t task_count): 
+    task<ty> ( in, name, islands, individuals, task_count, out_) , 
 	    m_weights(0)
 	    {
 	    }
