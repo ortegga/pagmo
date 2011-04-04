@@ -85,7 +85,6 @@ namespace pagmo
 		    this->needed_count_at_goal = 5;
 		    this->vicinity_distance = vicinity_speed = 0.1;
 		    this->vicinity_orientation = M_PI/8;	
-		    gen_count = 0;
 		}
       
       
@@ -162,7 +161,6 @@ namespace pagmo
 		}
 	    }
 
-	    mutable int gen_count;
 	    void initialize_tasks() const
 	    {
 		//Ann controls most of the data
@@ -179,9 +177,7 @@ namespace pagmo
 		fitness_task->prepare_outputs();
 		initialized = true;
 
-		if (gen_count % 10 == 0)
-		    generate_starting_positions();
-		++gen_count;
+		generate_starting_positions();
 	    }
 	    
 	    
