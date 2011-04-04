@@ -164,7 +164,7 @@ template <typename fty, typename DynamicSystem, size_t order, size_t system_para
 __global__ void cu_runge_kutta_integrate (cudaPitchedPtr X , cudaPitchedPtr O, const fty t , const fty dt ,  
 					  const fty max_val,
 					  size_t task_size,
-					  size_t tasks_per_block, 
+					  size_t block_points, 
 					  size_t individuals, size_t points, 
 					  DynamicSystem system = DynamicSystem(),
 					  pre_exec pre = pre_exec(),
@@ -172,8 +172,6 @@ __global__ void cu_runge_kutta_integrate (cudaPitchedPtr X , cudaPitchedPtr O, c
 {
 
 
-
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
     size_t step = block_points * order;
@@ -191,46 +189,42 @@ __global__ void cu_runge_kutta_integrate (cudaPitchedPtr X , cudaPitchedPtr O, c
     offset += step;
     fty * Dxm = & ((fty *) rk_shared_mem)[offset];
 
-    copy_to_shared_mem1<fty, o_pre_exec>(Os, O, block_points, max_val);
-    copy_to_shared_mem<fty, pre_exec> (Xs, X, block_points);    // probably verified
+    copy_to_shared_mem1<fty, o_pre_exec>(Os, O.ptr, O.pitch, O.ysize, block_points, max_val);
+    copy_to_shared_mem<fty, pre_exec> (Xs, X.ptr, X.pitch, X.ysize, block_points);
 
     __syncthreads();
 
 
-    for(int i=0; i < tasks_per_block; i+= blockDim.x)// task id
+    for(int i=0; i < block_points; i+= blockDim.x)// task id
     {
-	size_t taskid = i + threadIdx.x;//block's task id and individual id
-	size_t individ = taskid / points;
-	if (individ  < individuals)
+	size_t taskid = i + threadIdx.x;//block's task id
+	if (taskid  < block_points)
 	{
 	    const fty  dh = fty( 0.5 ) * dt;
 	    const fty th = t + dh;
 	    const fty val2 = fty( 2.0 );
 
-	    size_t inc1 = taskid;
-	    size_t inc2 = taskid;
-
 	    // k1
-	    system(&Xs[inc1], &DxDt[inc1], &Os[inc2], t, block_points);
-	    assign_sum<fty, order>( &Xt[inc1], &Xs[inc1], &DxDt[inc1], dh, block_points );
+	    system(&Xs[taskid], &DxDt[taskid], &Os[taskid], t, block_points);
+	    assign_sum<fty, order>( &Xt[taskid], &Xs[taskid], &DxDt[taskid], dh, block_points );
 	
 	    //k2
-	    system( &Xt[inc1] , &Dxt[inc1] , &Os[inc2], th, block_points );
-	    assign_sum<fty, order>( &Xt[inc1], &Xs[inc1], &Dxt[inc1], dh, block_points );
+	    system( &Xt[taskid] , &Dxt[taskid] , &Os[taskid], th, block_points );
+	    assign_sum<fty, order>( &Xt[taskid], &Xs[taskid], &Dxt[taskid], dh, block_points );
 
 
 	    //k3
-	    system( &Xt[inc1] , &Dxm[inc1] , &Os[inc2], th, block_points);
-	    assign_sum_increment<fty, order>( &Xt[inc1], &Xs[inc1], &Dxm[inc1], &Dxt[inc1], dt, block_points);
+	    system( &Xt[taskid] , &Dxm[taskid] , &Os[taskid], th, block_points);
+	    assign_sum_increment<fty, order>( &Xt[taskid], &Xs[taskid], &Dxm[taskid], &Dxt[taskid], dt, block_points);
 	
 	    //k4
-	    system( &Xt[inc1] , &Dxt[inc1] , &Os[inc2], fty( t + dt ), block_points);
+	    system( &Xt[taskid] , &Dxt[taskid] , &Os[taskid], fty( t + dt ), block_points);
 
-	    increment_sum_sum<fty, order>( &Xs[inc1], &DxDt[inc1], &Dxt[inc1],  &Dxm[inc1], dt /  fty( 6.0 ), val2, block_points);
+	    increment_sum_sum<fty, order>( &Xs[taskid], &DxDt[taskid], &Dxt[taskid],  &Dxm[taskid], dt /  fty( 6.0 ), val2, block_points);
 	}
     }
 
-    copy_to_global_mem<fty, post_exec> (X, Xs, block_points);
+    copy_to_global_mem<fty, post_exec> (X.ptr, X.pitch, X.ysize, Xs, block_points);
 
     __syncthreads();
 
@@ -239,7 +233,7 @@ __global__ void cu_runge_kutta_integrate (cudaPitchedPtr X , cudaPitchedPtr O, c
 
 static void print_parameters(const char * name, cuda::kernel_dimensions * dims_)
 {
-    /*   printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
+    /*printf("%s with \n grid size = %d\n block size = %d\n shared mem = %d\n tasks per block = %d\n", 
 	   name, dims_->get_grid_dims().x, dims_->get_block_dims().x, dims_->get_shared_mem_size(), dims_->get_tasks_per_block());
     printf("individuals = %d\n points = %d\n task size = %d\n ", 
     dims_->get_individuals(), dims_->get_points(), dims_->get_task_size());*/
@@ -369,19 +363,18 @@ extern __shared__ char rk_mindis_kernel_mem [];
 template <typename ty, typename pre_exec, typename post_exec >
 __global__ void cu_compute_fitness_mindis_kernel(cudaPitchedPtr S , cudaPitchedPtr O, cudaPitchedPtr F, cudaPitchedPtr I, size_t width, 
 						 size_t task_size,
-						 size_t tasks_per_block, 
+						 size_t block_points, 
 						 size_t individuals, size_t points, 
 						 pre_exec prep = pre_exec(), 
 						 post_exec post = post_exec() )
 {
 
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) rk_mindis_kernel_mem; 
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -468,19 +461,18 @@ extern __shared__ char mindis_theta_mem [];
 template <typename ty, typename pre_exec, typename post_exec >
 __global__ void cu_compute_fitness_mindis_theta_kernel(cudaPitchedPtr S, cudaPitchedPtr O, cudaPitchedPtr F, cudaPitchedPtr I, size_t width, 
 						 size_t task_size,
-						 size_t tasks_per_block, 
+						 size_t block_points, 
 						 size_t individuals, size_t points, 
 						 pre_exec prep = pre_exec(), 
 						 post_exec post = post_exec() )
 {
 
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) mindis_theta_mem; 
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -570,20 +562,18 @@ extern __shared__ char fitness_mindis_simple_mem [];
 template <typename ty, typename pre_exec, typename post_exec >
 __global__ void cu_compute_fitness_mindis_simple_kernel(cudaPitchedPtr S , cudaPitchedPtr O, cudaPitchedPtr F, cudaPitchedPtr I, size_t width, 
 						 size_t task_size,
-						 size_t tasks_per_block, 
+						 size_t block_points, 
 						 size_t individuals, size_t points, 
 						 pre_exec prep = pre_exec(), 
 						 post_exec post = post_exec() )
 {
-
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) fitness_mindis_simple_mem; 
     ty * Ir = (ty * ) I.ptr;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -680,20 +670,19 @@ __global__ void cu_compute_fitness_mindis_noatt_kernel(cudaPitchedPtr S , cudaPi
 						       ty vicinity_distance, ty vicinity_speed,  
 						       ty max_docking_time, ty tdt, size_t width, 
 						       size_t task_size,
-						       size_t tasks_per_block, 
+						       size_t block_points, 
 						       size_t individuals, size_t points, 
 						       pre_exec prep = pre_exec(), 
 						       post_exec post = post_exec() )
 {
 
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) fitness_mindis_noatt_mem; 
     ty * Ir = (ty * ) I.ptr;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -795,20 +784,18 @@ template <typename ty, typename pre_exec, typename post_exec >
 __global__ void cu_compute_fitness_twodee1_kernel(cudaPitchedPtr S , cudaPitchedPtr O, cudaPitchedPtr F, cudaPitchedPtr I, 
 						  ty max_docking_time, ty tdt, size_t width, 
 						  size_t task_size,
-						  size_t tasks_per_block, 
+						  size_t block_points, 
 						  size_t individuals, size_t points, 
 						  pre_exec prep = pre_exec(), 
 						  post_exec post = post_exec() )
 {
-
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) fitness_twodee1_mem; 
     ty * Ir = (ty * ) I.ptr;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -910,21 +897,18 @@ __global__ void cu_compute_fitness_twodee2_kernel(cudaPitchedPtr S, cudaPitchedP
 						  ty vicinity_distance, ty vicinity_speed, 
 						  ty vicinity_orientation, ty max_docking_time, ty tdt, size_t width, 
 						  size_t task_size,
-						  size_t tasks_per_block, 
+						  size_t block_points, 
 						  size_t individuals, size_t points, 
 						  pre_exec prep = pre_exec(), 
 						  post_exec post = post_exec() )
 {
-
-
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) compute_fitness_twodee2_mem; 
     ty * Ir = (ty * ) I.ptr;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -1033,22 +1017,18 @@ __global__ void cu_compute_fitness_twodee3_kernel(cudaPitchedPtr S , cudaPitched
 						  ty vicinity_distance, ty vicinity_speed, 
 						  ty vicinity_orientation, ty max_docking_time, ty tdt, 
 						  size_t width, size_t task_size,
-						  size_t tasks_per_block, 
+						  size_t block_points, 
 						  size_t individuals, size_t points, 
 						  pre_exec prep = pre_exec(), 
 						  post_exec post = post_exec() )
 {
-
-
-
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
 
     //0. load shared memory with inputs and outputs. 
 
     ty * Ss = (ty *) fitness_twodee3_kernel_mem; 
     ty * Ir = (ty * ) I.ptr;
 
-    copy_to_shared_mem<ty, pre_exec>(Ss, S, block_points);
+    copy_to_shared_mem<ty, pre_exec>(Ss, S.ptr, S.pitch, S.ysize, block_points);
 
     __syncthreads();
 
@@ -1158,12 +1138,12 @@ cudaError_t cu_compute_fitness_twodee3<double, nop_functor<double>, nop_functor<
 
 /////////////////////////////////////////////////////////////////////////////
 //Misc kernels
-
+/*
 extern __shared__ char transpose_mem [];
 __global__ void cu_transpose_kernel(float *O, float *I, size_t count, size_t size )
 {
 
-/*
+
     float * Ss = (float *) transpose_mem; 
 
     //Fix transpose function. The dimensions are fine. Theres something else wrong.
@@ -1173,7 +1153,7 @@ __global__ void cu_transpose_kernel(float *O, float *I, size_t count, size_t siz
     copy_to_global_mem<float, nop_functor<float> >(O, Ss, (count * size) / gridDim.x );
     //O[blockIdx.x*blockDim.x + threadIdx.x] =blockIdx.x*blockDim.x + threadIdx.x;
 
-    __syncthreads();*/
+    __syncthreads();
 }
 
 
@@ -1184,7 +1164,7 @@ cudaError_t transpose(float *O, float *I,  size_t count, size_t size, dim3 g, di
     cu_transpose_kernel <<<g, b, s >>>(O, I, count, size);
     cudaThreadSynchronize();
     return cudaGetLastError();
-}
+    }*/
 
 
 #endif 

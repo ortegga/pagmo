@@ -80,7 +80,6 @@ namespace ann_toolbox {
 	    if (chromosome.size() == this->get_number_of_weights())
 	    {
 		std::vector<ty> first_segment, second_segment;
-		//Optimize damnit!!!
 		for (size_t i=0; i < m_hidden_weights; ++i)
 		{
 		    first_segment.push_back(chromosome[i]);
@@ -145,7 +144,7 @@ namespace ann_toolbox {
 	    }
 
 	    cudaError_t err;
-	    err = cu_compute_layer<ty, pre_exec1, activ_type1>(*pInput->get_data(), *pWeights->get_data(), *pHidden->get_data(),  
+	    err = cu_compute_layer<ty, pre_exec1, activ_type1>(pInput->get_data(), pWeights->get_data(), pHidden->get_data(),  
 							       pInput->get_task_size(), this->m_dims1.get());
 	    if (err != cudaSuccess)
 	    {
@@ -154,7 +153,7 @@ namespace ann_toolbox {
 	    }
 	    block_complete_dimensions dims2 (&this->m_info, this->get_profile(), this->m_name);
 
-	    err = cu_compute_layer<ty, pre_exec2, activ_type2>(*pHidden->get_data(), *pOutputWeights->get_data(), *pOutData->get_data(),  
+	    err = cu_compute_layer<ty, pre_exec2, activ_type2>(pHidden->get_data(), pOutputWeights->get_data(), pOutData->get_data(),  
 							       pHidden->get_task_size(), this->m_dims2.get());
 
 	    if (err != cudaSuccess)

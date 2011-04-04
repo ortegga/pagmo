@@ -79,8 +79,8 @@ namespace ann_toolbox {
 	    }
 
 	    cudaError_t err;
-	    err = cu_compute_layer<ty, pre_exec, activ_type >(*pInput->get_data(), *pWeights->get_data(), 
-							      *pOutData->get_data(),  pInput->get_task_size(), this->m_dims.get());
+	    err = cu_compute_layer<ty, pre_exec, activ_type >(pInput->get_data(), pWeights->get_data(), 
+							      pOutData->get_data(),  pInput->get_task_size(), this->m_dims.get());
 
 	    if (err != cudaSuccess)
 	    {

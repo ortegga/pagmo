@@ -109,7 +109,10 @@ namespace cuda
 	adhoc_dimensions (cuda::info * inf, task_profile * prof, const std::string & name): 
 	kernel_dimensions(inf, prof, name), m_block_shared_mem(0),m_indivs_per_block(1)
 	{
-	    refresh();
+	    if (!refresh())
+	    {
+		pagmo_throw(value_error,"adhoc dimensions insufficient");
+	    }
 	}
 
 	virtual dim3 get_block_dims()
@@ -155,11 +158,18 @@ namespace cuda
 
 	    if ( m_block_size.x / m_prof->points == 0)
 	    {
-		CUDA_LOG_ERR(m_name, " block size is too small for job", m_block_size.x);
+		CUDA_LOG_ERR(m_name, " block size is too small for individuals", m_block_size.x);
+		return false;
 	    }
 
 	    m_indivs_per_block = m_block_size.x / m_prof->points; 
 	    m_block_shared_mem = m_indivs_per_block * m_prof->get_total_indiv_shared_chunk();
+	    if (m_block_shared_mem > m_inf->get_block_shared_mem())
+	    {
+		CUDA_LOG_ERR(m_name, " block size is too small for shared memory requirements", m_block_shared_mem);
+		return false;
+	    }
+	    
 	    m_grid_size.x = m_prof->individuals / m_indivs_per_block + (m_prof->individuals % m_indivs_per_block ? 1 : 0);
 	    m_grid_size.y = m_grid_size.z = 1;
 

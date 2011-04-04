@@ -45,25 +45,24 @@ extern __shared__ char compute_layer_shared_mem [];
 template <typename cuda_type, typename pre_exec, typename activ_type >
 __global__ void cu_compute_layer_kernel(cudaPitchedPtr X, cudaPitchedPtr W,  
 					cudaPitchedPtr Y,
-					size_t tasks_per_block, 
+					size_t block_points, 
 					size_t individuals, size_t points, 
 					pre_exec pre = pre_exec(),
 					activ_type activator = activ_type()) 
 {
 
-    size_t block_individuals = BLOCK_INDIVIDUALS(tasks_per_block,  points);
-    size_t block_points = BLOCK_POINTS(tasks_per_block);
+    size_t block_individuals = BLOCK_INDIVIDUALS(block_points,  points);
 
     //0. load shared memory with inputs and weights. 
     cuda_type * Ws = &((cuda_type *) compute_layer_shared_mem)[0]; 
     cuda_type * Xs = & ((cuda_type *) compute_layer_shared_mem)[block_individuals*W.ysize];// inputs come after the weights
 
-    copy_to_shared_mem<cuda_type, pre_exec>(Ws, W, block_individuals);
-    copy_to_shared_mem<cuda_type, pre_exec>(Xs, X, block_points);
+    copy_to_shared_mem<cuda_type, pre_exec>(Ws, W.ptr, W.pitch, W.ysize, block_individuals);
+    copy_to_shared_mem<cuda_type, pre_exec>(Xs, X.ptr, X.pitch, X.ysize, block_points);
     
     __syncthreads();
 
-    for(int i=0; i < tasks_per_block; i+= blockDim.x)// task id
+    for(int i=0; i < block_points; i+= blockDim.x)// task id
     {
 	size_t taskid = i + threadIdx.x;//block's task id and individual id
 	size_t individ = taskid / points;
@@ -112,8 +111,8 @@ cudaError_t cu_compute_layer(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedP
 template <>
 cudaError_t cu_compute_layer<float, nop_functor<float>, linear_functor<float> >(cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, size_t inputs, cuda::kernel_dimensions * dims_)
 {
-    /*print_parameters("cu_compute_layer", dims_);
-    printf("cu_compute_layer with W = <%x, %d, %d, %d>", W->ptr, W->pitch, W->xsize, W->ysize );
+    print_parameters("cu_compute_layer", dims_);
+/*    printf("cu_compute_layer with W = <%x, %d, %d, %d>", W->ptr, W->pitch, W->xsize, W->ysize );
     printf(" X = <%x, %d, %d, %d>", X->ptr, X->pitch, X->xsize, X->ysize );
     printf(" Y = <%x, %d, %d, %d>\n", Y->ptr, Y->pitch, Y->xsize, Y->ysize );
     printf(" individuals = %d\n points = %d\n task size = %d\n ", 
@@ -134,8 +133,8 @@ template <>
 cudaError_t cu_compute_layer<float, nop_functor<float>, sigmoid_functor<float> > (cudaPitchedPtr *X, cudaPitchedPtr *W,  cudaPitchedPtr *Y, size_t inputs, cuda::kernel_dimensions * dims_)
 {
 
-/*    print_parameters("cu_compute_layer", dims_);
-    printf("cu_compute_layer with W = <%x, %d, %d, %d>", W->ptr, W->pitch, W->xsize, W->ysize );
+    print_parameters("cu_compute_layer", dims_);
+/*    printf("cu_compute_layer with W = <%x, %d, %d, %d>", W->ptr, W->pitch, W->xsize, W->ysize );
     printf(" X = <%x, %d, %d, %d>", X->ptr, X->pitch, X->xsize, X->ysize );
     printf(" Y = <%x, %d, %d, %d>\n", Y->ptr, Y->pitch, Y->xsize, Y->ysize );
     printf(" individuals = %d\n points = %d\n task size = %d\n ", 
