@@ -25,6 +25,7 @@
 #ifndef ARRAY3D_OPERATIONS_H
 #define ARRAY3D_OPERATIONS_H
 
+#include <cmath>
 #include"../astro_constants.h"
 
 namespace kep_toolbox {
@@ -38,22 +39,24 @@ namespace kep_toolbox {
 		out[1] = v1[1]-v2[1];
 		out[2] = v1[2]-v2[2];
 	}
-	inline double dot(const array3D& v1,const array3D& v2){
+	template<class vettore3D>
+	inline double dot(const vettore3D& v1,const vettore3D& v2){
 		return (v1[0]*v2[0] +  v1[1]*v2[1]+ v1[2]*v2[2]);
 	}
-	inline double norm(const array3D& v1){
-		return sqrt(v1[0]*v1[0] +  v1[1]*v1[1]+ v1[2]*v1[2]);
+	template<class vettore3D>
+	inline double norm(const vettore3D& v1){
+	        return std::sqrt(v1[0]*v1[0] +  v1[1]*v1[1]+ v1[2]*v1[2]);
 	}
-	inline void unit_vector(array3D& out, const array3D& in){
-		double dummy = norm(in);
-		out[0] = in[0] / dummy;
-		out[1] = in[1] / dummy;
-		out[2] = in[2] / dummy;
-	}
-	inline void cross(array3D& out, const array3D& v1,const array3D& v2){
+	template<class vettore3D>
+	inline void cross(vettore3D& out, const vettore3D& v1,const vettore3D& v2){
 		out[0] = v1[1]*v2[2] - v1[2]*v2[1];
 		out[1] = v1[2]*v2[0] - v1[0]*v2[2];
 		out[2] = v1[0]*v2[1] - v1[1]*v2[0];
+	}
+	template<class vettore3D>
+	inline void vers(vettore3D& out, const vettore3D& in){
+		double c = norm(in);
+		for (int i = 0;i<3;++i) out[i] = in[i]/c;
 	}
 }
 

@@ -33,10 +33,21 @@
 namespace cuda
 {
 
+//kernel_dimensions class
+    /*
+      This class is used to determine the attributes of the kernel launch:
+      block size <x, y, z>
+      grid size <x, y, z>
+      dynamic shared memory allocation
+      check limits for device memory and block sizes as well as problem formulation
+     */
     class kernel_dimensions
     {
     public:
 
+	//<TODO>
+	//completeness is not finished yet. This will determine the smallest 
+	//entity that cannot be divided into different blocks for a kernel launch.
 	enum completeness
 	{
 	    point = 1, 
@@ -45,7 +56,7 @@ namespace cuda
 	};
 
 	kernel_dimensions (info * inf, task_profile * prof,
-			   const std::string & name, completeness c = kernel_dimensions::individual) :   // <TODO> implement completeness
+			   const std::string & name, completeness c = kernel_dimensions::individual) :   // assume individual completeness
 	m_inf(inf), 
 	    m_prof(prof), 
 	    m_name(name),
@@ -100,6 +111,7 @@ namespace cuda
 	    return m_prof->points;
 	}
 
+	//relates to task completeness. Not implemented yet
 	size_t get_indivisible_task_size()
 	{
 	    switch(m_completeness)
@@ -117,9 +129,13 @@ namespace cuda
 
     protected:
 
+	//device information
 	info * m_inf;
+	//task information
 	task_profile * m_prof;
+	//name for logging
 	std::string m_name;
+	//completeness not finished
 	completeness m_completeness;
     public:	
 	typedef  boost::shared_ptr<kernel_dimensions > ptr;    
@@ -127,6 +143,17 @@ namespace cuda
 
 
 
+/// adhoc_dimensions class
+    /*
+      This class creates kernel_dimensions as suggested by the user.
+      This suggestion can however be changed depending on the size of
+      each indivisible task. It will also be divided into number of 
+      threads along x and y axis. 
+      
+      Threads along x axis belong to different jobs while threads
+      along y axis belong to the same job. 
+      
+     */
     template <size_t block_size>
     class adhoc_dimensions : public kernel_dimensions
     {
@@ -160,22 +187,29 @@ namespace cuda
 	    return m_indivs_per_block * m_prof->points;
 	}
 
-
+	//called in ctor
 	virtual bool refresh()
 	{
 	    const cudaDeviceProp * props = m_inf->get_prop();
+
+	    //divide the suggested number of threads per block into 2 dimensions
 	    m_block_size.z = 1;
 	    m_block_size.y = m_prof->get_task_size();
-	    CUDA_LOG_INFO(m_name, "block_size", block_size);
 	    m_block_size.x = block_size / m_block_size.y;
+
 	    CUDA_LOG_INFO(m_name, "m_block_size.x", m_block_size.x);
 
+	    //make sure that the number of threads along x axis are a multiple of the number
+	    //of threads each individual will need
 	    m_block_size.x -= m_block_size.x % m_prof->points;
+
+	    //Remove unused thread columns
 	    if (m_block_size.x > m_prof->islands * m_prof->individuals * m_prof->points )
 	    {
 		m_block_size.x = m_prof->islands * m_prof->individuals * m_prof->points;
 	    }
 
+	    //Check if complete warps wont be used
 	    if (m_block_size.x * m_block_size.y % props->warpSize)
 	    {
 		CUDA_LOG_WARN(m_name, " adhoc kernel dimensions dont match warp size, occupancy is not optimal ", m_block_size.x);
@@ -211,6 +245,7 @@ namespace cuda
     };
 
 
+    //<TODO> doesnt work yet
 
     class block_complete_dimensions : public kernel_dimensions
     {

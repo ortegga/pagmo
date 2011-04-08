@@ -1,4 +1,5 @@
 
+
 #include <stdio.h>
 #include <vector>
 
@@ -37,6 +38,7 @@
 #include "src/problem/docking.h"
 #include "src/ann_toolbox/multilayer_perceptron.h"
 #include "src/ann_toolbox/perceptron.h"
+
 
 using namespace std;
 using namespace pagmo;
@@ -169,7 +171,7 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////
     // Create the archipelag/islands
     cout << "Creating an archipelago...";
-    archipelago arch = archipelago(prob, algo, islands, individuals);
+	archipelago arch = archipelago(algo, prob, islands, individuals);
     cout << "Created!";
 
 

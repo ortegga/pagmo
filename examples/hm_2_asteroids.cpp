@@ -29,8 +29,16 @@
 #include <boost/lexical_cast.hpp>
 #include <string>
 
-#include "../src/pagmo.h"
 #include "../src/keplerian_toolbox/keplerian_toolbox.h"
+#include"../src/algorithm/nlopt_sbplx.h"
+#include"../src/algorithm/sa_corana.h"
+#include"../src/algorithm/de.h"
+#include"../src/algorithm/cs.h"
+#include"../src/archipelago.h"
+#include"../src/island.h"
+#include"../src/problem/sample_return.h"
+#include"../src/topologies.h"
+#include"../src/migration/random_r_policy.h"
 
 using namespace pagmo;
 using namespace kep_toolbox;
@@ -61,56 +69,72 @@ int main()
 	int n_multistart = 1;
 
 	//Open the output file
-	ofstream myfile;
+	std::ofstream myfile;
 	myfile.open((std::string("pagmo_") +
 		boost::lexical_cast<std::string>(rng_generator::get<rng_uint32>()()) + ".out").c_str());
 
 	algorithm::sa_corana algo1(10000,1,0.01);
 	algorithm::de algo2(500,0.8,0.8,3);
-#ifdef DPAGMO_ENABLE_NLOPT
+#ifdef PAGMO_ENABLE_NLOPT
 	algorithm::nlopt_sbplx algo3(500,1e-4);
 #else
 	algorithm::cs algo3(500,0.0001,0.1);
 #endif
 
-	int i=0;
-	while(true) {
+	double Tmax = 600;
+	
+	//Opening the MPCORB.DAT file
+	std::ifstream mpcorbfile("MPCORB.DAT");
+	std::string line;
+	if (!mpcorbfile) {
+		throw_value_error("Could not find MPCORB.DAT is it in the current directory?");
+	}
+	
+	//Skipping the first lines
+	do {
+		std::getline(mpcorbfile,line);
+	} while (!boost::algorithm::find_first(line,"-----------------"));
+	
+	while(!mpcorbfile.eof()) {
 		try {
-			planet_mpcorb target(i);
-			++i; //(next line!!)
-
+			std::getline(mpcorbfile,line);
+			planet_mpcorb target(line);
 
 			//Pruning based on the asteroid elements
 			array6D elem = target.get_elements(kep_toolbox::epoch(0,kep_toolbox::epoch::MJD2000));
 			if (elem[0] / ASTRO_AU < 1.8) {
 
 				//build the problem
-				problem::sample_return prob(target);
+				problem::sample_return prob(target,Tmax);
 
 				for (int k=0;k<n_multistart;++k){
 					std::cout << "\tTarget is: " << target.get_name() << ", Trial: " << k << std::endl;
 					archipelago a = pagmo::archipelago(topology::rim());
-					a.push_back(pagmo::island(prob,algo3,1,1,migration::best_s_policy(),migration::random_r_policy()));
-					a.push_back(pagmo::island(prob,algo1,1));
-					a.push_back(pagmo::island(prob,algo2,20));
-					a.push_back(pagmo::island(prob,algo1,1));
-					a.push_back(pagmo::island(prob,algo2,20));
-					a.push_back(pagmo::island(prob,algo1,1));
-					a.push_back(pagmo::island(prob,algo2,20));
+					a.push_back(pagmo::island(algo3,prob,1,1,migration::best_s_policy(),migration::random_r_policy()));
+					a.push_back(pagmo::island(algo1,prob,1));
+					a.push_back(pagmo::island(algo2,prob,20));
+					a.push_back(pagmo::island(algo1,prob,1));
+					a.push_back(pagmo::island(algo2,prob,20));
+					a.push_back(pagmo::island(algo1,prob,1));
+					a.push_back(pagmo::island(algo2,prob,20));
 					a.evolve_t(10000);
 					a.join();
-					std::cout << "\tBest:" << a.get_island(0).get_population().champion().f << std::endl;
+					std::cout << "\tBest:" << a.get_island(0)->get_population().champion().f << std::endl;
 
 					//log
-					std::vector<double> x = a.get_island(0).get_population().champion().x;
-					double time = x[4] + x[6] + x[10];
-					myfile << "[" << target.get_name() << "] %" << "[" << time << "] " << a.get_island(0).get_population().champion().f << " " << a.get_island(0).get_population().champion().x << std::endl;
+					std::vector<double> x = a.get_island(0)->get_population().champion().x;
+					double time = x[4] * Tmax + x[6] + x[10] * ((1 - x[4]) * Tmax - x[6]);
+					myfile << "[" << target.get_name() << "] %" << "[" << time << "] " << a.get_island(0)->get_population().champion().f << " " << a.get_island(0)->get_population().champion().x << std::endl;
 				}
 			}
 		} catch (value_error) {
 			std::cout << "The End!!!" << std::endl;
 			return 0;
+		} catch (boost::bad_lexical_cast) {
+			// An empty line might be present in MPCORB.DAT
 		}
 	}
+	//close file
+	mpcorbfile.close();
 	return 0;
 }

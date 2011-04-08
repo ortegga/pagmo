@@ -33,10 +33,30 @@
 #include "stdio.h"
 
 
+//////////////////////////////////////////////////////////////////////////////////
+/*
+  dataset.h
+  includes a set of classes that manage the device memory for CUDA. Terminology:
+
+  island: The islands of the Island based Global Optimisation model
+  individual: The GA individual 
+  point: Subtasks for each individual. USeful if we're working with a set of tasks
+  for each individual
+
+*/
+//////////////////////////////////////////////////////////////////////////////////
+
+
 namespace cuda
 {
 
 //////////////////////////////////////////////////////////////////////////////////
+/// data_item struct
+/*
+  data_item struct, used to define indexes for  dataset instances. Depending on 
+  the kind of dataset, it will work with islands, individuals and/or points. 
+
+*/
     struct data_item
     {
 	enum etype
@@ -89,16 +109,25 @@ namespace cuda
 
 
 //////////////////////////////////////////////////////////////////////////////////
+/// data_dimensions struct
+/*
+  defines the dimensions of the dataset instance. Used in conjunction with data_items, it
+  also enables us to translate data_item instances to raw indexes. 
+ */
+
 
     struct data_dimensions : public data_item
     {
 
     data_dimensions(size_t is, size_t in, size_t pt, type t) : data_item(is,in,pt,t){}
+
+	//Compute the total number of instances of data in the dataset.
 	size_t get_count()
 	{
 	    return (m_type & point_type ? point : 1) * (m_type & island_type ? island : 1) * (m_type & individual_type ?  individual : 1) ;
 	}
 
+	//Validate the data_item for if its even possible 
 	bool valid(const data_item & item)
 	{
 	    bool v = true;
@@ -117,6 +146,8 @@ namespace cuda
 	    return v;
 	}
 
+	//This method evaluates the datum id for the data_item. 
+	//This will vary according to the type of dataset
 	size_t serialize(const data_item & item)
 	{
 	    size_t result = 0;
@@ -141,11 +172,30 @@ namespace cuda
 
 
 //////////////////////////////////////////////////////////////////////////////////
+/// dataset class
+/*
+  template class that encapsulates segment of device memory. On creation it creates a 2D
+  array of memory (it uses cudaMemcpy3D to do so). Consecutive datum along the 
+  x-axis will belong to consecutive tasks. While the data for each task is laid out along 
+  the y-axis. For instance for tasks a,b,c,d,e... each with data sized 0-5:
 
+
+  a0 b0 c0 d0 e0 ....
+  a1 b1 c1 d1 e1 ....
+  a2 b2 c2 d2 e2 ....
+  a3 b3 c3 d3 e3 ....
+  a4 b4 c4 d4 e4 ....
+  a5 b5 c5 d5 e5 ....
+
+  This ensures that the data is laid out in an order that the GPU will work optimally with.
+
+*/
     template <class cuda_type>
 	class dataset
     {
     public:
+	//ctor. 
+	// allocates the device memory as well. 
     dataset(info & info, const data_dimensions & count,  size_t size_, const std::string & name):
 	m_count(count), m_size(size_),m_info(info), m_name(name)
 	{
@@ -168,6 +218,7 @@ namespace cuda
 	}
 
 
+	//Copy device data from location <item> to vector. 
 	virtual bool get_data (const data_item& item, std::vector<cuda_type> & data)
 	{
 
@@ -183,6 +234,7 @@ namespace cuda
 	    return bSuccess;
 	}
 
+	//Copy host data from vector to location at <item>
 	virtual bool set_data (const data_item & item, const std::vector<cuda_type> & data)
 	{
 	    cuda_type * temp = new cuda_type[this->get_task_size()];
@@ -229,13 +281,18 @@ namespace cuda
 
     protected:
 
+	//Copy device data to contageous memory sub_data
 	bool get_values(const data_item & item, cuda_type * sub_data)
 	{
 
+	    //Initialize copy parameters with 0. 
 	    struct cudaMemcpy3DParms copy_params = {0};
 
 	    CUDA_LOG_INFO(m_name,"get dataset values for task:", item);
 	    CUDA_LOG_INFO(m_name,"get dataset values for task:", m_count.serialize(item));
+
+	    //Using pitched ptrs for copying as thats what dataset works withConstruct pitched ptr
+	    //for destination/host sub_data
 	    copy_params.srcPtr = m_data;
 	    copy_params.dstPtr = make_cudaPitchedPtr((void *)sub_data, sizeof(cuda_type), 1 , m_size);
 
@@ -243,13 +300,18 @@ namespace cuda
 	    copy_params.dstPos.y = 0;
 	    copy_params.dstPos.z = 0;
 
+	    //X needs to be multiplied with the size of the base type because serialize gives us the datum id. 
 	    copy_params.srcPos.x = sizeof(cuda_type)*m_count.serialize(item);
 	    copy_params.srcPos.y = 0;
 	    copy_params.srcPos.z = 0;
 
+
+	    //We're copying a column of data from device to host. The width will be the size of the base type and the 
+	    //height will be the amount of data to copy. Depth is fixed to 1. 
 	    copy_params.extent.width  = sizeof(cuda_type);
 	    copy_params.extent.height =  m_size;
 	    copy_params.extent.depth = 1;
+
 	    copy_params.kind = cudaMemcpyDeviceToHost;
 
 	    cudaError_t err = cudaMemcpy3D(&copy_params);
@@ -266,8 +328,11 @@ namespace cuda
 	    CUDA_LOG_INFO(m_name,"set dataset values for task:", item);
 	    CUDA_LOG_INFO(m_name,"set dataset values for task:", m_count.serialize(item));
 
+	    //Initialize copy parameters with 0. 
 	    struct cudaMemcpy3DParms copy_params = {0};
 
+	    //Using pitched ptrs for copying as thats what dataset works with. Construct pitched ptr
+	    //for source/host data
 	    copy_params.srcPtr = make_cudaPitchedPtr((void *)sub_data, sizeof(cuda_type), 1, m_size);
 	    copy_params.dstPtr = m_data;
 
@@ -279,10 +344,13 @@ namespace cuda
 	    copy_params.srcPos.y = 0;
 	    copy_params.srcPos.z = 0;
 
+	    //X needs to be multiplied with the size of the base type because serialize gives us the datum id. 
 	    copy_params.dstPos.x = sizeof(cuda_type)*m_count.serialize(item);
 	    copy_params.dstPos.y = 0;
 	    copy_params.dstPos.z = 0;
 
+	    //We're copying a column of data from device to host. The width will be the size of the base type and the 
+	    //height will be the amount of data to copy. Depth is fixed to 1. 
 	    copy_params.extent.width = sizeof(cuda_type);
 	    copy_params.extent.height =  m_size;
 	    copy_params.extent.depth = 1;
@@ -302,15 +370,25 @@ namespace cuda
 	}
 
     private:
+	//Device memory pointer (ptr) with attributes (pitch, xsize, ysize)
 	struct cudaPitchedPtr m_data;
+	//dimensions of the data. Copied from creating cuda::task
 	data_dimensions m_count;
+	//size of the data.
 	size_t m_size;
+	//cuda device information
 	info & m_info;
+	//label for logging
 	std::string m_name;
     public:	
 	typedef  boost::shared_ptr<dataset<cuda_type> > ptr;
     };
 
+
+///individual_dataset class
+/*
+  Useful to create a dataset instance which will work with individuals
+ */
 
     template<typename ty>
 	class individual_dataset : dataset<ty> 
@@ -332,6 +410,11 @@ namespace cuda
 	}
     };
 
+///individual_dataset class
+/*
+  Useful to create a dataset instance which will work with individuals and their points
+ */
+
     template<typename ty>
 	class point_dataset : dataset<ty> 
     {
@@ -350,6 +433,13 @@ namespace cuda
 	}
     };
 
+///points_only_dataset class
+/*
+  Useful to create a dataset instance which will work with points only 
+  (when they're a common resource for all individuals )
+ */
+
+
     template<typename ty>
 	class point_only_dataset : dataset<ty> 
     {
@@ -367,6 +457,12 @@ namespace cuda
 	    return dataset<ty>::set_data(data_item::point_only_data(island, point), data);
 	}
     };
+
+
+///points_only_dataset class
+/*
+  Useful to create a dataset instance which will work with islands only 
+ */
 
     template<typename ty>
 	class island_dataset : dataset<ty> 

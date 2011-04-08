@@ -38,6 +38,10 @@
 namespace cuda
 {
 
+    //deviceinfo class
+/*
+  This class describes each device found on the system. 
+ */
     class deviceinfo 
     {
     public:
@@ -57,6 +61,13 @@ namespace cuda
 	struct cudaDeviceProp m_prop;
 	unsigned int m_id;
     };
+
+    //info class
+/*
+  This stores descriptors for all the devices on the host. With the first device
+  selected by default
+ */
+
 
     class info
     {

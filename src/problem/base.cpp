@@ -25,7 +25,10 @@
 // 30/01/10 Created by Francesco Biscani.
 
 #include <algorithm>
+#include <boost/math/special_functions/fpclassify.hpp>
+#include <boost/numeric/conversion/bounds.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/random/uniform_real.hpp>
 #include <boost/ref.hpp>
 #include <cmath>
 #include <climits>
@@ -38,8 +41,8 @@
 #include <typeinfo>
 #include <vector>
 
-#include "../atomic_counters/atomic_counters.h"
 #include "../exceptions.h"
+#include "../population.h"
 #include "../types.h"
 #include "base.h"
 
@@ -47,13 +50,10 @@ namespace pagmo
 {
 namespace problem {
 
-// Initialisation of static objective function calls counter.
-atomic_counter_size_t base::m_objfun_counter(0);
-
-/// Constructor from global dimension, integer dimension, fitness dimension, global constraints dimension and inequality constraints dimension.
+/// Constructor from global dimension, integer dimension, fitness dimension, global constraints dimension, inequality constraints dimension and constraints tolerance.
 /**
  * n and nf must be positive, ni must be in the [0,n] range, nc and nic must be positive and nic must be in the [0,nc] range.
- * Lower and upper bounds are set to 0 and 1 respectively.
+ * Lower and upper bounds are set to 0 and 1 respectively. Constraints tolerance must be positive.
  *
  * @param[in] n global dimension of the problem.
  * @param[in] ni dimension of the combinatorial part of the problem.
@@ -91,10 +91,10 @@ base::base(int n, int ni, int nf, int nc, int nic, const double &c_tol):
 	normalise_bounds();
 }
 
-/// Constructor from values for lower and upper bounds, global dimension, integer dimension, fitness dimension, global constraints dimension and inequality constraints dimension.
+/// Constructor from values for lower and upper bounds, global dimension, integer dimension, fitness dimension, global constraints dimension, inequality constraints dimension and constraints tolerance.
 /**
  * l_value must not be greater than u_value, n and nf must be positive, ni must be in the [0,n] range, nc and nic must be positive and nic must be in the [0,nc] range.
- * Lower and upper bounds are set to l_value and u_value respectively.
+ * Lower and upper bounds are set to l_value and u_value respectively. Constraints tolerance must be positive.
  *
  * @param[in] l_value value for all lower bounds.
  * @param[in] u_value value for all upper bounds.
@@ -137,10 +137,11 @@ base::base(const double &l_value, const double &u_value, int n, int ni, int nf, 
 	normalise_bounds();
 }
 
-/// Constructor from upper/lower bounds, integer dimension, fitness dimension, global constraints dimension and inequality constraints dimension.
+/// Constructor from upper/lower bounds, integer dimension, fitness dimension, global constraints dimension, inequality constraints dimension and constraints tolerance.
 /**
  * Will fail if ni is negative or greater than lb.size(), if nf is not positive, if the sizes of the lower/upper bounds are zero or not identical, if
  * any lower bound is greater than the corresponding upper bound. nc and nic must be positive and nic must be in the [0,nc] range.
+ * Constraints tolerance must be positive.
  *
  * @param[in] lb lower bounds for the problem.
  * @param[in] ub upper bounds for the problem.
@@ -444,13 +445,13 @@ fitness_vector base::objfun(const decision_vector &x) const
 
 /// Write fitness of pagmo::decision_vector into pagmo::fitness_vector.
 /**
- * Will call objfun_impl() internally. Will fail if f's size is different from the fitness dimension
- * or if verify_x() on x returns false.
- *
+ * Will call objfun_impl() internally.
  * The implementation internally uses a caching mechanism, so that recently-computed quantities are remembered and re-used when appropriate.
  *
  * @param[out] f fitness vector to which x's fitness will be written.
  * @param[in] x decision vector whose fitness will be calculated.
+ * 
+ * @throws value_error if f's and/or x's dimensions are different from the corresponding dimensions of the problem.
  */
 void base::objfun(fitness_vector &f, const decision_vector &x) const
 {
@@ -471,10 +472,6 @@ void base::objfun(fitness_vector &f, const decision_vector &x) const
 		// Make sure that the implementation of objfun_impl() in the derived class did not fuck up the dimension of the fitness vector.
 		if (f.size() != m_f_dimension) {
 			pagmo_throw(value_error,"fitness dimension was changed inside objfun_impl()");
-		}
-		// Actually do the increment only if we have fast incrementing capabilities in m_objfun_counter.
-		if (m_objfun_counter.is_increment_fast) {
-			++m_objfun_counter;
 		}
 		// Store the decision vector and the newly-calculated fitness in the front of the buffers.
 		m_decision_vector_cache_f.push_front(x);
@@ -498,6 +495,25 @@ void base::objfun(fitness_vector &f, const decision_vector &x) const
 		}
 		pagmo_assert(tmp_f_it == f_it);
 	}
+}
+
+
+
+/// cache the decision and fitness vectors for the individual 
+/**
+
+ **/
+bool base::cache_individual(const fitness_vector & f, const decision_vector & x) const
+{
+	typedef decision_vector_cache_type::iterator x_iterator;
+	const x_iterator x_it = std::find(m_decision_vector_cache_f.begin(),m_decision_vector_cache_f.end(),x);
+	if (x_it == m_decision_vector_cache_f.end()) 
+	{
+	    m_decision_vector_cache_f.push_front(x);
+	    m_fitness_vector_cache.push_front(f);
+	    return true;
+	}
+	return false;
 }
 
 /// Compare fitness vectors.
@@ -543,7 +559,7 @@ bool base::compare_fitness_impl(const fitness_vector &v_f1, const fitness_vector
 	if (count1 > count2) {
 		return true;
 	} else if (count1 == count2) {
-		return std::accumulate(v_f1.begin(),v_f1.end(),0) < std::accumulate(v_f2.begin(),v_f2.end(),0);
+		return std::accumulate(v_f1.begin(),v_f1.end(),0.) < std::accumulate(v_f2.begin(),v_f2.end(),0.);
 	} else {
 		return false;
 	}
@@ -593,15 +609,10 @@ std::string base::human_readable_extra() const
 /// Equality operator.
 /**
  * The following conditions will be tested, in order:
- * - problems are of the same type,
- * - problems have the same global, integer and constraints dimension,
- * - lower and upper bounds are equal,
+ * - return value of is_compatible(),
  * - return value of equality_operator_extra().
  *
  * If any of the conditions above is false, then the return value will also be false. Otherwise return value will be true.
- *
- * It is expected that, barring problems implying some form of stochasticity, two equal problems will produce the same fitness and constraint
- * vectors, given the same decision vector.
  *
  * @param[in] p problem::base to which this will be compared.
  *
@@ -609,16 +620,8 @@ std::string base::human_readable_extra() const
  */
 bool base::operator==(const base &p) const
 {
-	const size_type size = get_dimension();
-	if (typeid(*this) != typeid(p) || size != p.get_dimension() || m_i_dimension != p.m_i_dimension || m_f_dimension != p.m_f_dimension ||
-		m_c_dimension != p.m_c_dimension || m_ic_dimension != p.m_ic_dimension)
-	{
+	if (!is_compatible(p)) {
 		return false;
-	}
-	for (size_t i = 0; i < size; ++i) {
-		if (m_lb[i] != p.m_lb[i] || m_ub[i] != p.m_ub[i]) {
-			return false;
-		}
 	}
 	return equality_operator_extra(p);
 }
@@ -633,8 +636,7 @@ bool base::operator==(const base &p) const
  *
  * The following conditions will be tested, in order:
  * - problems are of the same type,
- * - problems have the same global, integer and constraints dimension,
- * - return value of is_compatible_extra().
+ * - problems have the same global, integer and constraints dimension.
  *
  * If any of the conditions above is false, then the return value will also be false. Otherwise return value will be true.
  *
@@ -649,20 +651,7 @@ bool base::is_compatible(const base &p) const
 	{
 		return false;
 	}
-	return is_compatible_extra(p);
-}
-
-/// Extra requirements for compatibility.
-/**
- * Default implementation will return the output of equality_operator_extra().
- *
- * @param[in] p problem::base to which this will be compared.
- *
- * @return the output of equality_operator_extra().
- */
-bool base::is_compatible_extra(const base &p) const
-{
-	return equality_operator_extra(p);
+	return true;
 }
 
 /// Compare decision vectors.
@@ -982,9 +971,6 @@ bool base::compare_constraints_impl(const constraint_vector &c1, const constrain
 /**
  * Additional problem-specific equality testing. Default implementation returns true.
  *
- * <b>NOTE</b>: this method will be called concurrently during evolution in archipelago from multiple island objects. This implies that
- * this method must never write anything into the problem object.
- *
  * @param[in] p problem::base to which this will be compared.
  *
  * @return true if p satisfies the additional equality testing, false otherwise.
@@ -1038,20 +1024,6 @@ bool base::verify_x(const decision_vector &x) const
 	return true;
 }
 
-/// Problem's blocking property.
-/**
- * Return true if the problem blocks the asynchronous evolution of an island/archipelago, false otherwise.
- * A blocking problem won't allow the flow of the program to continue before evolution in an island/archipelago has finished.
- * This property is used in Python problems.
- * Default implementation returns false.
- *
- * @return true if the problem is blocking, false otherwise.
- */
-bool base::is_blocking() const
-{
-	return false;
-}
-
 // This function will round to the nearest integer the upper/lower bounds of the integer part of the problem.
 // This should be called each time bounds are set.
 void base::normalise_bounds()
@@ -1059,6 +1031,23 @@ void base::normalise_bounds()
 	pagmo_assert(m_lb.size() >= m_i_dimension);
 	// Flag to be set if we had to fix the bounds.
 	bool bounds_fixed = false;
+	for (size_type i = 0; i < m_lb.size() - m_i_dimension; ++i) {
+		// Handle NaNs: if either lower/upper bound(s) are NaN, replace with 0 and 1 respectively.
+		if (boost::math::isnan(m_lb[i]) || boost::math::isnan(m_ub[i])) {
+			m_lb[i] = 0;
+			m_ub[i] = 1;
+			bounds_fixed = true;
+		}
+		// +-Infs are replaced by the highest/lowest values representable by double.
+		if (boost::math::isinf(m_lb[i])) {
+			m_lb[i] = (m_lb[i] > 0) ? boost::numeric::bounds<double>::highest() : boost::numeric::bounds<double>::lowest();
+			bounds_fixed = true;
+		}
+		if (boost::math::isinf(m_ub[i])) {
+			m_ub[i] = (m_ub[i] > 0) ? boost::numeric::bounds<double>::highest() : boost::numeric::bounds<double>::lowest();
+			bounds_fixed = true;
+		}
+	}
 	for (size_type i = m_lb.size() - m_i_dimension; i < m_lb.size(); ++i) {
 		// First let's make sure that integer bounds are in the allowed range.
 		if (m_lb[i] < INT_MIN) {
@@ -1088,7 +1077,7 @@ void base::normalise_bounds()
 		}
 	}
 	if (bounds_fixed) {
-		pagmo_throw(value_error,"the integer bounds were either over/under-flowing or they were not integer, and they had to be adjusted");
+		pagmo_throw(value_error,"problem bounds were invalid and had to be fixed");
 	}
 }
 
@@ -1107,20 +1096,6 @@ std::ostream &operator<<(std::ostream &s, const base &p)
 	return s;
 }
 
-/// Return the total number of calls to the objective function.
-/**
- * The number is a static global variable that gets incremented each time base::objfun() is called.
- *
- * @return total number of objective function calls in all implemented problems.
- */
-std::size_t objfun_calls()
-{
-	if (!base::m_objfun_counter.is_increment_fast) {
-		pagmo_throw(not_implemented_error,"fast atomic counters are not available in this version of PaGMO");
-	}
-	return (base::m_objfun_counter).get_value();
-}
-
 /// Sets the sparsity pattern of the gradient
 /**
  * Some solvers can make use of the sparsity of the gradient matrix \f$ \mathbf G \f$. This is a matrix defined as
@@ -1134,7 +1109,7 @@ std::size_t objfun_calls()
  * is used.
  *
  * The reimplementation may call estimate_sparsity() to obtain a numerical estimate for
- * the sparsity pattern (CAUTION: this is not guaranteed to be always correct)
+ * the sparsity pattern (CAUTION: this is not guaranteed to be always correct).
  *
  * The matrix \f$ \mathbf G \f$ needs to be represented as a sparse matrix so that if \f$ G_{ij} \neq 0 \f$
  * iGfun[l] = i, jGvar[l] = j.
@@ -1145,10 +1120,10 @@ void base::set_sparsity(int &lenG, std::vector<int> &iGfun, std::vector<int> &jG
 	(void)lenG;
 	(void)iGfun;
 	(void)jGvar;
-	pagmo_throw(not_implemented_error,"Sparsity is not implemented for this problem!!");
+	pagmo_throw(not_implemented_error,"sparsity is not implemented for this problem");
 }
 
-/// Tries to evaluate the sparsity pattern of the problem
+/// Heuristics to estimate the sparsity pattern of the problem
 /**
  * An alternative to reimplementing the base::set_pattern() method, one could let pagmo estimate
  * the sparsity structure of a given problem. The numerical procedure starts from a point \f$ \mathbf x_0 \f$
@@ -1163,7 +1138,7 @@ void base::set_sparsity(int &lenG, std::vector<int> &iGfun, std::vector<int> &jG
 void base::estimate_sparsity(const decision_vector &x0, int& lenG, std::vector<int>& iGfun, std::vector<int>& jGvar) const {
 	// We check that the user is providing a decision vector that is of the required length
 	if (!verify_x(x0)) {
-		pagmo_throw(value_error,"Cannot estimate pattern from this decision vector: not compatible with problem");
+		pagmo_throw(value_error,"cannot estimate pattern from this decision vector: not compatible with problem");
 	}
 	size_type Dc = m_lb.size() - m_i_dimension;
 	fitness_vector f0(m_f_dimension),f_new(m_f_dimension);
@@ -1178,7 +1153,7 @@ void base::estimate_sparsity(const decision_vector &x0, int& lenG, std::vector<i
 		//we perturb the component of x0 only if ub>lb, if ub=lb the variable is assumed
 		//to be 'just' a parameter ... in some problem implementations this is rather
 		//useful, but it also requires that the algorithm treat those variables accordingly (i.e.
-		//it does not allow a them to be outside the box bounds)
+		//it does not allow them to be outside the box bounds)
 		if (m_ub[j] == m_lb[j]) continue;
 		x_new[j] = x0[j] +  std::max(std::fabs(x0[j]), 1.0) * 1e-8;
 		objfun(f_new,x_new);
@@ -1196,10 +1171,79 @@ void base::estimate_sparsity(const decision_vector &x0, int& lenG, std::vector<i
 
 }
 
-/// Reset to zero the total number of calls to the objective function.
-void reset_objfun_calls()
+/// Heuristics to estimate the sparsity pattern of the problem
+/**
+ * An alternative to reimplementing the base::set_pattern() method, one can let pagmo estimate
+ * the sparsity structure of a given problem. This numerical procedure starts from a random point \f$ \mathbf x_0 \f$
+ * provided by the user and perturbs \f$ x_j \f$ globally within the bounds as to detect a change in \f$ F_i \f$
+ * in which case sets(i,j) as a non zero element.
+ * You should use this procedure with caution, it is always better to manually code the sparsity pattern
+ * in set_pattern(). The procedure costs function evaluations and is not guaranteed to give
+ * a correct result. The function intended use is in the reimplementation of set_sparsity, thuse its protected attribute
+ */
+void base::estimate_sparsity(int& lenG, std::vector<int>& iGfun, std::vector<int>& jGvar) const {
+
+	size_type Dc = m_lb.size() - m_i_dimension;
+	fitness_vector f0(m_f_dimension),f_new(m_f_dimension);
+	decision_vector x0(Dc);
+	// Double precision random number generator.
+	rng_double drng(rng_generator::get<rng_double>());
+
+	for (decision_vector::size_type i = 0; i<Dc;++i) {
+		x0[i] = boost::uniform_real<double>(m_lb[i],m_ub[i])(drng);
+	}
+
+	objfun(f0,x0);
+	constraint_vector c0(m_c_dimension),c_new(m_c_dimension);
+	compute_constraints(c0,x0);
+	decision_vector x_new = x0;
+	iGfun.resize(0);jGvar.resize(0); lenG=0;
+
+	for (decision_vector::size_type j=0;j<Dc;++j)
+	{
+		//we perturb the component of x0 only if ub>lb, if ub=lb the variable is assumed
+		//to be 'just' a parameter ... in some problem implementations this is rather
+		//useful, but it also requires that the algorithm treat those variables accordingly (i.e.
+		//it does not allow them to go outside the box bounds)
+		if (m_ub[j] == m_lb[j]) continue;
+		x_new[j] = boost::uniform_real<double>(m_lb[j],m_ub[j])(drng);
+		objfun(f_new,x_new);
+		compute_constraints(c_new,x_new);
+		for (fitness_vector::size_type i=0;i<m_f_dimension;++i)
+		{
+			if (f_new[i]!=f0[i]) {iGfun.push_back(i); jGvar.push_back(j); lenG++;}
+		}
+		for (constraint_vector::size_type i=0;i<m_c_dimension;++i)
+		{
+			if (c_new[i]!=c0[i]) {iGfun.push_back(i+m_f_dimension); jGvar.push_back(j); lenG++;}
+		}
+		x_new[j] = x0[j];
+	}
+
+}
+
+/// Pre-evolution hook.
+/**
+ * This method will be called by the island objects before every optimisation run, and can be used to alter the island's population before evolution takes place.
+ * Default implementation will do nothing.
+ *
+ * @param[in,out] pop pagmo::population belonging to the island calling this method.
+ */
+void base::pre_evolution(population &pop) const
 {
-	base::m_objfun_counter = atomic_counter_size_t();
+	(void)pop;
+}
+
+/// Post-evolution hook.
+/**
+ * This method will be called by the island objects after every optimisation run, and can be used to alter the island's population after evolution took place.
+ * Default implementation will do nothing.
+ *
+ * @param[in,out] pop pagmo::population belonging to the island calling this method.
+ */
+void base::post_evolution(population &pop) const
+{
+	(void)pop;
 }
 
 }} //namespaces

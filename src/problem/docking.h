@@ -68,13 +68,14 @@ namespace pagmo
 	    cuda_problem(ann_->get_number_of_weights()),
 		ann(ann_),
 		integrator_task(stepper),
+		random_starting_positions(random_positions),
 		fitness_task(fitt),
 		max_thrust(max_thr),
 		max_docking_time(max_time),	
 		inf(inf_),
-		random_starting_positions(random_positions),
 		pre_evolution_strategy(in_pre_evo_strat),
-		initialized(false)
+		initialized(false), 
+		pre_evolve(true)
 		{						
 		    set_lb(	std::vector<double> (ann->get_number_of_weights(), -10.0) );
 		    set_ub(	std::vector<double> (ann->get_number_of_weights(),  10.0) );
@@ -178,6 +179,29 @@ namespace pagmo
 		initialized = true;
 
 		generate_starting_positions();
+	    }
+
+
+	    mutable bool pre_evolve;
+	    void pre_evolution(population &pop) const 
+	    {	
+		//initialize_tasks();
+		if(pre_evolve) 
+		{
+		    pre_evolve = false;
+		    random_start.clear();
+		}
+		// Change the starting positions to random numbers (given by random_starting_positions number)	
+		/// we do not want to change the position every pre_evolve!
+		if( random_start.size() == random_starting_positions ) {
+		    return;
+		} 
+	
+		/*for (size_t i=0; i < pop.size(); ++i) 
+		{
+		    pop[i] = individual(*this, pop[i].get_decision_vector(), pop[i].get_velocity());
+		}
+		std::cout << " done!  " << std::endl;*/
 	    }
 	    
 	    
@@ -455,6 +479,7 @@ namespace pagmo
 		    std::transform(dv.begin(), dv.end(), indiv.cur_x.begin(), dv.begin(),std::minus<double>());
 		    pop.set_v(s, dv);
 
+
 		    std::vector<fty> out;
 		    fty result = 0; 
 		    std::cout<<"results"<<std::endl;
@@ -477,7 +502,11 @@ namespace pagmo
 		    }
 
 		    indiv.cur_f[0] = result;
-		    if ( first || base::compare_fitness(indiv.cur_f, this->max_fit)) {
+
+		    base::cache_individual(indiv.cur_f, d);
+
+		    if ( first || base::compare_fitness(indiv.cur_f, this->max_fit)) 
+		    {
 			this->max_fit = indiv.cur_f;
 			this->max_dec = indiv.cur_x;
 			first = false;

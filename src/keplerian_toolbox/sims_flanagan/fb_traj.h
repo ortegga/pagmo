@@ -25,11 +25,18 @@
 #ifndef FB_TRAJ_H
 #define FB_TRAJ_H
 
-#include<vector>
-#include"leg.h"
-#include"../planet.h"
-#include"sc_state.h"
+#include <functional>
+#include <vector>
+
+#include "leg.h"
+#include "../planet.h"
+#include "sc_state.h"
 #include "../exceptions.h"
+#include "spacecraft.h"
+
+// Serialization code
+#include "../serialization.h"
+// Serialization code (END)
 
 namespace kep_toolbox { namespace sims_flanagan{
 
@@ -60,11 +67,13 @@ class fb_traj
 public:
 	/** @name Constructors*/
 	//@{
-	fb_traj(const std::vector<planet*>& sequence, const std::vector<int>& n_seg, const spacecraft &sc_);
-	fb_traj(const std::vector<planet*>& sequence, const std::vector<int>& n_seg, const double &mass_, const double &thrust_, const double &isp_);
-	fb_traj(const std::vector<planet*>& sequence, const unsigned int& n_seg, const spacecraft &sc_);
-	fb_traj(const std::vector<planet*>& sequence, const unsigned int& n_seg, const double &mass_, const double &thrust_, const double &isp_);
-	fb_traj() {}
+	fb_traj(const std::vector<planet_ptr>& sequence, const std::vector<int>& n_seg, const spacecraft &sc_);
+	fb_traj(const std::vector<planet_ptr>& sequence, const std::vector<int>& n_seg, const double &mass_, const double &thrust_, const double &isp_);
+	fb_traj(const std::vector<planet_ptr>& sequence, const unsigned int& n_seg, const spacecraft &sc_);
+	fb_traj(const std::vector<planet_ptr>& sequence, const unsigned int& n_seg, const double &mass_, const double &thrust_, const double &isp_);
+	fb_traj():total_n_seg(0) {}
+	fb_traj(const fb_traj &);
+	fb_traj &operator=(const fb_traj &);
 	//@}
 
 
@@ -88,7 +97,7 @@ public:
 	/// Sets the trajectory flight plan from a full_vector
 	/**
 	     * Sets the trajectory flight plan from a full_vector. The function essentially loads into the object
-	     * fb_traj the unstructured information contained in a full_vector and calculates all te different
+	     * fb_traj the unstructured information contained in a full_vector and calculates all the different
 	     * constraints related to such a vector storing them in the class private members
 	     *
 	     * \param[in] x Full-vector encoding the trajectory flight-plan. (check full_vector for the encoding rules)
@@ -103,11 +112,9 @@ public:
 		}
 
 		array3D start_pos, start_vel, end_pos, end_vel;
-		planets[0]->get_eph(coding.leg_start_epoch(0, b), end_pos, end_vel);
 		for(int i = 0; i < n; i++){
-			start_pos = end_pos;
-			start_vel = end_vel;
-			planets[i + 1]->get_eph(coding.leg_end_epoch(i, b), end_pos, end_vel);
+		        planets[i]->get_eph(coding.leg_start_epoch(i, b), start_pos, start_vel);		
+		        planets[i + 1]->get_eph(coding.leg_end_epoch(i, b), end_pos, end_vel);
 
 			legs[i].set_t_i(coding.leg_start_epoch(i, b));
 			array3D dv = coding.leg_start_velocity(i, b);
@@ -175,7 +182,7 @@ public:
 	//@}
 private:
 	std::vector<leg> legs;
-	std::vector<planet*> planets;
+	std::vector<planet_ptr> planets;
 
 	//This is here only for efficiency purposes
 	unsigned int total_n_seg;
@@ -196,7 +203,16 @@ private:
 	     *
 	     */
 
-
+// Serialization code
+        friend class boost::serialization::access;
+	template <class Archive>
+	void serialize(Archive &ar, const unsigned int)
+	{
+		ar & legs;
+		ar & planets;
+		ar & total_n_seg;
+        }
+// Serialization code (END)
 };
 
 std::ostream &operator<<(std::ostream &s, const fb_traj &in );

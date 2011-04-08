@@ -139,6 +139,7 @@ namespace cuda
     {
 	os <<"Device ("<<dev.m_id<<") - "<<dev.m_prop.name<<std::endl;
 
+
 	os<<"clock: "<<(dev.m_prop.clockRate/1000)<<"MHz x "<<dev.m_prop.multiProcessorCount<<" multiprocessors"<<std::endl;
 	os<<"memory: "
 	  <<(dev.m_prop.totalGlobalMem>>20)<<"MB(global) "

@@ -37,6 +37,12 @@ namespace cuda
 {
     class timer;
 
+
+    ///times_keeper class
+/*
+  Singleton class thats used by the scoped_timer class to save time
+  used
+ */
     class times_keeper 
     {
     public:
@@ -50,6 +56,10 @@ namespace cuda
 	static boost::shared_ptr<times_keeper> m_ptr;
     };
 
+    /// timer class
+    /*
+      uses cuda events to record time elapsed
+     */
     class timer
     {
     public: 
@@ -71,6 +81,10 @@ namespace cuda
 
     };
 
+    /// scoped_timer
+    /*
+      log on destroy timer
+     */
     class scoped_timer : public timer
     {
     public:
