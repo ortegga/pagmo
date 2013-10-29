@@ -28,7 +28,7 @@
 #include <numeric>
 #include <cmath>
 
-#include "mga_incipit_cstrs.h"
+#include "mga_incipit_cstrs_wrapped.h"
 #include "../keplerian_toolbox/keplerian_toolbox.h"
 
 namespace pagmo { namespace problem {
@@ -49,13 +49,13 @@ namespace pagmo { namespace problem {
  * @throws value_error if the planets in seq do not all have the same central body gravitational constant
  * @throws value_error if tof has a size different from seq.size()
  */
-mga_incipit_cstrs::mga_incipit_cstrs(
+mga_incipit_cstrs_wrapped::mga_incipit_cstrs_wrapped(
 			 const std::vector<kep_toolbox::planet_ptr> seq,
 			 const kep_toolbox::epoch t0_l,
 			 const kep_toolbox::epoch t0_u,
 			 const std::vector<std::vector<double> > tof,
 			 double Tmax,
-			 double Dmin) : base(4*seq.size(),0,1,2,2,1E-3), m_tof(tof), m_tmax(Tmax), m_dmin(Dmin)
+			 double Dmin) : base(4+5*(seq.size()-1),0,1,2,2,1E-3), m_tof(tof), m_tmax(Tmax), m_dmin(Dmin)
 {
 	// We check that all planets have equal central body
 	std::vector<double> mus(seq.size());
@@ -79,32 +79,33 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 	}
 	
 	// Now setting the problem bounds
-	size_type dim(4*m_tof.size());
+	size_type dim(4+5*(m_tof.size()-1));
 	decision_vector lb(dim), ub(dim);
 	
 	// First leg
-	lb[0] = t0_l.mjd2000(); ub[0] = t0_u.mjd2000();
-	lb[1] = 0; lb[2] = 0; ub[1] = 1; ub[2] = 1;
-	lb[3] = m_tof[0][0]; ub[3] = m_tof[0][1];
+	lb[0] = t0_l.mjd2000(); ub[0] = t0_u.mjd2000(); // t0
+	lb[1] = 0; lb[2] = 0; ub[1] = 1; ub[2] = 1; // u, v
+	lb[3] = m_tof[0][0]; ub[3] = m_tof[0][1]; // T0
 	
 	// Successive legs
-	for (std::vector<kep_toolbox::planet>::size_type i = 1; i < m_tof.size(); ++i) {
-		lb[4*i] = - 2 * boost::math::constants::pi<double>();    ub[4*i] = 2 * boost::math::constants::pi<double>();
-		lb[4*i+1] = 1.1;  ub[4*i+1] = 30;
-		lb[4*i+2] = 1e-5; ub[4*i+2] = 1-1e-5;
-		lb[4*i+3] = m_tof[i][0]; ub[4*i+3] = m_tof[i][1];
+	for (std::vector<kep_toolbox::planet>::size_type i = 0; i < m_tof.size()-1; ++i) {
+	  lb[4+5*i]   = -1; ub[4+5*i]   = 1; // sin(beta1) ...
+	  lb[4+5*i+1] = -1; ub[4+5*i+1] = 1; // cos(beta1) ...
+	  lb[4+5*i+2] = 1.1; ub[4+5*i+2] = 30; // rp1/rP1 ...
+	  lb[4+5*i+3] = 1e-5; ub[4+5*i+3] = 1-1e-5; // eta1 .. etan-1
+	  lb[4+5*i+4] = m_tof[i+1][0]; ub[4+5*i+4] = m_tof[i+1][1]; //T1 .. Tn-1
 	}
 	
 	// Adjusting the minimum and maximum allowed fly-by rp to the one defined in the kep_toolbox::planet class
 	for (std::vector<kep_toolbox::planet>::size_type i = 0; i < m_tof.size()-1; ++i) {
-		lb[4*i+5] = m_seq[i]->get_safe_radius() / m_seq[i]->get_radius();
-		ub[4*i+5] = (m_seq[i]->get_radius() + 2000000) / m_seq[i]->get_radius(); //from gtoc6 problem description
+	  lb[4+5*i+2] = m_seq[i]->get_safe_radius() / m_seq[i]->get_radius();
+	  ub[4+5*i+2] = (m_seq[i]->get_radius() + 2000000) / m_seq[i]->get_radius(); //from gtoc6 problem description
 	}
 	set_bounds(lb,ub);
 }
 
 /// Copy Constructor. Performs a deep copy
-mga_incipit_cstrs::mga_incipit_cstrs(const mga_incipit_cstrs &p) :
+mga_incipit_cstrs_wrapped::mga_incipit_cstrs_wrapped(const mga_incipit_cstrs_wrapped &p) :
 	 base(p.get_dimension(),p.get_i_dimension(),p.get_f_dimension(),p.get_c_dimension(),p.get_ic_dimension(),p.get_c_tol()),
 	 m_tof(p.m_tof),
 	 m_tmax(p.m_tmax),
@@ -117,21 +118,22 @@ mga_incipit_cstrs::mga_incipit_cstrs(const mga_incipit_cstrs &p) :
 }
 
 /// Clone method.
-base_ptr mga_incipit_cstrs::clone() const
+base_ptr mga_incipit_cstrs_wrapped::clone() const
 {
-	return base_ptr(new mga_incipit_cstrs(*this));
+	return base_ptr(new mga_incipit_cstrs_wrapped(*this));
 }
 
 /// Implementation of the objective function.
-void mga_incipit_cstrs::objfun_impl(fitness_vector &f, const decision_vector &x) const
+void mga_incipit_cstrs_wrapped::objfun_impl(fitness_vector &f, const decision_vector &x) const
 {
 try {
 	double common_mu = m_seq[0]->get_mu_central_body();
 	// 1 -  we 'decode' the chromosome recording the various times of flight (days) in the list T
 	std::vector<double> T(m_seq.size(),0.0);
 	
-	for (size_t i = 0; i<m_seq.size(); ++i) {
-		T[i] = x[4*i+3];
+	T[0] = x[3];
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
+		T[i+1] = x[4+5*i+4];
 	}
 	// 2 - We compute the epochs and ephemerides of the planetary encounters
 	std::vector<kep_toolbox::epoch>   t_P(m_seq.size());
@@ -157,21 +159,23 @@ try {
 	
 	// 4 - And we proceed with each successive leg (if any)
 	kep_toolbox::array3D v_out;
-	for (size_t i = 1; i<m_seq.size(); ++i) {
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
 		// Fly-by
-		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i-1], x[4*i+1] * m_seq[i-1]->get_radius(), x[4*i], m_seq[i-1]->get_mu_self());
-		r = r_P[i-1];
+	        double _x = x[4+5*i]; double _y = x[4+5*i+1];
+	        double beta = atan2(_x*sqrt(1-.5*_y*_y), _y*sqrt(1-.5*_x*_x));
+		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i], x[4+5*i+2] * m_seq[i]->get_radius(), beta, m_seq[i]->get_mu_self());
+		r = r_P[i];
 		v = v_out;
 		// s/c propagation before the DSM
-		kep_toolbox::propagate_lagrangian(r,v,x[4*i+2]*T[i]*ASTRO_DAY2SEC,common_mu);
-		kep_toolbox::closest_distance(d, ra, r_P[i-1], v_out, r, v, common_mu);
+		kep_toolbox::propagate_lagrangian(r,v,x[4+5*i+3]*T[i+1]*ASTRO_DAY2SEC,common_mu);
+		kep_toolbox::closest_distance(d, ra, r_P[i], v_out, r, v, common_mu);
 
 		// Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
-		double dt = (1-x[4*i+2])*T[i]*ASTRO_DAY2SEC;
-		kep_toolbox::lambert_problem l2(r,r_P[i],dt,common_mu,false,false);
+		double dt = (1-x[4+5*i+3])*T[i+1]*ASTRO_DAY2SEC;
+		kep_toolbox::lambert_problem l2(r,r_P[i+1],dt,common_mu,false,false);
 		v_end_l = l2.get_v2()[0];
 		v_beg_l = l2.get_v1()[0];
-		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i], v_end_l, common_mu);
+		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i+1], v_end_l, common_mu);
 		if (d < d2)
 		{
 			d = d/ASTRO_JR;
@@ -181,7 +185,7 @@ try {
 
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
+		DV[i+1] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
 	}
 	// Now we return the objective(s) function
 	f[0] = std::accumulate(DV.begin(),DV.end(),0.0); 
@@ -192,15 +196,16 @@ try {
 }
 
 /// Implementation of the objective function.
-void mga_incipit_cstrs::compute_constraints_impl(constraint_vector &c, const decision_vector &x) const
+void mga_incipit_cstrs_wrapped::compute_constraints_impl(constraint_vector &c, const decision_vector &x) const
 {
 try {
 	double common_mu = m_seq[0]->get_mu_central_body();
 	// 1 -  we 'decode' the chromosome recording the various times of flight (days) in the list T
 	std::vector<double> T(m_seq.size(),0.0);
 
-	for (size_t i = 0; i<m_seq.size(); ++i) {
-		T[i] = x[4*i+3];
+	T[0] = x[3];
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
+		T[i+1] = x[4+5*i+4];
 	}
 	// 2 - We compute the epochs and ephemerides of the planetary encounters
 	std::vector<kep_toolbox::epoch>   t_P(m_seq.size());
@@ -226,21 +231,23 @@ try {
 
 	// 4 - And we proceed with each successive leg (if any)
 	kep_toolbox::array3D v_out;
-	for (size_t i = 1; i<m_seq.size(); ++i) {
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
 		// Fly-by
-		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i-1], x[4*i+1] * m_seq[i-1]->get_radius(), x[4*i], m_seq[i-1]->get_mu_self());
-		r = r_P[i-1];
+	        double _x = x[4+5*i]; double _y = x[4+5*i+1];
+	        double beta = atan2(_x*sqrt(1-.5*_y*_y), _y*sqrt(1-.5*_x*_x));
+		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i], x[4+5*i+2] * m_seq[i]->get_radius(), beta, m_seq[i]->get_mu_self());
+		r = r_P[i];
 		v = v_out;
 		// s/c propagation before the DSM
-		kep_toolbox::propagate_lagrangian(r,v,x[4*i+2]*T[i]*ASTRO_DAY2SEC,common_mu);
-		kep_toolbox::closest_distance(d, ra, r_P[i-1], v_out, r, v, common_mu);
+		kep_toolbox::propagate_lagrangian(r,v,x[4+5*i+3]*T[i+1]*ASTRO_DAY2SEC,common_mu);
+		kep_toolbox::closest_distance(d, ra, r_P[i], v_out, r, v, common_mu);
 
 		// Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
-		double dt = (1-x[4*i+2])*T[i]*ASTRO_DAY2SEC;
-		kep_toolbox::lambert_problem l2(r,r_P[i],dt,common_mu,false,false);
+		double dt = (1-x[4+5*i+3])*T[i+1]*ASTRO_DAY2SEC;
+		kep_toolbox::lambert_problem l2(r,r_P[i+1],dt,common_mu,false,false);
 		v_end_l = l2.get_v2()[0];
 		v_beg_l = l2.get_v1()[0];
-		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i], v_end_l, common_mu);
+		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i+1], v_end_l, common_mu);
 		if (d < d2)
 		{
 			d = d/ASTRO_JR;
@@ -250,8 +257,9 @@ try {
 
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
+		DV[i+1] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
 	}
+
 	// Now we return the constraints
 	c[0] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
 	c[1] = m_dmin - d;
@@ -272,7 +280,7 @@ try {
  * \returns an std::string with launch dates, DV magnitues and other information on the trajectory
  */
 
-std::string mga_incipit_cstrs::pretty(const std::vector<double> &x) const {
+std::string mga_incipit_cstrs_wrapped::pretty(const std::vector<double> &x) const {
   
 	// We set the std output format
 	std::ostringstream s;
@@ -285,8 +293,9 @@ std::string mga_incipit_cstrs::pretty(const std::vector<double> &x) const {
 	// 1 -  we 'decode' the chromosome recording the various times of flight (days) in the list T
 	std::vector<double> T(m_seq.size(),0.0);
 	
-	for (size_t i = 0; i<m_seq.size(); ++i) {
-		T[i] = x[4*i+3];
+	T[0] = x[3];
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
+		T[i+1] = x[4+5*i+4];
 	}
 	// 2 - We compute the epochs and ephemerides of the planetary encounters
 	std::vector<kep_toolbox::epoch>   t_P(m_seq.size());
@@ -321,50 +330,51 @@ std::string mga_incipit_cstrs::pretty(const std::vector<double> &x) const {
 	s << "\tClosest distance: " << d / ASTRO_JR;
 	
 	// 4 - And we proceed with each successive leg (if any)
-	for (size_t i = 1; i<m_seq.size(); ++i) {
+	for (size_t i = 0; i<m_seq.size()-1; ++i) {
 		// Fly-by
-		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i-1], x[4*i+1] * m_seq[i-1]->get_radius(), x[4*i], m_seq[i-1]->get_mu_self());
-		// s/c propagation before the DSM
-		r = r_P[i-1];
+	        double _x = x[4+5*i]; double _y = x[4+5*i+1];
+	        double beta = atan2(_x*sqrt(1-.5*_y*_y), _y*sqrt(1-.5*_x*_x));
+		kep_toolbox::fb_prop(v_out, v_end_l, v_P[i], x[4+5*i+2] * m_seq[i]->get_radius(), beta, m_seq[i]->get_mu_self());
+		r = r_P[i];
 		v = v_out;
+		// s/c propagation before the DSM
 		mem_vout = v_out;
 		mem_vin = v_end_l;
-		mem_vP = v_P[i-1];
-		
-		kep_toolbox::propagate_lagrangian(r,v,x[4*i+2]*T[i]*ASTRO_DAY2SEC,common_mu);
-		kep_toolbox::closest_distance(d, ra, r_P[i-1], v_out, r, v, common_mu);
-		
+		mem_vP = v_P[i];
+
+		kep_toolbox::propagate_lagrangian(r,v,x[4+5*i+3]*T[i+1]*ASTRO_DAY2SEC,common_mu);
+		kep_toolbox::closest_distance(d, ra, r_P[i], v_out, r, v, common_mu);
+
 		// Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
-		double dt = (1-x[4*i+2])*T[i]*ASTRO_DAY2SEC;
-		kep_toolbox::lambert_problem l2(r,r_P[i],dt,common_mu,false,false);
+		double dt = (1-x[4+5*i+3])*T[i+1]*ASTRO_DAY2SEC;
+		kep_toolbox::lambert_problem l2(r,r_P[i+1],dt,common_mu,false,false);
 		v_end_l = l2.get_v2()[0];
 		v_beg_l = l2.get_v1()[0];
-		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i], v_end_l, common_mu);
-		
+		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i+1], v_end_l, common_mu);
 		if (d < d2)
 		{
 			d = d/ASTRO_JR;
-			ra = ra/ASTRO_JR;
 		} else {
 			d = d2/ASTRO_JR;
-			ra = ra2/ASTRO_JR;
 		}
+
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out);
-		s <<  "\nleg no. " << i+1 << ": " << m_seq[i-1]->get_name() << " to " << m_seq[i]->get_name() << std::endl; 
-		s <<  "\tDuration: (days)" << T[i] << std::endl; 
-		s <<  "\tFly-by epoch: " << t_P[i-1] << " (" << t_P[i-1].mjd2000() << " mjd2000) " << std::endl; 
-		s <<  "\tFly-by altitude (km): " << (x[4*i+1]*m_seq[i-1]->get_radius()-m_seq[i-1]->get_radius())/1000.0 << std::endl; 
-		s <<  "\tPlanet position (m): " << r_P[i-1] << std::endl; 
+		//DV[i] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
+		DV[i+1] = kep_toolbox::norm(v_out);
+		s <<  "\nleg no. " << i << ": " << m_seq[i]->get_name() << " to " << m_seq[i+1]->get_name() << std::endl; 
+		s <<  "\tDuration: (days)" << T[i+1] << std::endl; 
+		s <<  "\tFly-by epoch: " << t_P[i] << " (" << t_P[i].mjd2000() << " mjd2000) " << std::endl; 
+		s <<  "\tFly-by altitude (km): " << (x[4+5*i+2]*m_seq[i]->get_radius()-m_seq[i]->get_radius())/1000.0 << std::endl; 
+		s <<  "\tPlanet position (m): " << r_P[i] << std::endl; 
 		s <<  "\tPlanet velocity (m/s): " << mem_vP << std::endl; 
 		s <<  "\tV in (m/s): " << mem_vin << std::endl; 
 		s <<  "\tV out (m/s): " << mem_vout << std::endl << std::endl;
 
-		s <<  "\tbeta: " << x[4*i] << std::endl << std::endl;
+		s <<  "\tbeta: " << beta << std::endl << std::endl;
 
-		s <<  "\tDSM after (days): "  << x[4*i+2]*T[i] << std::endl; 
-		s <<  "\tDSM magnitude (m/s): " << DV[i] << std::endl; 
+		s <<  "\tDSM after (days): "  << x[4+5*i+3]*T[i+1] << std::endl; 
+		s <<  "\tDSM magnitude (m/s): " << DV[i+1] << std::endl; 
 		s <<  "\tClosest distance (JR): " << d << std::endl; 
 		s <<  "\tApoapsis at closest distance (JR): " << ra << std::endl; 
  	}
@@ -376,7 +386,7 @@ std::string mga_incipit_cstrs::pretty(const std::vector<double> &x) const {
 	s <<  "Total mission time (days): " << std::accumulate(T.begin(),T.end(),0.0) << std::endl; 
 	return s.str();
 }
-std::string mga_incipit_cstrs::get_name() const
+std::string mga_incipit_cstrs_wrapped::get_name() const
 {
 	return "MGA-INCIPIT (CAPTURE AT JUPITER) - Constrained version";
 }
@@ -386,7 +396,7 @@ std::string mga_incipit_cstrs::get_name() const
 /**
  * @return[out] vector of times of flight 
  */
-const std::vector<std::vector<double> >& mga_incipit_cstrs::get_tof() const {
+const std::vector<std::vector<double> >& mga_incipit_cstrs_wrapped::get_tof() const {
 	return m_tof;
 }
 
@@ -396,7 +406,7 @@ const std::vector<std::vector<double> >& mga_incipit_cstrs::get_tof() const {
  *
  * @param[in] tof vector of times of flight 
  */
-void mga_incipit_cstrs::set_tof(const std::vector<std::vector<double> >& tof) {
+void mga_incipit_cstrs_wrapped::set_tof(const std::vector<std::vector<double> >& tof) {
 	if (tof.size() != (m_seq.size())) {
 		pagmo_throw(value_error,"The time-of-flight vector (tof) has the wrong length");  
 	}
@@ -410,7 +420,7 @@ void mga_incipit_cstrs::set_tof(const std::vector<std::vector<double> >& tof) {
 /**
  * @return An std::vector containing the kep_toolbox::planets
  */
-std::vector<kep_toolbox::planet_ptr> mga_incipit_cstrs::get_sequence() const {
+std::vector<kep_toolbox::planet_ptr> mga_incipit_cstrs_wrapped::get_sequence() const {
 	return m_seq;
 }
 
@@ -419,7 +429,7 @@ std::vector<kep_toolbox::planet_ptr> mga_incipit_cstrs::get_sequence() const {
  * Will return a formatted string containing the values vector, the weights vectors and the max weight. It is concatenated
  * with the base::problem human_readable
  */
-std::string mga_incipit_cstrs::human_readable_extra() const
+std::string mga_incipit_cstrs_wrapped::human_readable_extra() const
 {
 	std::ostringstream oss;
 	oss << "\n\tSequence: ";
@@ -438,4 +448,4 @@ std::string mga_incipit_cstrs::human_readable_extra() const
 
 }} //namespaces
 
-BOOST_CLASS_EXPORT_IMPLEMENT(pagmo::problem::mga_incipit_cstrs)
+BOOST_CLASS_EXPORT_IMPLEMENT(pagmo::problem::mga_incipit_cstrs_wrapped)
