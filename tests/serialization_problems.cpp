@@ -146,6 +146,12 @@ int main()
 		probs_new.push_back(problem::cec2009(1%10 + 1, 17, true).clone());
 	}
 
+	//----- Test CEC2010 -----//
+	for(int i=1; i<=18; i++){
+		probs.push_back(problem::cec2010(i).clone());
+		probs_new.push_back(problem::cec2010(i%18 + 1).clone());
+	}
+
 	//----- Test meta-problems -----//
 	problem::zdt zdt1_before_transform1(1, dimension);
 	//----- shifted -----//

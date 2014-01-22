@@ -144,6 +144,11 @@ int main()
 		best_tests.push_back(make_struct(problem::cec2009(i, dimension, true).clone()));
 	}
 
+	//----- Test CEC2010 -----//
+	for(int i=1; i<=18; i++){
+		best_tests.push_back(make_struct(problem::cec2010(i).clone()));
+	}
+
 	//----- Test meta-problems -----//
 	problem::zdt zdt1_before_transform1(1, dimension);
 	//----- shifted -----//
@@ -621,3 +626,6 @@ std::vector<constraint_vector> get_cec2006_best_c(int id, int c_dimension){
 	}
 	return best_c;
 }
+
+
+

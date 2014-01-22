@@ -84,6 +84,7 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/zdt.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/cec2006.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/cec2009.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/problem/cec2010.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/cec2013.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/con2mo.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/problem/pressure_vessel.cpp

@@ -61,6 +61,7 @@
 #include "problem/zdt.h"
 #include "problem/cec2006.h"
 #include "problem/cec2009.h"
+#include "problem/cec2010.h"
 #include "problem/cec2013.h"
 #include "problem/con2mo.h"
 #include "problem/pressure_vessel.h"

@@ -32,6 +32,7 @@ using namespace pagmo;
 
 int main()
 {
+	
 	//We instantiate the problem Schwefel with diemnsion 50
 	pagmo::problem::schwefel prob(50);
 	//We instantiate the algorithm differential evolution with 500 generations
@@ -74,4 +75,5 @@ int main()
 	}
 	std::cout << "Evolve method of the archipelago (with migration): " << *std::min_element(temp.begin(),temp.end()) << std::endl; 
 	return 0;
+
 }
