@@ -36,10 +36,10 @@
 namespace pagmo { namespace algorithm {
 
 //! Typedef for decomposition weights
-typedef std::vector< double > decomp_weights;
+typedef std::vector< double > weights_type;
 
 //! Typedef for vector of decomposition weights
-typedef std::vector< single_weights > decomp_weights_vector;
+typedef std::vector< weights_type > weights_vector_type;
 
 /// Game Theory
 /**
@@ -57,24 +57,20 @@ typedef std::vector< single_weights > decomp_weights_vector;
 class __PAGMO_VISIBLE game_theory: public base
 {
   public:
-	/// Mechanism used to generate the weight vectors
-	enum weight_generation_type {
-		RANDOM,         ///< Weights are generated uniformly at random on the simplex 
-		GRID,           ///< Weight are generated on a uniform grid layed down on the simplex
-		LOW_DISCREPANCY ///< Weights are generated on the simplex with low-discrepancy
-	};
 	game_theory(
 		unsigned int gen = 10,
-		decomp_weights_vector weights = decomp_weights_vector(),
 		unsigned int max_parallelism = 1,
-		const pagmo::algorithm::base & = pagmo::algorithm::jde(100)
+		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
+		weights_vector_type var_weights = weights_vector_type(),
+		weights_vector_type obj_weights = weights_vector_type()
 	);
 	game_theory(const game_theory &);
 
 	base_ptr clone() const;
 	void evolve(population &) const;
 	std::string get_name() const;
-	decomp_weights_vector generate_weights(const unsigned int, const unsigned int) const;
+	weights_vector_type generate_var_weights(const unsigned int, const unsigned int) const;
+	weights_vector_type generate_obj_weights(const unsigned int, const unsigned int) const;
 
   protected:
 	std::string human_readable_extra() const;
@@ -86,15 +82,17 @@ class __PAGMO_VISIBLE game_theory: public base
 	{
 		ar & boost::serialization::base_object<base>(*this);
 		ar & const_cast<int &>(m_gen);
-		ar & m_weights;
 		ar & const_cast<unsigned int &>(m_threads);
 		ar & const_cast<base_ptr &>(m_solver);
+		ar & m_var_weights;
+		ar & m_obj_weights;
 	}
 	//Number of generations
 	const int m_gen;
-	decomp_weights_vector m_weights;
 	const unsigned int m_threads;
 	const base_ptr m_solver;
+	weights_vector_type m_var_weights;
+	weights_vector_type m_obj_weights;
 };
 
 }} //namespaces
