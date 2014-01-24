@@ -58,11 +58,11 @@ class __PAGMO_VISIBLE game_theory: public base
 {
   public:
 	game_theory(
-		unsigned int gen = 10,
+	        int gen = 10,
 		unsigned int max_parallelism = 1,
 		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
-		weights_vector_type var_weights = weights_vector_type(),
-		weights_vector_type obj_weights = weights_vector_type()
+		const weights_vector_type & = weights_vector_type(),
+		const weights_vector_type & = weights_vector_type()
 	);
 	game_theory(const game_theory &);
 

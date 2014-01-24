@@ -38,14 +38,10 @@
 #include "../archipelago.h"
 #include "../island.h"
 #include "../population.h"
-#include "../topology/fully_connected.h"
-#include "../topology/custom.h"
-#include "../topology/watts_strogatz.h"
+#include "../topology/unconnected.h"
 #include "../problem/decompose.h"
 #include "../util/discrepancy.h"
 #include "../util/neighbourhood.h"
-#include "../migration/worst_r_policy.h"
-#include "../migration/best_s_policy.h"
 #include "../types.h"
 #include "base.h"
 #include "game_theory.h"
@@ -68,8 +64,8 @@ namespace pagmo { namespace algorithm {
 game_theory::game_theory(int gen,
 	unsigned int threads,
 	const pagmo::algorithm::base & solver,
-	weights_vector_type var_weights,
-	weights_vector_type obj_weights)
+	const weights_vector_type &var_weights,
+	const weights_vector_type &obj_weights)
 	:base(),
 	 m_gen(gen),
 	 m_threads(threads),
@@ -79,11 +75,6 @@ game_theory::game_theory(int gen,
 {
 	if (gen < 0) {
 		pagmo_throw(value_error,"number of generations must be nonnegative");
-	}
-
-	//0 - Check whether method is implemented
-	if(m_weight_generation != RANDOM && m_weight_generation != GRID && m_weight_generation != LOW_DISCREPANCY) {
-		pagmo_throw(value_error,"non existing weight generation method");
 	}
 }
 
@@ -103,18 +94,61 @@ base_ptr game_theory::clone() const
 	return base_ptr(new game_theory(*this));
 }
 
+// Sum of two vectors
+template <typename T>
+std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b)
+{
+	assert(a.size() == b.size());
+
+	std::vector<T> result;
+	result.reserve(a.size());
+
+	std::transform(a.begin(), a.end(), b.begin(), 
+		std::back_inserter(result), std::plus<T>());
+	return result;
+}
+
+// Hadamard product of two vectors
+template <typename T>
+std::vector<T> had_of_vec(const std::vector<T>& a, const std::vector<T>& b)
+{
+	assert(a.size() == b.size());
+
+	std::vector<T> result;
+	result.reserve(a.size());
+
+	std::transform(a.begin(), a.end(), b.begin(), 
+		std::back_inserter(result), std::multiplies<T>());
+	return result;
+}
+
+// Inverse of a vector
+template <typename T>
+std::vector<T> inv_of_vec(const std::vector<T>& a)
+{
+	std::vector<T> b;
+	for( int i = 0; i < a.size(); ++i )
+		b.push_back(abs( a[i] - 1 ));
+	return b;
+}
+
+// Inverse of a single digit
+template <typename T>
+T inv_of_dig(const T a)
+{
+	return std::abs(a - 1);
+}
+
 /// Generates the decision variables weights
 /**
  * Generates the decision variables weights for linking decision
  * variables to objective sub populations.
  *
  * @param[in] n_x number of decision variables.
- * @param[in] n_o number of objective functions.
  * @param[in] n_p number of populations.
  */
 weights_vector_type game_theory::generate_var_weights(
-	const unsigned int n_x, const unsigned int n_o, 
-	const unsigned int n_p ) const {
+	const unsigned int n_x, const unsigned int n_p ) const {
 
 	// Definition of combined: two or more decision variables
 	// controlled by a single population.
@@ -123,7 +157,7 @@ weights_vector_type game_theory::generate_var_weights(
 	weights_vector_type var_weights;
 
 	// Number of decision variables to be combined. 
-	int n_c = n_o - n_p;
+	int n_c = n_x - n_p;
 
 	// Number of decision variables to be combined for a single
 	// occasion. No need to initialise, will differ per occasion.
@@ -133,7 +167,7 @@ weights_vector_type game_theory::generate_var_weights(
 	int k = 0;
 
 	// Run through the number of populations to fill obj_weights.
-	for( int i = 0; i < n_p; i++ ){
+	for( unsigned int i = 0; i < n_p; i++ ){
 		// Initialise with zero weights
 		weights_type weights(n_x, 0.0);
 
@@ -164,13 +198,11 @@ weights_vector_type game_theory::generate_var_weights(
 /**
  * Generates the weights used in the problem decomposition.
  *
- * @param[in] n_x number of decision variables.
  * @param[in] n_o number of objective functions.
  * @param[in] n_p number of populations.
  */
 weights_vector_type game_theory::generate_obj_weights(
-	const unsigned int n_x, const unsigned int n_o, 
-	const unsigned int n_p ) const {
+	const unsigned int n_o, const unsigned int n_p ) const {
 
 	// Definition of combined: two or more objective functions
 	// (through weighed decomposition) for a single population.
@@ -193,7 +225,7 @@ weights_vector_type game_theory::generate_obj_weights(
 	bool do_not_combine_first_obj = true;
 
 	// Run through the number of populations to fill obj_weights.
-	for( int i = 0; i < n_p; i++ ){
+	for( unsigned int i = 0; i < n_p; i++ ){
 		// Initialise with zero weights
 		weights_type weights(n_o, 0.0);
 
@@ -265,36 +297,42 @@ void game_theory::evolve(population &pop) const
 	}
 
 	// Number of populations.
-	const int NP = min( prob_objectives, prob_dimension );
+	const unsigned int NP = std::min( prob_objectives, prob_dimension );
 	
 	// Get out if there is nothing to do.
 	if (m_gen == 0) {
 		return;
 	}
-	
+
 	// Generate the default if vector of decision variable weights
 	// for linking to populations is empty.
-        if(m_prm_weight.empty()){
-		m_var_weights = generate_var_weights( prob_dimension, prob_objectives, NP );
+	weights_vector_type var_weights;
+        if(m_var_weights.empty()){
+		var_weights = generate_var_weights( prob_dimension, NP );
+	}else{
+		var_weights = m_var_weights;
 	}
-
+	
 	// Generate the default if vector of objectives weights for
 	// the decomposition is empty.
-        if(m_obj_weight.empty()){
-		m_obj_weights = generate_obj_weights( prob_dimension, prob_objectives, NP );
+	weights_vector_type obj_weights;
+        if(m_obj_weights.empty()){
+		obj_weights = generate_obj_weights( prob_objectives, NP );
+	}else{
+		obj_weights = m_obj_weights;
 	}
 
 	// More sanity checks
-	if ( m_var_weights.size() != NP ) {
+	if ( var_weights.size() != NP ) {
 		pagmo_throw(value_error, "The vector of variable weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( m_obj_weights.size() != NP ) {
+	if ( obj_weights.size() != NP ) {
 		pagmo_throw(value_error, "The vector of objective weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( m_var_weights[0].size() != prob_dimension ) {
+	if ( var_weights[0].size() != prob_dimension ) {
 		pagmo_throw(value_error, "The dimension of the variable weights do not match the problem. The dimension must be equal to the number of decision variables.");
 	}
-	if ( m_obj_weights[0].size() != prob_objectives ) {
+	if ( obj_weights[0].size() != prob_objectives ) {
 		pagmo_throw(value_error, "The dimension of the objective weights do not match the problem. The dimension must be equal to the number of objectives.");
 	}
 
@@ -304,35 +342,14 @@ void game_theory::evolve(population &pop) const
 		prob_vector.push_back(
 			new pagmo::problem::decompose( prob,
 				pagmo::problem::decompose::WEIGHTED, 
-				m_obj_weights[i]));       
+				obj_weights[i]));       
 	}
+
+	// Set unconnected topology, only using arch for parallel processing
+	topology::unconnected topo;
 	
-	// TODO LOOK UP WHERE THIS SHOULD GO
-	weights_type inverse_weight = abs( m_var_weights[i] - 1.0 );
-
-	// Define best decision vector for fixed variables
-	std::vector< double > best_vector;
-	for( problem::base::f_size_type i = 0; i<NP; i++ ) {
-		best_vector = best_vector + 
-			prob_vector[i].best_x * m_var_weights[i];	
-	}
-
-	for( problem::base::f_size_type i = 0; i<NP; i++ ) {
-		// Calculate modified lower and upper bounds
-		std::vector< double > mod_lb = 
-			inverse_single_weight * best_vector
-			+ m_var_weights[i] * prob_lb;
-		std::vector< double > mod_ub = 
-			inverse_single_weight * best_vector
-			+ m_var_weights[i] * prob_ub;
-
-		// Change the bounds of the problems
-		prob_vector(i).set_bounds( mod_lb, mod_ub );
-	}
-
-	// TODO
 	// Create unconnected archipelago of NP islands. Each island solve a different decomposed part of the problem.
-	pagmo::archipelago arch(pagmo::archipelago::broadcast);
+	pagmo::archipelago arch(topo);
 
 	// Sets random number generators of the archipelago using the
 	// algorithm urng to obtain a deterministic behaviour upon
@@ -346,56 +363,59 @@ void game_theory::evolve(population &pop) const
 		// problem
 		pagmo::population decomp_pop(*prob_vector[i], 0, m_urng()); 
 
-		// TODO Decide fill option
-		// A: Copy the original population over to each
-		for ( population::size_type j = 0; j<pop.size(); j++ ) {
-			decomp_pop.set_x( j, pop.get_individual(j).cur_x );
-		}
-
-		// B: Fill the population with the original population
+		// Fill the population from the original and calculate
+		// the objective.
 		for ( population::size_type j = 0; j<pop.size(); j++ ) {
 			decomp_pop.push_back( pop.get_individual(j).cur_x );
 		}
 		
 		// Add the island to the archipelago
-		arch.push_back(pagmo::island(*m_solver,decomposed_pop, 1.0, selection_policy, replacement_policy));
+		arch.push_back(pagmo::island(*m_solver, decomp_pop, 1.0));
 	}
 
-	// Set topology
-	topology::unconnected topo;
-	arch.set_topology(topo);
+	for(int g = 0; g < m_gen; ++g) {
 
-	// Evolve entire archipelago once
-	arch.evolve_batch(1, m_threads);
+		// Define best decision vector for fixed variables
+		std::vector< double > best_vector( NP, 0.0 );
+		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+			best_vector = sum_of_vec( best_vector,  
+				had_of_vec( var_weights[i], 
+					arch.get_island(i)->get_population().champion().x ));
+		}
 
-	// Evolve N time for algorithm
-	for(int g = 0; g < a_gen; ++g) {
+		// Change the boundaries of each problem, this is
+		// equal to fixing!
+		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+			// Inverse of the decision variable weight. 
+			weights_type inverse_weight = 
+				inv_of_vec( var_weights[i] );
+
+			weights_type prob_lb = arch.get_island(i)->get_problem()->get_lb();
+
+			weights_type prob_ub = arch.get_island(i)->get_problem()->get_ub();
+
+			// Calculate modified lower and upper bounds
+			std::vector< double > mod_lb = sum_of_vec(
+				had_of_vec( inverse_weight, best_vector ),
+				had_of_vec( var_weights[i], prob_lb ));
+			std::vector< double > mod_ub = sum_of_vec(
+				had_of_vec( inverse_weight, best_vector ),
+				had_of_vec( var_weights[i], prob_ub ));
+
+			// Change the bounds of the problems
+			arch.get_island(i)->get_problem()->set_bounds( mod_lb, mod_ub );
+		}
+
+		// Evolve entire archipelago once
 		arch.evolve_batch(1, m_threads);
 	}
-
-	pop.clear();
 	
-	for ( population::size_type i = 0; i<pop.size(); i++ ) {
-		pop.push_back( arch.get_island(0)->get_population()->get_individual(i).cur_x );
+	pop.clear(); 
+        // Select the top pop_size using Pareto
+	for (population::size_type i=0; i < pop_size; ++i) {
+		pop.push_back(arch.get_island(0)->get_population().get_individual(i).cur_x);
 	}
-	
-	// For multiple fixed best strategy, select top N
-	// // Finally, we assemble the evolved population selecting from the original one + the evolved one
-	// // the best NP (crowding distance)
-	// population popnew(pop);
-	// for(pagmo::population::size_type i=0; i<arch.get_size() ;++i) {
-	// 	popnew.push_back(arch.get_island(i)->get_population().champion().x);
-	// 	m_fevals += arch.get_island(i)->get_algorithm()->get_fevals();
-	// }
-	// std::vector<population::size_type> selected_idx = popnew.get_best_idx(NP);
-	
-	// // We completely clear the population (NOTE: memory of all individuals and the notion of
-	// // champion is thus destroyed)
-	// pop.clear();
-	// // And we recreate it with the best NP among the evolved and the new population
-	// for (population::size_type i=0; i < NP; ++i) {
-	// 	pop.push_back(popnew.get_individual(selected_idx[i]).cur_x);
-	// }
+	// Fill the population
 }
 
 /// Algorithm name
@@ -414,28 +434,7 @@ std::string game_theory::human_readable_extra() const
 	s << "gen:" << m_gen << ' ';
 	s << "threads:" << m_threads << ' ';
 	s << "solver:" << m_solver->get_name() << ' ';
-	s << "neighbours:" << m_T << ' ';
-	s << "decomposition:";
-	switch (m_method)
-	{
-		case pagmo::problem::decompose::BI : s << "BI" << ' ';
-			break;
-		case pagmo::problem::decompose::WEIGHTED : s << "WEIGHTED" << ' ';
-			break;
-		case pagmo::problem::decompose::TCHEBYCHEFF : s << "TCHEBYCHEFF" << ' ';
-			break;
-	}
-	s << "weights:";
-	switch (m_weight_generation)
-	{
-		case RANDOM : s << "RANDOM" << ' ';
-			break;
-		case LOW_DISCREPANCY : s << "LOW_DISCREPANCY" << ' ';
-			break;
-		case GRID : s << "GRID" << ' ';
-			break;
-	}
-	s << "ref. point" << m_z;
+	s << "decomposition: WEIGHTED" << ' ';
 	return s.str();
 }
 
