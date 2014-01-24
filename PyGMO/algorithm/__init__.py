@@ -522,6 +522,32 @@ def _pade_ctor(self, gen=10, decomposition = 'tchebycheff', weights = 'grid', so
 pade._orig_init = pade.__init__
 pade.__init__ = _pade_ctor
 
+def _game_theory_ctor(self, gen=10, threads = 8, solver = None, var_weights= [], obj_weights = [] ):
+	"""
+	Constructs a Game Theory algorithm (GT)
+	
+	The objectives and decision variables are split up over different sub populations. Where each population is converted into a singe-objective problem, which are solved in an unconnected island model. The remaining decision variables are fixed and exchanged after each generation. 
+	
+	USAGE: algorithm.game_theory(self, gen=10, threads = 8, solver = None, var_weights= [], obj_weights = [] )
+
+	* gen: number of generations
+	* threads: the maximum number of single-objective problems to solve at the same time
+	* solver: the algorithm to use to solve the single-objective problems
+	* var_weights: a vector of decision variable weights, which specifies which variables are linked (free) to which population. Unlinked variables are fixed.
+        * obj_weights: a vector of objective weights, which specifies which objectives are linked to which population.
+	"""
+	# We set the defaults or the kwargs	
+	arg_list=[]
+	arg_list.append(gen)
+	arg_list.append(threads)
+	if solver==None:
+		solver=jde(100)
+	arg_list.append(solver)
+	arg_list.append(var_weights)
+	arg_list.append(obj_weights)
+	self._orig_init(*arg_list)
+game_theory._orig_init = game_theory.__init__
+game_theory.__init__ = _game_theory_ctor
 
 _algorithm.nspso.CROWDING_DISTANCE = _algorithm._diversity_mechanism.CROWDING_DISTANCE
 _algorithm.nspso.NICHE_COUNT = _algorithm._diversity_mechanism.NICHE_COUNT
