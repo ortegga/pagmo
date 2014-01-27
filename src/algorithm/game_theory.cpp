@@ -132,11 +132,42 @@ std::vector<T> inv_of_vec(const std::vector<T>& a)
 	return b;
 }
 
-// Inverse of a single digit
+// Absolute difference between two vectors
 template <typename T>
-T inv_of_dig(const T a)
+bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
 {
-	return std::abs(a - 1);
+
+	std::vector< T > absolute_tolerance(1,1e-3);
+	std::vector< T > relative_tolerance(1,1e-3);
+
+	assert(relative_tolerance.size() == absolute_tolerance.size());
+
+	// Check if global tolerance are used or one for each variable.
+	if( relative_tolerance.size() == 1){
+		T magn_diff = 0;
+		T magn_a    = 0;
+		for( unsigned int i = 0; i < a.size(); ++i){
+			magn_diff += pow( a[i] - b[i], 2.0 );
+			magn_a    += a[i] * a[i];
+		}
+		magn_diff = sqrt( magn_diff );
+		magn_a = sqrt( magn_a );
+		return magn_diff < std::max( absolute_tolerance[0], magn_a * relative_tolerance[0] );
+	} else {
+		assert(a.size() == absolute_tolerance.size());
+		assert(a.size() == b.size());
+
+		// Check if each elements meets tolerance
+		T max_tol;
+		T diff;
+		bool withintol = true;
+		for( unsigned int i = 0; i < a.size(); ++i){
+			diff = a[i] - b[i];
+			max_tol = std::max( absolute_tolerance[i], a[i] * relative_tolerance[i] );
+			withintol = withintol * ( diff < max_tol );
+		}
+		return withintol;
+	}
 }
 
 /// Generates the decision variables weights
@@ -388,6 +419,9 @@ void game_theory::evolve(population &pop) const
 		arch.push_back(pagmo::island(*m_solver, decomp_pop, 1.0));
 	}
 
+	// Create a last best vector for convergence check
+	std::vector< double > last_best_vector( prob_dimension, 0.0 );
+
 	for(int g = 0; g < m_gen; ++g) {
 
 		// Define best decision vector for fixed variables
@@ -396,6 +430,12 @@ void game_theory::evolve(population &pop) const
 			best_vector = sum_of_vec( best_vector,  
 				had_of_vec( var_weights[i], 
 					arch.get_island(i)->get_population().champion().x ));
+		}
+
+		// Check if Nash equilibrium is reached
+		
+		if( solution_within_tolerance( best_vector, last_best_vector )){
+			break;
 		}
 
 		// Change the boundaries of each problem, this is
@@ -410,8 +450,7 @@ void game_theory::evolve(population &pop) const
 			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
 
 			// Inverse of the decision variable weight. 
-			weights_type inverse_weight = 
-				inv_of_vec( var_weights[i] );
+			weights_type inverse_weight = inv_of_vec( var_weights[i] );
 
 			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
