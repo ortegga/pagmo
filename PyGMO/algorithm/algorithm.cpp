@@ -351,14 +351,14 @@ BOOST_PYTHON_MODULE(_algorithm) {
 		
 	// Game Theory
 	algorithm_wrapper<algorithm::game_theory>("game_theory", "Game Theory")
-		.def(init<optional<int, int, const algorithm::base &, pagmo::algoritm::weights_vector_type >())
+		.def(init<optional<int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type> >())
 		.def("generate_var_weights", &algorithm::game_theory::generate_var_weights,
 			"Generates the weights for linking decision variables to populations.\n\n"
 			"  USAGE:: w = game_theory.generate_var_weights(n_x,n_p)\n"
 			"   - n_x: problem dimension\n"
 			"   - n_p: number of populations"
 		)
-		.def("generate_var_weights", &algorithm::game_theory::generate_obj_weights,
+		.def("generate_obj_weights", &algorithm::game_theory::generate_obj_weights,
 			"Generates the weights of used to decompose the problem\n\n"
 			"  USAGE:: w = game_theory.generate_obj_weights(n_o,n_p)\n"
 			"   - n_o: fitness dimension\n"

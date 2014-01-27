@@ -150,6 +150,11 @@ T inv_of_dig(const T a)
 weights_vector_type game_theory::generate_var_weights(
 	const unsigned int n_x, const unsigned int n_p ) const {
 
+	// Preform sanity checks
+	if ( n_p > n_x ) {
+		pagmo_throw(value_error, "The number of populations cannot be larger than the number of decision variables.");
+	}
+
 	// Definition of combined: two or more decision variables
 	// controlled by a single population.
 
@@ -157,7 +162,7 @@ weights_vector_type game_theory::generate_var_weights(
 	weights_vector_type var_weights;
 
 	// Number of decision variables to be combined. 
-	int n_c = n_x - n_p;
+	int n_c;
 
 	// Number of decision variables to be combined for a single
 	// occasion. No need to initialise, will differ per occasion.
@@ -171,10 +176,17 @@ weights_vector_type game_theory::generate_var_weights(
 		// Initialise with zero weights
 		weights_type weights(n_x, 0.0);
 
+		n_c = n_x - (n_p - i) + 1 - k;
+
 		// Number of decision variables to combine for this i.
 		// Where n_p - i represents the number of remaining
 		// occasions.
-		n_c_o = n_c / ( n_p - i );
+		if( n_c == 1){
+			n_c_o = 1;
+		} else {
+			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
+					static_cast<double>( n_p - i ))); 
+		}
 
 		for( int j = 0; j < n_c_o; j++ ){
 
@@ -184,9 +196,6 @@ weights_vector_type game_theory::generate_var_weights(
 			// Increment k
 			k++;
 		}
-
-		// Reduce the number to be combined.
-		n_c -= n_c_o;
 
 		var_weights.push_back( weights );
 	}
@@ -204,6 +213,11 @@ weights_vector_type game_theory::generate_var_weights(
 weights_vector_type game_theory::generate_obj_weights(
 	const unsigned int n_o, const unsigned int n_p ) const {
 
+	// Preform sanity checks
+	if ( n_p > n_o ) {
+		pagmo_throw(value_error, "The number of populations cannot be larger than the number of objectives.");
+	}
+
 	// Definition of combined: two or more objective functions
 	// (through weighed decomposition) for a single population.
 
@@ -211,7 +225,7 @@ weights_vector_type game_theory::generate_obj_weights(
 	weights_vector_type obj_weights;
 
 	// Number of objectives to be combined
-	int n_c = n_o - n_p;
+	int n_c;
 
 	// Number of objectives to be combined for a single occasion.
 	// No need to initialise, will differ per occasion.
@@ -229,13 +243,16 @@ weights_vector_type game_theory::generate_obj_weights(
 		// Initialise with zero weights
 		weights_type weights(n_o, 0.0);
 
+		n_c = n_o - (n_p - i) + 1 - k;
+
 		// Number of objective to combine for this i. Where
 		// n_p - i represents the number of remaining
 		// occasions.
-		if( i == 0 && do_not_combine_first_obj ){
+		if((i == 0 && do_not_combine_first_obj) || n_c == 1){
 			n_c_o = 1;
 		} else {
-			n_c_o = n_c / ( n_p - i ); 
+			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
+					static_cast<double>( n_p - i )));
 		}
 		
 		// Give out a warning.
@@ -251,7 +268,7 @@ weights_vector_type game_theory::generate_obj_weights(
 			// Append warning with the constraint numbers
 			// that are combined in this iteration.
 			if( n_c_o > 1 ){
-				std::cout << (i+k) << " ";
+				std::cout << (k+1) << " ";
 			}
 
 			// Set the weights
@@ -263,9 +280,6 @@ weights_vector_type game_theory::generate_obj_weights(
 		if( n_c_o > 1 ){
 			std::cout << std::endl;
 		}
-
-		// Reduce the number to be combined.
-		n_c -= n_c_o;
 
 		obj_weights.push_back( weights );
 	}
@@ -391,7 +405,7 @@ void game_theory::evolve(population &pop) const
 				inv_of_vec( var_weights[i] );
 
 			weights_type prob_lb = arch.get_island(i)->get_problem()->get_lb();
-
+			
 			weights_type prob_ub = arch.get_island(i)->get_problem()->get_ub();
 
 			// Calculate modified lower and upper bounds
