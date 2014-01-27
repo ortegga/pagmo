@@ -142,38 +142,33 @@ std::vector<T> game_theory::inv_of_vec(const std::vector<T>& a) const
 template <typename T>
 bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b) const
 {
-
+	// Check if sizes match
 	assert(m_relative_tolerance.size() == m_absolute_tolerance.size());
+	assert(a.size() == b.size());
 
-	// Check if global tolerance are used or one for each variable.
+	// Create temporary vectors
+	std::vector< double > rel_tol;
+	std::vector< double > abs_tol;
+
+	// Check if single tolerance value is used or one for each
+	// variable.
 	if( m_relative_tolerance.size() == 1){
-		T magn_diff = 0;
-		T magn_a    = 0;
-		T magn_b    = 0;
-		for( unsigned int i = 0; i < a.size(); ++i){
-			magn_diff += pow( a[i] - b[i], 2.0 );
-			magn_a    += a[i] * a[i];
-			magn_b    += b[i] * b[i];
-		}
-		magn_diff = sqrt( magn_diff );
-		magn_a = sqrt( magn_a );
-		magn_b = sqrt( magn_b );
-		return magn_diff < std::max( m_absolute_tolerance[0], std::max(magn_a,magn_b) * m_relative_tolerance[0] );
+		rel_tol = std::vector< double >( a.size(), m_relative_tolerance[0] );
+		abs_tol = std::vector< double >( a.size(), m_absolute_tolerance[0] );
 	} else {
 		assert(a.size() == m_absolute_tolerance.size());
-		assert(a.size() == b.size());
-
-		// Check if each elements meets tolerance
-		T max_tol;
-		T diff;
-		bool withintol = true;
-		for( unsigned int i = 0; i < a.size(); ++i){
-			diff = a[i] - b[i];
-			max_tol = std::max( m_absolute_tolerance[i], std::max(abs(a[i]),abs(b[i])) * m_relative_tolerance[i] );
-			withintol = withintol * ( diff < max_tol );
-		}
-		return withintol;
+		rel_tol = m_relative_tolerance;
+		abs_tol = m_absolute_tolerance;
 	}
+		
+	// Check if each elements meets tolerance
+	bool withintol = true;
+	for( unsigned int i = 0; i < a.size(); ++i){
+		withintol = withintol * ( abs(a[i] - b[i]) < 
+			std::max( abs_tol[i], 
+				std::max(abs(a[i]),abs(b[i])) * rel_tol[i] ));
+	}
+	return withintol;
 }
 
 /// Generates the decision variables weights
