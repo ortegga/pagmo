@@ -146,13 +146,16 @@ bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
 	if( relative_tolerance.size() == 1){
 		T magn_diff = 0;
 		T magn_a    = 0;
+		T magn_b    = 0;
 		for( unsigned int i = 0; i < a.size(); ++i){
 			magn_diff += pow( a[i] - b[i], 2.0 );
 			magn_a    += a[i] * a[i];
+			magn_b    += b[i] * b[i];
 		}
 		magn_diff = sqrt( magn_diff );
 		magn_a = sqrt( magn_a );
-		return magn_diff < std::max( absolute_tolerance[0], magn_a * relative_tolerance[0] );
+		magn_b = sqrt( magn_b );
+		return magn_diff < std::max( absolute_tolerance[0], std::max(magn_a,magn_b) * relative_tolerance[0] );
 	} else {
 		assert(a.size() == absolute_tolerance.size());
 		assert(a.size() == b.size());
@@ -163,7 +166,7 @@ bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
 		bool withintol = true;
 		for( unsigned int i = 0; i < a.size(); ++i){
 			diff = a[i] - b[i];
-			max_tol = std::max( absolute_tolerance[i], a[i] * relative_tolerance[i] );
+			max_tol = std::max( absolute_tolerance[i], std::max(abs(a[i]),abs(b[i])) * relative_tolerance[i] );
 			withintol = withintol * ( diff < max_tol );
 		}
 		return withintol;
@@ -412,7 +415,6 @@ void game_theory::evolve(population &pop) const
 		// the objective.
 		for ( population::size_type j = 0; j<pop.size(); j++ ) {
 			decomp_pop.push_back( pop.get_individual(j).cur_x );
-			
 		}
 
 		// Put pop in island and add to arch.
@@ -435,8 +437,11 @@ void game_theory::evolve(population &pop) const
 		// Check if Nash equilibrium is reached
 		
 		if( solution_within_tolerance( best_vector, last_best_vector )){
+			std::cout << "Nash equilibrium attained within tolerances, after " << g << " iterations." << std::endl;
 			break;
 		}
+
+		last_best_vector = best_vector;
 
 		// Change the boundaries of each problem, this is
 		// equal to fixing!
