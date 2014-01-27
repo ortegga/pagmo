@@ -375,22 +375,23 @@ void game_theory::evolve(population &pop) const
 		
 		// Create an empty population for each decomposed
 		// problem
-		pagmo::population decomp_pop(*prob_vector[i], 0, m_urng()); 
+		population decomp_pop(*prob_vector[i], 0, m_urng()); 
 
 		// Fill the population from the original and calculate
 		// the objective.
 		for ( population::size_type j = 0; j<pop.size(); j++ ) {
 			decomp_pop.push_back( pop.get_individual(j).cur_x );
+			
 		}
-		
-		// Add the island to the archipelago
+
+		// Put pop in island and add to arch.
 		arch.push_back(pagmo::island(*m_solver, decomp_pop, 1.0));
 	}
 
 	for(int g = 0; g < m_gen; ++g) {
 
 		// Define best decision vector for fixed variables
-		std::vector< double > best_vector( NP, 0.0 );
+		std::vector< double > best_vector( prob_dimension, 0.0 );
 		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
 			best_vector = sum_of_vec( best_vector,  
 				had_of_vec( var_weights[i], 
@@ -400,24 +401,33 @@ void game_theory::evolve(population &pop) const
 		// Change the boundaries of each problem, this is
 		// equal to fixing!
 		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+			// Get problem pointer from population from
+			// island. Each get creates a clone (except
+			// problem_ptr), so that they must be set back
+			// later on.
+			base_island_ptr isl_i = arch.get_island(i);
+			population pop_i = isl_i->get_population();
+			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
+
 			// Inverse of the decision variable weight. 
 			weights_type inverse_weight = 
 				inv_of_vec( var_weights[i] );
 
-			weights_type prob_lb = arch.get_island(i)->get_problem()->get_lb();
-			
-			weights_type prob_ub = arch.get_island(i)->get_problem()->get_ub();
-
-			// Calculate modified lower and upper bounds
+			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_lb ));
+				had_of_vec( var_weights[i], prob_i->get_lb() ));
 			std::vector< double > mod_ub = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_ub ));
+				had_of_vec( var_weights[i], prob_i->get_ub() ));
 
-			// Change the bounds of the problems
-			arch.get_island(i)->get_problem()->set_bounds( mod_lb, mod_ub );
+			// Change the bounds of the problem.
+			prob_i->set_bounds( mod_lb, mod_ub );
+			
+			// Set population back into island, island
+			// back into arch.
+			isl_i->set_population( pop_i );
+			arch.set_island( i, *isl_i );
 		}
 
 		// Evolve entire archipelago once
@@ -425,6 +435,7 @@ void game_theory::evolve(population &pop) const
 	}
 	
 	pop.clear(); 
+
         // Select the top pop_size using Pareto
 	for (population::size_type i=0; i < pop_size; ++i) {
 		pop.push_back(arch.get_island(0)->get_population().get_individual(i).cur_x);
