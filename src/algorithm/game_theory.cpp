@@ -311,7 +311,7 @@ void game_theory::evolve(population &pop) const
 	}
 
 	// Number of populations.
-	const unsigned int NP = std::min( prob_objectives, prob_dimension );
+	const unsigned int subpops = std::min( prob_objectives, prob_dimension );
 	
 	// Get out if there is nothing to do.
 	if (m_gen == 0) {
@@ -322,7 +322,7 @@ void game_theory::evolve(population &pop) const
 	// for linking to populations is empty.
 	weights_vector_type var_weights;
         if(m_var_weights.empty()){
-		var_weights = generate_var_weights( prob_dimension, NP );
+		var_weights = generate_var_weights( prob_dimension, subpops );
 	}else{
 		var_weights = m_var_weights;
 	}
@@ -331,16 +331,16 @@ void game_theory::evolve(population &pop) const
 	// the decomposition is empty.
 	weights_vector_type obj_weights;
         if(m_obj_weights.empty()){
-		obj_weights = generate_obj_weights( prob_objectives, NP );
+		obj_weights = generate_obj_weights( prob_objectives, subpops );
 	}else{
 		obj_weights = m_obj_weights;
 	}
 
 	// More sanity checks
-	if ( var_weights.size() != NP ) {
+	if ( var_weights.size() != subpops ) {
 		pagmo_throw(value_error, "The vector of variable weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( obj_weights.size() != NP ) {
+	if ( obj_weights.size() != subpops ) {
 		pagmo_throw(value_error, "The vector of objective weights has an incorrect number of entries. Create an entry for each population.");
 	}
 	if ( var_weights[0].size() != prob_dimension ) {
@@ -352,7 +352,7 @@ void game_theory::evolve(population &pop) const
 
 	// Create all the decomposed problems 
 	std::vector<pagmo::problem::decompose*> prob_vector;
-	for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+	for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
 		prob_vector.push_back(
 			new pagmo::problem::decompose( prob,
 				pagmo::problem::decompose::WEIGHTED, 
@@ -362,7 +362,7 @@ void game_theory::evolve(population &pop) const
 	// Set unconnected topology, only using arch for parallel processing
 	topology::unconnected topo;
 	
-	// Create unconnected archipelago of NP islands. Each island solve a different decomposed part of the problem.
+	// Create unconnected archipelago of subpops islands. Each island solve a different decomposed part of the problem.
 	pagmo::archipelago arch(topo);
 
 	// Sets random number generators of the archipelago using the
@@ -371,7 +371,7 @@ void game_theory::evolve(population &pop) const
 	arch.set_seeds(m_urng());
 
 	// Assign population to each problem
-	for( problem::base::f_size_type i = 0; i<NP; i++ ) { 
+	for( problem::base::f_size_type i = 0; i<subpops; i++ ) { 
 		
 		// Create an empty population for each decomposed
 		// problem
@@ -392,7 +392,7 @@ void game_theory::evolve(population &pop) const
 
 		// Define best decision vector for fixed variables
 		std::vector< double > best_vector( prob_dimension, 0.0 );
-		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+		for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
 			best_vector = sum_of_vec( best_vector,  
 				had_of_vec( var_weights[i], 
 					arch.get_island(i)->get_population().champion().x ));
@@ -400,7 +400,7 @@ void game_theory::evolve(population &pop) const
 
 		// Change the boundaries of each problem, this is
 		// equal to fixing!
-		for( problem::base::f_size_type i = 0; i<NP; i++ ) {
+		for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
 			// Get problem pointer from population from
 			// island. Each get creates a clone (except
 			// problem_ptr), so that they must be set back
@@ -433,14 +433,29 @@ void game_theory::evolve(population &pop) const
 		// Evolve entire archipelago once
 		arch.evolve_batch(1, m_threads);
 	}
-	
-	pop.clear(); 
 
-        // Select the top pop_size using Pareto
-	for (population::size_type i=0; i < pop_size; ++i) {
-		pop.push_back(arch.get_island(0)->get_population().get_individual(i).cur_x);
+	// Calculate best vector for last time and push to population.
+	std::vector< double > best_vector( prob_dimension, 0.0 );
+	for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+		best_vector = sum_of_vec( best_vector,  
+			had_of_vec( var_weights[i], 
+				arch.get_island(i)->get_population().champion().x ));
 	}
-	// Fill the population
+	pop.push_back( best_vector );
+
+        // Fill population will all individuals.
+	for (problem::base::f_size_type i=0; i <subpops; ++i) {
+		for (population::size_type j=0; j < pop_size; ++j) {
+			pop.push_back(arch.get_island(i)->get_population().get_individual(j).cur_x);
+		}
+	}
+
+	// Get sorted list from best to worst
+	std::vector<population::size_type> best_idx = pop.get_best_idx( pop.size() );
+	for (population::size_type i = best_idx.size() - 1; i > pop_size; --i) {
+		pop.erase( i );
+	}
+	
 }
 
 /// Algorithm name
