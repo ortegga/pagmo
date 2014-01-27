@@ -62,7 +62,9 @@ class __PAGMO_VISIBLE game_theory: public base
 		unsigned int max_parallelism = 1,
 		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
 		const weights_vector_type & = weights_vector_type(),
-		const weights_vector_type & = weights_vector_type()
+		const weights_vector_type & = weights_vector_type(),
+		const std::vector< double > & = std::vector< double >(1,1e-6),
+		const std::vector< double > & = std::vector< double >(1,1e-6)
 	);
 	game_theory(const game_theory &);
 
@@ -86,6 +88,8 @@ class __PAGMO_VISIBLE game_theory: public base
 		ar & const_cast<base_ptr &>(m_solver);
 		ar & m_var_weights;
 		ar & m_obj_weights;
+		ar & m_relative_tolerance;
+		ar & m_absolute_tolerance;
 	}
 	//Number of generations
 	const int m_gen;
@@ -93,6 +97,17 @@ class __PAGMO_VISIBLE game_theory: public base
 	const base_ptr m_solver;
 	weights_vector_type m_var_weights;
 	weights_vector_type m_obj_weights;
+	std::vector< double > m_relative_tolerance;
+	std::vector< double > m_absolute_tolerance;
+	
+	template <typename T>
+		std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
+	template <typename T>
+		std::vector<T> had_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
+	template <typename T>
+		std::vector<T> inv_of_vec(const std::vector<T>& a) const;
+	template <typename T>
+		bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b) const;
 };
 
 }} //namespaces

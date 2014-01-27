@@ -65,13 +65,17 @@ game_theory::game_theory(int gen,
 	unsigned int threads,
 	const pagmo::algorithm::base & solver,
 	const weights_vector_type &var_weights,
-	const weights_vector_type &obj_weights)
+	const weights_vector_type &obj_weights,
+	const std::vector< double > &relative_tolerance,
+	const std::vector< double > &absolute_tolerance)
 	:base(),
 	 m_gen(gen),
 	 m_threads(threads),
 	 m_solver(solver.clone()),
 	 m_var_weights(var_weights),
-	 m_obj_weights(obj_weights)
+	 m_obj_weights(obj_weights),
+	 m_relative_tolerance(relative_tolerance),
+	 m_absolute_tolerance(absolute_tolerance)
 {
 	if (gen < 0) {
 		pagmo_throw(value_error,"number of generations must be nonnegative");
@@ -85,7 +89,9 @@ game_theory::game_theory(const game_theory &algo):
 	m_threads(algo.m_threads),
 	m_solver(algo.m_solver->clone()),
 	m_var_weights(algo.m_var_weights),
-	m_obj_weights(algo.m_obj_weights)
+	m_obj_weights(algo.m_obj_weights),
+	m_relative_tolerance(algo.m_relative_tolerance),
+	m_absolute_tolerance(algo.m_absolute_tolerance)
 {}
 
 /// Clone method.
@@ -96,7 +102,7 @@ base_ptr game_theory::clone() const
 
 // Sum of two vectors
 template <typename T>
-std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b)
+std::vector<T> game_theory::sum_of_vec(const std::vector<T>& a, const std::vector<T>& b) const
 {
 	assert(a.size() == b.size());
 
@@ -110,7 +116,7 @@ std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b)
 
 // Hadamard product of two vectors
 template <typename T>
-std::vector<T> had_of_vec(const std::vector<T>& a, const std::vector<T>& b)
+std::vector<T> game_theory::had_of_vec(const std::vector<T>& a, const std::vector<T>& b) const
 {
 	assert(a.size() == b.size());
 
@@ -124,7 +130,7 @@ std::vector<T> had_of_vec(const std::vector<T>& a, const std::vector<T>& b)
 
 // Inverse of a vector
 template <typename T>
-std::vector<T> inv_of_vec(const std::vector<T>& a)
+std::vector<T> game_theory::inv_of_vec(const std::vector<T>& a) const
 {
 	std::vector<T> b;
 	for( int i = 0; i < a.size(); ++i )
@@ -134,16 +140,13 @@ std::vector<T> inv_of_vec(const std::vector<T>& a)
 
 // Absolute difference between two vectors
 template <typename T>
-bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
+bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b) const
 {
 
-	std::vector< T > absolute_tolerance(1,1e-3);
-	std::vector< T > relative_tolerance(1,1e-3);
-
-	assert(relative_tolerance.size() == absolute_tolerance.size());
+	assert(m_relative_tolerance.size() == m_absolute_tolerance.size());
 
 	// Check if global tolerance are used or one for each variable.
-	if( relative_tolerance.size() == 1){
+	if( m_relative_tolerance.size() == 1){
 		T magn_diff = 0;
 		T magn_a    = 0;
 		T magn_b    = 0;
@@ -155,9 +158,9 @@ bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
 		magn_diff = sqrt( magn_diff );
 		magn_a = sqrt( magn_a );
 		magn_b = sqrt( magn_b );
-		return magn_diff < std::max( absolute_tolerance[0], std::max(magn_a,magn_b) * relative_tolerance[0] );
+		return magn_diff < std::max( m_absolute_tolerance[0], std::max(magn_a,magn_b) * m_relative_tolerance[0] );
 	} else {
-		assert(a.size() == absolute_tolerance.size());
+		assert(a.size() == m_absolute_tolerance.size());
 		assert(a.size() == b.size());
 
 		// Check if each elements meets tolerance
@@ -166,7 +169,7 @@ bool solution_within_tolerance(const std::vector<T>& a, const std::vector<T>& b)
 		bool withintol = true;
 		for( unsigned int i = 0; i < a.size(); ++i){
 			diff = a[i] - b[i];
-			max_tol = std::max( absolute_tolerance[i], std::max(abs(a[i]),abs(b[i])) * relative_tolerance[i] );
+			max_tol = std::max( m_absolute_tolerance[i], std::max(abs(a[i]),abs(b[i])) * m_relative_tolerance[i] );
 			withintol = withintol * ( diff < max_tol );
 		}
 		return withintol;
