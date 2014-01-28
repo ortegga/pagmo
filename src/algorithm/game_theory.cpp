@@ -134,7 +134,7 @@ std::vector<T> game_theory::inv_of_vec(const std::vector<T>& a) const
 {
 	std::vector<T> b;
 	for( int i = 0; i < a.size(); ++i )
-		b.push_back(abs( a[i] - 1 ));
+		b.push_back(fabs( a[i] - 1 ));
 	return b;
 }
 
@@ -164,9 +164,9 @@ bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::
 	// Check if each elements meets tolerance
 	bool withintol = true;
 	for( unsigned int i = 0; i < a.size(); ++i){
-		withintol = withintol * ( abs(a[i] - b[i]) < 
+		withintol = withintol * ( fabs(a[i] - b[i]) < 
 			std::max( abs_tol[i], 
-				std::max(abs(a[i]),abs(b[i])) * rel_tol[i] ));
+				std::max(fabs(a[i]),fabs(b[i])) * rel_tol[i] ));
 	}
 	return withintol;
 }
