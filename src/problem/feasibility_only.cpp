@@ -44,7 +44,7 @@ feasibility_only::feasibility_only(const base &problem):
 		 problem.get_f_dimension(),
 		 problem.get_c_dimension(),
 		 problem.get_ic_dimension(),
-		 std::vector<double>())
+		 problem.get_c_tol())
 {
 }
 
