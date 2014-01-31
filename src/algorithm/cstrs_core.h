@@ -57,10 +57,14 @@ namespace pagmo { namespace algorithm {
 class __PAGMO_VISIBLE cstrs_core: public base
 {
 public:
+
+	enum repair_type {UNCONSTRAINED = 0, CONSTRAINED = 1};
+
     cstrs_core(const base & = jde(1), const base & = jde(1),
                int = 1,
 			   int = 10,
 			   double = 1.,
+			   repair_type = repair_type::UNCONSTRAINED,
 			   double = 1e-15, double = 1e-15);
 	cstrs_core(const cstrs_core &);
 	base_ptr clone() const;
@@ -87,6 +91,7 @@ private:
         ar & const_cast<int &>(m_gen);
 		ar & const_cast<int &>(m_repair_frequency);
 		ar & const_cast<double &>(m_repair_ratio);
+		ar & const_cast<repair_type&>(m_repair_type);
 		ar & const_cast<double &>(m_ftol);
 		ar & const_cast<double &>(m_xtol);
 	}
@@ -97,6 +102,7 @@ private:
     // repair constants
 	const int m_repair_frequency;
 	const double m_repair_ratio;
+	const repair_type m_repair_type;
 
 	// tolerance
 	const double m_ftol;

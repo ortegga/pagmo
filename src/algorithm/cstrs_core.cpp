@@ -51,6 +51,8 @@ namespace pagmo { namespace algorithm {
  * @param[in] repair_frequency The infeasible are repaired at each repair frequency generations.
  * @param[in] repair_ratio It the repair ratio is the ratio of repaired individuals over infeasible
  * ones (a ratio of 1 will repair all the individuals).
+ * @param[in] two repair techniques are available: UNCONSTRAINED  is the CORE algorithm where the infeasible solutions are "repaired" solving the minimization of the constraints violation,
+ * CONSTRAINED the infeasible solutions are "repaired" minimizing the constrained problem with a dummy fitness function (feasibility first) 
  * @param[in] ftol stopping criteria on the f tolerance.
  * @param[in] xtol stopping criteria on the x tolerance.
  * @throws value_error if gen is negative, if repair frequency is negative.
@@ -59,11 +61,12 @@ cstrs_core::cstrs_core(const base &original_algo, const base &repair_algo,
                        int gen,
 					   int repair_frequency,
 					   double repair_ratio,
+					   repair_type type,
 					   double ftol, double xtol):
     base(),m_original_algo(original_algo.clone()),
     m_repair_algo(repair_algo.clone()),
     m_gen(gen),m_repair_frequency(repair_frequency),
-	m_repair_ratio(repair_ratio),m_ftol(ftol),m_xtol(xtol)
+	m_repair_ratio(repair_ratio),m_repair_type(type),m_ftol(ftol),m_xtol(xtol)
 {
 //	m_original_algo = original_algo.clone();
 //    m_repair_algo = repair_algo.clone();
@@ -77,6 +80,9 @@ cstrs_core::cstrs_core(const base &original_algo, const base &repair_algo,
 	if((repair_ratio < 0) || (repair_ratio > 1)) {
 		pagmo_throw(value_error,"repair ratio must be in [0..1]");
 	}
+	if((type < 0) || (type > 1)) {
+		pagmo_throw(value_error,"repair type is not supported. Choose UNCONSTRAINED or CONSTRAINED");
+	}
 }
 
 /// Copy constructor.
@@ -85,6 +91,7 @@ cstrs_core::cstrs_core(const cstrs_core &algo):
     m_repair_algo(algo.m_repair_algo->clone()),m_gen(algo.m_gen),
     m_repair_frequency(algo.m_repair_frequency),
     m_repair_ratio(algo.m_repair_ratio),
+	m_repair_type(algo.m_repair_type),
     m_ftol(algo.m_ftol),m_xtol(algo.m_xtol)
 {}
 
@@ -157,8 +164,17 @@ void cstrs_core::evolve(population &pop) const
 			// repair the infeasible individuals
 			for(population::size_type i=0; i<number_of_repair; i++) {
 				const population::size_type &current_individual_idx = pop_infeasibles.at(i);
-
-                pop.repair(current_individual_idx, m_repair_algo);
+				switch(m_repair_type){
+				case UNCONSTRAINED:
+					pop.repair(current_individual_idx, m_repair_algo, population::repair_type::UNCONSTRAINED);
+					break;
+				case CONSTRAINED:
+					pop.repair(current_individual_idx, m_repair_algo, population::repair_type::CONSTRAINED);
+					break;
+				default:
+					pagmo_throw(value_error,"The repair method selected is not valid.");
+					break;				
+				}
 			}
 
 			// the population is repaired, it can be now used in the new unconstrained population

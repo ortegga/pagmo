@@ -233,7 +233,8 @@ class __PAGMO_VISIBLE population
 		double mean_velocity() const;
 
 		// Constraints repairing methods
-		void repair(const size_type &, const algorithm::base_ptr &);
+		enum repair_type {UNCONSTRAINED = 0, CONSTRAINED = 1};
+		void repair(const size_type &, const algorithm::base_ptr &, const repair_type = UNCONSTRAINED);
 
 		// Race routine wrappers
 		std::pair<std::vector<population::size_type>, unsigned int> race(const size_type n_final,

@@ -143,7 +143,7 @@ void cstrs_immune_system::evolve(population &pop) const
 		pop_mixed.push_back(pop.get_individual(i).cur_x);
 	}
 
-	// Main Co-Evolution loop
+	// Main Immune Systems loop
 	for(int k=0; k<m_gen; k++) {
 
 		pop_antigens.clear();
@@ -481,7 +481,7 @@ void cstrs_immune_system::evolve(population &pop) const
 	//update number of fitness evaluations. It is equal to the number computed by the wrapped algorithm since 
 	//(excluding PaGMO structures dependent problems) the objfun is called just by the evolve of the original algorithm
 	// on the con2uncon problem (mode = optimality)
-	m_fevals = m_original_algo->get_fevals();
+	//m_fevals = m_original_algo->get_fevals();
 }
 
 /// Algorithm name

@@ -228,6 +228,10 @@ BOOST_PYTHON_MODULE(_algorithm) {
 	enum_<algorithm::cstrs_immune_system::distance_method_type>("_immune_distance_method_type")
 		.value("HAMMING", algorithm::cstrs_immune_system::HAMMING)
 		.value("EUCLIDEAN", algorithm::cstrs_immune_system::EUCLIDEAN);
+	
+	enum_<algorithm::cstrs_core::repair_type>("_core_repair_type")
+		.value("UNCONSTRAINED", algorithm::cstrs_core::repair_type::UNCONSTRAINED)
+		.value("CONSTRAINED", algorithm::cstrs_core::repair_type::CONSTRAINED);
 
 	// Expose algorithms.
 
@@ -284,7 +288,7 @@ BOOST_PYTHON_MODULE(_algorithm) {
 
 	// Constraints CORE.
 	algorithm_wrapper<algorithm::cstrs_core>("cstrs_core","Constraints core.")
-		.def(init<optional<const algorithm::base &,const algorithm::base &,int,int,double,double,double> >())
+		.def(init<optional<const algorithm::base &,const algorithm::base &,int,int,double,algorithm::cstrs_core::repair_type,double,double> >())
 		.add_property("algorithm",&algorithm::cstrs_core::get_algorithm,&algorithm::cstrs_core::set_algorithm)
 		.add_property("algorithm_repair",&algorithm::cstrs_core::get_repair_algorithm,&algorithm::cstrs_core::set_repair_algorithm);
 	

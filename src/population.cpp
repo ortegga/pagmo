@@ -45,6 +45,7 @@
 
 #include "algorithm/base.h"
 #include "problem/con2uncon.h"
+#include "problem/feasibility_only.h"
 
 namespace pagmo
 {
@@ -791,7 +792,7 @@ std::vector<population::size_type> population::get_best_idx(const population::si
  *
  * @throws index_error if idx is larger than the population size
  */
-void population::repair(const population::size_type &idx, const algorithm::base_ptr &repair_algo)
+void population::repair(const population::size_type &idx, const algorithm::base_ptr &repair_algo, const repair_type type)
 {
 	if (idx >= size()) {
 		pagmo_throw(index_error,"invalid individual position");
@@ -805,15 +806,40 @@ void population::repair(const population::size_type &idx, const algorithm::base_
 		return;
 	}
 
-	problem::con2uncon feasibility_problem(*m_prob,problem::con2uncon::FEASIBILITY);
 
-	population pop_repair(feasibility_problem);
-	pop_repair.clear();
-	pop_repair.push_back(current_x);
+	switch(type){
+	case UNCONSTRAINED:
+		{
+			problem::con2uncon feasibility_problem(*m_prob,problem::con2uncon::FEASIBILITY);
+			population pop_repair(feasibility_problem);
+			pop_repair.clear();
+			pop_repair.push_back(current_x);
 
-	repair_algo->evolve(pop_repair);
+			repair_algo->evolve(pop_repair);
 
-	this->set_x(idx,pop_repair.champion().x);
+			this->set_x(idx,pop_repair.champion().x);
+			break;
+		}
+	case CONSTRAINED:
+		{
+			problem::feasibility_only feasibility_problem(*m_prob);
+			population pop_repair(feasibility_problem);
+			pop_repair.clear();
+			pop_repair.push_back(current_x);
+
+			repair_algo->evolve(pop_repair);
+
+			this->set_x(idx,pop_repair.champion().x);
+			break;
+		}
+	default:
+		{
+			pagmo_throw(value_error,"The repair method selected is not valid.");
+			break;
+		}
+	}
+
+
 
 }
 

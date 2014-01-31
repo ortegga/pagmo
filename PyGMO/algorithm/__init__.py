@@ -906,17 +906,20 @@ def _cstrs_immune_system_ctor(self,algorithm = None, algorithm_immune = None, ge
 cstrs_immune_system._orig_init = cstrs_immune_system.__init__
 cstrs_immune_system.__init__ = _cstrs_immune_system_ctor
 
-def _cstrs_core_ctor(self,algorithm = None, repair_algorithm = None, gen = 1, repair_frequency = 10, repair_ratio = 1., f_tol = 1e-15, x_tol = 1e-15):
+# Renaming and placing the enums
+_algorithm.cstrs_core.repair_type = _algorithm._core_repair_type
+def _cstrs_core_ctor(self,algorithm = None, repair_algorithm = None, gen = 1, repair_frequency = 10, repair_ratio = 1., repair_type = _algorithm.cstrs_core.repair_type.UNCONSTRAINED, f_tol = 1e-15, x_tol = 1e-15):
 	"""
 	Constructs CORE (Constrained Optimization by Random Evolution) algorithm for constrained optimization (belong to the family of repairing techniques).
 	
-	USAGE: algorithm._cstrs_core(algorithm = _algorithm.jde(), repair_algorithm = _algorithm.jde(), gen = 1, repair_frequency = 10, repair_ratio = 1., f_tol = 1e-15, x_tol = 1e-15):
+	USAGE: algorithm._cstrs_core(algorithm = _algorithm.jde(), repair_algorithm = _algorithm.jde(), gen = 1, repair_frequency = 10, repair_ratio = 1., repair_type = _algorithm.cstrs_core.repair_type.UNCONSTRAINED, f_tol = 1e-15, x_tol = 1e-15):
 
 	* algorithm: optimizer to use as 'original' optimization method. Its number of generations should be set to 1.
 	* repair_algorithm: optimizer to use as 'repairing' algorithm. It should be able to deal with population of size 1.
 	* gen: number of generations.
 	* repair_frequency: The infeasible are repaired at each repair frequency generations.
 	* repair_ratio: ratio of repaired individuals over infeasible (a ratio of 1 will repair all the individuals).
+	* repair_type: two repair techniques are available: UNCONSTRAINED  is the CORE algorithm where the infeasible solutions are "repaired" solving the minimization of the constraints violation, CONSTRAINED the infeasible solutions are "repaired" minimizing the constrained problem with a dummy fitness function (feasibility first) 
 	* ftol: 1e-15 by default. The stopping criteria on the x tolerance.
 	* xtol: 1e-15 by default. The stopping criteria on the f tolerance.
 	"""
@@ -930,6 +933,7 @@ def _cstrs_core_ctor(self,algorithm = None, repair_algorithm = None, gen = 1, re
 	arg_list.append(gen)
 	arg_list.append(repair_frequency)
 	arg_list.append(repair_ratio)
+	arg_list.append(repair_type)
 	arg_list.append(f_tol)
 	arg_list.append(x_tol)
 	self._orig_init(*arg_list)

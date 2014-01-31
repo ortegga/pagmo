@@ -446,11 +446,15 @@ def _pop_race(self, n_winners, min_trials = 0, max_feval = 500,
 population._orig_race = population.race
 population.race = _pop_race
 
-def _pop_repair(self, idx, repair_algorithm):
+
+# Renaming and placing the enums
+population.repair_type = _core._population_repair_type
+
+def _pop_repair(self, idx, repair_algorithm, repair_type):
 	"""
 	Repairs the individual at the given position
 
-	USAGE: pop.repair(idx, repair_algorithm = _algorithm.jde())
+	USAGE: pop.repair(idx, repair_algorithm = _algorithm.jde(), repair_type = population.repair_type.UNCONSTRAINED)
 
 	* idx: index of the individual to repair
  repair_algorithm: optimizer to use as 'repairing' algorithm. It should be able to deal with population of size 1.
@@ -458,6 +462,7 @@ def _pop_repair(self, idx, repair_algorithm):
 	arg_list=[]
 	arg_list.append(idx)
 	arg_list.append(repair_algorithm)
+	arg_list.append(repair_type)
 	return self._orig_repair(*arg_list)
 
 population._orig_repair = population.repair
