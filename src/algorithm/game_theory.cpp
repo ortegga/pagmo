@@ -427,9 +427,10 @@ void game_theory::evolve(population &pop) const
 		// Define best decision vector for fixed variables
 		std::vector< double > best_vector( prob_dimension, 0.0 );
 		for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+			int best_idx = arch.get_island(i)->get_population().get_best_idx();
 			best_vector = sum_of_vec( best_vector,  
 				had_of_vec( var_weights[i], 
-					arch.get_island(i)->get_population().champion().x ));
+					arch.get_island(i)->get_population().get_individual( best_idx ).cur_x ));
 		}
 
 		// Check if Nash equilibrium is reached
@@ -465,6 +466,16 @@ void game_theory::evolve(population &pop) const
 
 			// Change the bounds of the problem.
 			prob_i->set_bounds( mod_lb, mod_ub );
+
+			bool reinit_pop_after_bounds_change = true;
+
+			// Change the chromosomes according to bounds.
+			for ( population::size_type j = 0; j<pop.size() && 
+				      reinit_pop_after_bounds_change; j++ ) {
+				pop_i.set_x(j, sum_of_vec(
+						had_of_vec( inverse_weight, best_vector ),
+						had_of_vec( var_weights[i], pop_i.get_individual(j).cur_x )));
+			}
 			
 			// Set population back into island, island
 			// back into arch.
@@ -490,6 +501,8 @@ void game_theory::evolve(population &pop) const
 		for (population::size_type j=0; j < pop_size; ++j) {
 			pop.push_back(arch.get_island(i)->get_population().get_individual(j).cur_x);
 		}
+		// Add the number of fevals
+		m_fevals += arch.get_island(i)->get_algorithm()->get_fevals();
 	}
 
 	// Get sorted list from best to worst
