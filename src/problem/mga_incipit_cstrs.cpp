@@ -54,8 +54,13 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 			 const kep_toolbox::epoch t0_l,
 			 const kep_toolbox::epoch t0_u,
 			 const std::vector<std::vector<double> > tof,
-			 double Tmax,
-			 double Dmin) : base(4*seq.size(),0,1,2,2,1E-3), m_tof(tof), m_tmax(Tmax), m_dmin(Dmin)
+			 const double tmax,
+			 const std::vector<double> dmin,
+			 const double thrust,
+			 const double a_final,
+			 const double e_final,
+			 const double i_final
+				    ) : base(4*seq.size()+2,0,1,1+2*seq.size()-1+3,1+2*seq.size()-1,1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
 {
 	// We check that all planets have equal central body
 	std::vector<double> mus(seq.size());
@@ -79,7 +84,7 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 	}
 	
 	// Now setting the problem bounds
-	size_type dim(4*m_tof.size());
+	size_type dim(4*m_tof.size()+2);
 	decision_vector lb(dim), ub(dim);
 	
 	// First leg
@@ -100,6 +105,11 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 		lb[4*i+5] = m_seq[i]->get_safe_radius() / m_seq[i]->get_radius();
 		ub[4*i+5] = (m_seq[i]->get_radius() + 2000000) / m_seq[i]->get_radius(); //from gtoc6 problem description
 	}
+	
+	//adding variables for the last flyby and insertion into orbit
+	lb[4*m_tof.size()] = - 2 * boost::math::constants::pi<double>(); ub[4*m_tof.size()] = 2 * boost::math::constants::pi<double>();
+	lb[4*m_tof.size()+1] = 1.1; ub[4*m_tof.size()+1] = 30;
+	
 	set_bounds(lb,ub);
 }
 
@@ -108,7 +118,11 @@ mga_incipit_cstrs::mga_incipit_cstrs(const mga_incipit_cstrs &p) :
 	 base(p.get_dimension(),p.get_i_dimension(),p.get_f_dimension(),p.get_c_dimension(),p.get_ic_dimension(),p.get_c_tol()),
 	 m_tof(p.m_tof),
 	 m_tmax(p.m_tmax),
-	 m_dmin(p.m_dmin)
+	 m_dmin(p.m_dmin),
+	 m_thrust(p.m_thrust),
+	 m_a_final(p.m_a_final),
+	 m_e_final(p.m_e_final),
+	 m_i_final(p.m_i_final)	 
 {
 	for (std::vector<kep_toolbox::planet_ptr>::size_type i = 0; i < p.m_seq.size();++i) {
 		m_seq.push_back(p.m_seq[i]->clone());
@@ -198,6 +212,7 @@ try {
 	double common_mu = m_seq[0]->get_mu_central_body();
 	// 1 -  we 'decode' the chromosome recording the various times of flight (days) in the list T
 	std::vector<double> T(m_seq.size(),0.0);
+	std::vector<double> d(m_seq.size()-1,0.0);
 
 	for (size_t i = 0; i<m_seq.size(); ++i) {
 		T[i] = x[4*i+3];
@@ -215,7 +230,8 @@ try {
 	// 3 - We start with the first leg
 	double theta = 2*boost::math::constants::pi<double>()*x[1];
 	double phi = acos(2*x[2]-1)-boost::math::constants::pi<double>() / 2;
-	double d,d2,ra,ra2;
+	double d2,ra,ra2;
+	kep_toolbox::array6D E;
 	kep_toolbox::array3D r = { {ASTRO_JR*1000*cos(phi)*sin(theta), ASTRO_JR*1000*cos(phi)*cos(theta), ASTRO_JR*1000*sin(phi)} };
 	kep_toolbox::array3D v;
 	kep_toolbox::lambert_problem l(r,r_P[0],T[0]*ASTRO_DAY2SEC,common_mu,false,false);
@@ -233,7 +249,7 @@ try {
 		v = v_out;
 		// s/c propagation before the DSM
 		kep_toolbox::propagate_lagrangian(r,v,x[4*i+2]*T[i]*ASTRO_DAY2SEC,common_mu);
-		kep_toolbox::closest_distance(d, ra, r_P[i-1], v_out, r, v, common_mu);
+		kep_toolbox::closest_distance(d[i-1], ra, r_P[i-1], v_out, r, v, common_mu);
 
 		// Lambert arc to reach Earth during (1-nu2)*T2 (second segment)
 		double dt = (1-x[4*i+2])*T[i]*ASTRO_DAY2SEC;
@@ -241,24 +257,63 @@ try {
 		v_end_l = l2.get_v2()[0];
 		v_beg_l = l2.get_v1()[0];
 		kep_toolbox::closest_distance(d2,ra2,r,v_beg_l, r_P[i], v_end_l, common_mu);
-		if (d < d2)
+		if (d[i-1] < d2)
 		{
-			d = d/ASTRO_JR;
+			d[i-1] = d[i-1]/ASTRO_JR;
 		} else {
-			d = d2/ASTRO_JR;
+			d[i-1] = d2/ASTRO_JR;
 		}
 
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
+		DV[i] = kep_toolbox::norm(v_out); // + std::max((2.0-d),0.0) * 1000.0;
 	}
+	
+	
+	// compute final insertion orbit
+	kep_toolbox::fb_prop(v_out, v_end_l, v_P[m_seq.size()-1], x[4*m_seq.size()+1] * m_seq[m_seq.size()-1]->get_radius(), x[4*m_seq.size()], m_seq[m_seq.size()-1]->get_mu_self());
+	r = r_P[m_seq.size()-1];
+	v = v_out;	
+	kep_toolbox::ic2par(r, v, m_seq[m_seq.size()-1]->get_mu_self(), E);
+	
 	// Now we return the constraints
 	c[0] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
-	c[1] = m_dmin - d;
+	for (size_t i = 0; i<m_seq.size(); ++i) {
+	  if(i>0) c[i] = m_dmin[i-1] - d[i-1];
+	  //inequality constraint on maximum impulse
+	  if(m_thrust == 0.0)
+	    c[m_seq.size() + i] =  0.0;
+	  else
+	    c[m_seq.size() + i] =  DV[i]/T[i] - m_thrust;
+	}
+	
+	//semi major axis equality constraint
+	if(m_a_final == -1.0){
+	  c[1+2*m_seq.size()-1] = 0.0;
+	}
+	else{
+	  c[1+2*m_seq.size()-1] = E[0] - m_a_final;
+	}
+	//eccentricity equality constraint
+	if(m_e_final == -1.0){
+	  c[1+2*m_seq.size()] = 0.0;
+	}
+	else{
+	  c[1+2*m_seq.size()] = E[1] - m_e_final;
+	} 
+	//inclination equality constraint
+	if(m_i_final == -1.0){
+	  c[1+2*m_seq.size()+1] = 0.0;
+	}
+	else{
+	  c[1+2*m_seq.size()+1] = E[2] - m_i_final;
+	}
+	
 //Here the lambert solver or the lagrangian propagator went wrong
 } catch (...) {
-	c[0] = boost::numeric::bounds<double>::highest();
-	c[1] = boost::numeric::bounds<double>::highest();
+	for (size_t i = 0; i<get_c_dimension(); ++i) {
+	  c[i] = boost::numeric::bounds<double>::highest();
+	}
 }
 }
 
@@ -430,6 +485,10 @@ std::string mga_incipit_cstrs::human_readable_extra() const
 	}
 	oss << "\n\tMaximum time of flight: " << m_tmax;
 	oss << "\n\tMinimum distance from Jupiter: " << m_dmin;
+	oss << "\n\tTechnological limitation on the impulsive maneuver: " << m_thrust;
+	oss << "\n\tOrbit insertion in the Jupiter system [a]: " << m_a_final;
+	oss << "\n\tOrbit insertion in the Jupiter system [e]: " << m_e_final;
+	oss << "\n\tOrbit insertion in the Jupiter system [i]: " << m_i_final;
 	
 	return oss.str();
 }

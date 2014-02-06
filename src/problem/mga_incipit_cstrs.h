@@ -56,9 +56,12 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 			 const kep_toolbox::epoch t0_l = kep_toolbox::epoch(7305.0),
 			 const kep_toolbox::epoch t0_u = kep_toolbox::epoch(11323.0),
 			 const std::vector<std::vector<double> > tof = construct_default_tofs(),
-			 double Tmax = 365.25,
-			 double Dmin = 0.2
-			 );
+			 const double tmax = 365.25,
+			 const std::vector<double> dmin = std::vector<double>(2,2.0),
+			 const double thrust = 0.0,
+			 const double a_final = -1.0,
+			 const double e_final = -1.0,
+			 const double i_final = -1.0);
 		mga_incipit_cstrs(const mga_incipit_cstrs&);
 		base_ptr clone() const;
 		
@@ -67,6 +70,7 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 		void set_tof(const std::vector<std::vector<double> >&);
 		const std::vector<std::vector<double> >& get_tof() const;
 		std::vector<kep_toolbox::planet_ptr> get_sequence() const;
+		
 	protected:
 		void objfun_impl(fitness_vector &, const decision_vector &) const;
 		void compute_constraints_impl(constraint_vector &, const decision_vector &) const;
@@ -100,12 +104,22 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 			ar & m_seq;
 			ar & m_tof;
 			ar & const_cast<double &>(m_tmax);
-			ar & const_cast<double &>(m_dmin);
+			ar & const_cast<std::vector<double> &>(m_dmin);
+			ar & const_cast<double &>(m_thrust);
+			ar & const_cast<double &>(m_a_final);
+			ar & const_cast<double &>(m_e_final);
+			ar & const_cast<double &>(m_i_final);
 		}
 		std::vector<kep_toolbox::planet_ptr> m_seq;
 		std::vector<std::vector<double> > m_tof;
-		const double m_tmax;
-		const double m_dmin;
+		
+		//constraints parameters
+		const double m_tmax; //maximum time of flight
+		const std::vector<double> m_dmin; //minimum distance to center of the system at each leg
+		const double m_thrust; //technological constraint on DV
+		const double m_a_final; //final semi major axis
+		const double m_e_final; //final eccentricity
+		const double m_i_final; //final inclination
 };
 
 }} // namespaces

@@ -271,9 +271,9 @@ def _mga_incipit_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('eu
 mga_incipit._orig_init = mga_incipit.__init__
 mga_incipit.__init__ = _mga_incipit_ctor
 
-def _mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], Tmax = 300.00, Dmin = 2.0):
+def _mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], tmax = 300.00, dmin = [2.0,2.0], thrust = 0.3, a_final = -1.0, e_final = -1.0, i_final = -1.0):
 	"""
-	USAGE: mga_incipit_cstrs(seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(6905.0),epoch(11323.0)], tof = [[100,200],[3,200],[4,100]], Tmax = 365.25, Dmin = 0.2)
+	USAGE: mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], tmax = 300.00, dmin = [2.0,2.0], thrust = 0.3, a_final = -1.0, e_final = -1.0, i_final = -1.0)
 
 	* seq: list of jupiter moons defining the trajectory incipit
 	* t0:  list of two epochs defining the launch window
@@ -285,8 +285,12 @@ def _mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_
 	arg_list.append(t0[0])
 	arg_list.append(t0[1])
 	arg_list.append(tof)
-	arg_list.append(Tmax)
-	arg_list.append(Dmin)
+	arg_list.append(tmax)
+	arg_list.append(dmin)
+	arg_list.append(thrust)
+	arg_list.append(a_final)
+	arg_list.append(e_final)
+	arg_list.append(i_final)
 	self._orig_init(*arg_list)
 mga_incipit_cstrs._orig_init = mga_incipit_cstrs.__init__
 mga_incipit_cstrs.__init__ = _mga_incipit_cstrs_ctor

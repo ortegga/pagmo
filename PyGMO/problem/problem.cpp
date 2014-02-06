@@ -570,7 +570,7 @@ BOOST_PYTHON_MODULE(_problem) {
 		.add_property("tof",make_function(&problem::mga_incipit::get_tof, return_value_policy<copy_const_reference>()), &problem::mga_incipit::set_tof,"bound on the times of flight for the different legs");
 
 	problem_wrapper<problem::mga_incipit_cstrs>("mga_incipit_cstrs", "Jupiter capture problem from the first part of gtoc6 (constrained version)")
-		.def(init< optional< std::vector<kep_toolbox::planet_ptr>, kep_toolbox::epoch, kep_toolbox::epoch, std::vector<std::vector<double> >, const double, const double > >())
+		.def(init< optional< std::vector<kep_toolbox::planet_ptr>, kep_toolbox::epoch, kep_toolbox::epoch, std::vector<std::vector<double> >, double, std::vector<double>, double, double, double, double > >())
 		.def("pretty", &problem::mga_incipit_cstrs::pretty)
 		.def("get_sequence", &problem::mga_incipit_cstrs::get_sequence)
 		.add_property("tof",make_function(&problem::mga_incipit_cstrs::get_tof, return_value_policy<copy_const_reference>()), &problem::mga_incipit_cstrs::set_tof,"bound on the times of flight for the different legs");
