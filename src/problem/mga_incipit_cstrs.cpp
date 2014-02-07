@@ -65,7 +65,7 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 			 const double a_final,
 			 const double e_final,
 			 const double i_final
-				    ) : base(4*seq.size()+2,0,1,compute_number_of_c(tmax,dmin,thrust,a_final,e_final,i_final),compute_number_of_ic(tmax,dmin,thrust),1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
+				    ) : base(4*seq.size()+2,0,1,compute_number_of_c(seq,tmax,dmin,thrust,a_final,e_final,i_final),compute_number_of_ic(seq,tmax,dmin,thrust),1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
 {
 	// We check that all planets have equal central body
 	std::vector<double> mus(seq.size());
@@ -87,11 +87,16 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 	if (tmax<0){
 		pagmo_throw(value_error,"The maximum time of flight must be a positive value");  
 	}
-	if (dmin.size() != seq.size()-1) {
+	int count = 0;
+	for (size_t i = 0; i < dmin.size(); ++i) {
+		if (dmin[i]>0.0) count++; 
+	}
+	if ((dmin.size() != seq.size()-1) && count!=0) {
 		pagmo_throw(value_error,"The vector of allowed minimum distance to the center of the system has the wrong length");  
 	}
-	for (size_t i = 0; i < seq.size()-1; ++i) {
-		if (dmin[i]<0) pagmo_throw(value_error,"The minimum distance to the center of the system must be positive"); 
+	for (size_t i = 0; i < dmin.size(); ++i) {
+		if (dmin[i]<0.0) 
+			pagmo_throw(value_error,"The minimum distance from the center of the system must be positive");  
 	}
 	if (thrust<0){
 		pagmo_throw(value_error,"The technological constraint on the thrust need to be positive");  
@@ -166,14 +171,14 @@ base_ptr mga_incipit_cstrs::clone() const
 }
 
 
-pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_c(const double tmax, const std::vector<double> dmin, const double thrust, const double a_final, const double e_final, const double i_final) const{
+pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_c(const std::vector<kep_toolbox::planet_ptr> &seq, const double &tmax, const std::vector<double> &dmin, const double &thrust, const double &a_final, const double &e_final, const double &i_final) const{
 	pagmo::problem::base::c_size_type n_count = 0;
   
 	if(tmax > 0.0) n_count++;
-	for (size_t i = 0; i < m_seq.size()-1; ++i) {
+	for (size_t i = 0; i < dmin.size(); ++i) {
 	    if (dmin[i] > 0.0) n_count++; 
 	}
-	if(thrust > 0.0) n_count = n_count+m_seq.size();
+	if(thrust > 0.0) n_count = n_count+seq.size();
 	
 	if(a_final != -1.0) n_count++;
 	if(e_final != -1.0) n_count++;
@@ -182,14 +187,14 @@ pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_c(const d
   	return n_count;
 }
 
-pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_ic(const double tmax, const std::vector<double> dmin, const double thrust) const{
+pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_ic(const std::vector<kep_toolbox::planet_ptr> &seq, const double &tmax, const std::vector<double> &dmin, const double &thrust) const{
   	pagmo::problem::base::c_size_type n_count = 0;
   
 	if(tmax > 0.0) n_count++;
-	for (size_t i = 0; i < m_seq.size()-1; ++i) {
+	for (size_t i = 0; i < dmin.size(); ++i) {
 	    if (dmin[i] > 0.0) n_count++; 
 	}
-	if(thrust > 0.0) n_count = n_count+m_seq.size();
+	if(thrust > 0.0) n_count = n_count+seq.size();
   	
   	return n_count;
 }
@@ -337,11 +342,14 @@ try {
 	pagmo::problem::base::c_size_type index_cstrs = 0.0;
 	
 	// Now we return the constraints
-	if(m_tmax > 0.0) c[index_cstrs] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
+	if(m_tmax > 0.0){
+		c[index_cstrs] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
+		index_cstrs++;
+	}
 	
-	for (size_t i = 0; i<m_seq.size()-1; ++i){
+	for (size_t i = 0; i<m_dmin.size(); ++i){
 	  if(m_dmin[i] > 0.0){
-	    c[index_cstrs] = m_dmin[i-1] - d[i-1];
+	    c[index_cstrs] = m_dmin[i] - d[i];
 	    index_cstrs++;
 	  }
 	}

@@ -71,8 +71,8 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 		const std::vector<std::vector<double> >& get_tof() const;
 		std::vector<kep_toolbox::planet_ptr> get_sequence() const;
 		
-		pagmo::problem::base::c_size_type compute_number_of_c(const double tmax, const std::vector<double> dmin, const double thrust, const double a_final, const double e_final, const double i_final) const;
-		pagmo::problem::base::c_size_type compute_number_of_ic(const double tmax, const std::vector<double> dmin, const double thrust) const;
+		pagmo::problem::base::c_size_type compute_number_of_c(const std::vector<kep_toolbox::planet_ptr> &seq, const double &tmax, const std::vector<double> &dmin, const double &thrust, const double &a_final, const double &e_final, const double &i_final) const;
+		pagmo::problem::base::c_size_type compute_number_of_ic(const std::vector<kep_toolbox::planet_ptr> &seq, const double &tmax, const std::vector<double> &dmin, const double &thrust) const;
 		
 	protected:
 		void objfun_impl(fitness_vector &, const decision_vector &) const;
@@ -98,6 +98,7 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 			retval.push_back(dumb);
 			return retval;
 		}
+
 	private:
 		friend class boost::serialization::access;
 		template <class Archive>
