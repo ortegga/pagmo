@@ -43,12 +43,17 @@ namespace pagmo { namespace problem {
  * @param[in] t0_l kep_toolbox::epoch representing the lower bound for the launch epoch
  * @param[in] t0_u kep_toolbox::epoch representing the upper bound for the launch epoch
  * @param[in] tof time-of-flight vector containing lower and upper bounds (in days) for the various legs time of flights
- * @param[in] Tmax maximum time of flight
- * @param[in] Dmin minimum distance from Jupiter (for radiation protection)
+ * @param[in] tmax maximum time of flight
+ * @param[in] dmin minimum distance from Jupiter (for radiation protection)
+ * @param[in] thrust technological limitation on the thrust
+ * @param[in] a_final orbit insertion semimajor axis
+ * @param[in] e_final orbit insertion eccentricity
+ * @param[in] i_final orbit insertion inclination
  *
  * @throws value_error if the planets in seq do not all have the same central body gravitational constant
  * @throws value_error if tof has a size different from seq.size()
  */
+
 mga_incipit_cstrs::mga_incipit_cstrs(
 			 const std::vector<kep_toolbox::planet_ptr> seq,
 			 const kep_toolbox::epoch t0_l,
@@ -60,7 +65,7 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 			 const double a_final,
 			 const double e_final,
 			 const double i_final
-				    ) : base(4*seq.size()+2,0,1,1+2*seq.size()-1+3,1+2*seq.size()-1,1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
+				    ) : base(4*seq.size()+2,0,1,compute_number_of_c(tmax,dmin,thrust,a_final,e_final,i_final),compute_number_of_ic(tmax,dmin,thrust),1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
 {
 	// We check that all planets have equal central body
 	std::vector<double> mus(seq.size());
@@ -77,6 +82,30 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 	for (size_t i = 0; i < tof.size(); ++i) {
 		if (tof[i].size()!=2) pagmo_throw(value_error,"Each element of the time-of-flight vector (tof)  needs to have dimension 2 (lower and upper bound)"); 
 	}
+	
+	// We check the consistency of the constraints input
+	if (tmax<0){
+		pagmo_throw(value_error,"The maximum time of flight must be a positive value");  
+	}
+	if (dmin.size() != seq.size()-1) {
+		pagmo_throw(value_error,"The vector of allowed minimum distance to the center of the system has the wrong length");  
+	}
+	for (size_t i = 0; i < seq.size()-1; ++i) {
+		if (dmin[i]<0) pagmo_throw(value_error,"The minimum distance to the center of the system must be positive"); 
+	}
+	if (thrust<0){
+		pagmo_throw(value_error,"The technological constraint on the thrust need to be positive");  
+	}
+	if (a_final<=0 && a_final!= -1.0){
+		pagmo_throw(value_error,"The final semimajor axis must be positive");  
+	}
+	if ((e_final<0 || e_final >1) && (e_final!= -1.0)){
+		pagmo_throw(value_error,"The final eccentricity must be between 0 and 1");  
+	}
+	if ((i_final<0 || i_final > 2*boost::math::constants::pi<double>()) && (i_final!= -1.0)){
+		pagmo_throw(value_error,"The final inclination must be between 0 and 2*PI");  
+	}
+	
 	
 	// Filling in the planetary sequence data member. This requires to construct the polymorphic planets via their clone method 
 	for (std::vector<kep_toolbox::planet>::size_type i = 0; i < seq.size(); ++i) {
@@ -134,6 +163,35 @@ mga_incipit_cstrs::mga_incipit_cstrs(const mga_incipit_cstrs &p) :
 base_ptr mga_incipit_cstrs::clone() const
 {
 	return base_ptr(new mga_incipit_cstrs(*this));
+}
+
+
+pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_c(const double tmax, const std::vector<double> dmin, const double thrust, const double a_final, const double e_final, const double i_final) const{
+	pagmo::problem::base::c_size_type n_count = 0;
+  
+	if(tmax > 0.0) n_count++;
+	for (size_t i = 0; i < m_seq.size()-1; ++i) {
+	    if (dmin[i] > 0.0) n_count++; 
+	}
+	if(thrust > 0.0) n_count = n_count+m_seq.size();
+	
+	if(a_final != -1.0) n_count++;
+	if(e_final != -1.0) n_count++;
+	if(i_final != -1.0) n_count++;
+	
+  	return n_count;
+}
+
+pagmo::problem::base::c_size_type mga_incipit_cstrs::compute_number_of_ic(const double tmax, const std::vector<double> dmin, const double thrust) const{
+  	pagmo::problem::base::c_size_type n_count = 0;
+  
+	if(tmax > 0.0) n_count++;
+	for (size_t i = 0; i < m_seq.size()-1; ++i) {
+	    if (dmin[i] > 0.0) n_count++; 
+	}
+	if(thrust > 0.0) n_count = n_count+m_seq.size();
+  	
+  	return n_count;
 }
 
 /// Implementation of the objective function.
@@ -195,7 +253,7 @@ try {
 
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out) + std::max((2.0-d),0.0) * 1000.0;
+		DV[i] = kep_toolbox::norm(v_out);// + std::max((2.0-d),0.0) * 1000.0;
 	}
 	// Now we return the objective(s) function
 	f[0] = std::accumulate(DV.begin(),DV.end(),0.0); 
@@ -266,7 +324,7 @@ try {
 
 		// DSM occuring at time nu2*T2
 		kep_toolbox::diff(v_out, v_beg_l, v);
-		DV[i] = kep_toolbox::norm(v_out); // + std::max((2.0-d),0.0) * 1000.0;
+		DV[i] = kep_toolbox::norm(v_out);// + std::max((2.0-d),0.0) * 1000.0;
 	}
 	
 	
@@ -274,40 +332,44 @@ try {
 	kep_toolbox::fb_prop(v_out, v_end_l, v_P[m_seq.size()-1], x[4*m_seq.size()+1] * m_seq[m_seq.size()-1]->get_radius(), x[4*m_seq.size()], m_seq[m_seq.size()-1]->get_mu_self());
 	r = r_P[m_seq.size()-1];
 	v = v_out;	
-	kep_toolbox::ic2par(r, v, m_seq[m_seq.size()-1]->get_mu_self(), E);
+	kep_toolbox::ic2par(r, v, common_mu, E);
+	
+	pagmo::problem::base::c_size_type index_cstrs = 0.0;
 	
 	// Now we return the constraints
-	c[0] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
-	for (size_t i = 0; i<m_seq.size(); ++i) {
-	  if(i>0) c[i] = m_dmin[i-1] - d[i-1];
-	  //inequality constraint on maximum impulse
-	  if(m_thrust == 0.0)
-	    c[m_seq.size() + i] =  0.0;
-	  else
-	    c[m_seq.size() + i] =  DV[i]/T[i] - m_thrust;
+	if(m_tmax > 0.0) c[index_cstrs] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
+	
+	for (size_t i = 0; i<m_seq.size()-1; ++i){
+	  if(m_dmin[i] > 0.0){
+	    c[index_cstrs] = m_dmin[i-1] - d[i-1];
+	    index_cstrs++;
+	  }
+	}
+
+	if(m_thrust > 0.0){
+	  for (size_t i = 0; i<m_seq.size(); ++i) { 
+	     c[index_cstrs] =  DV[i]/T[i] - m_thrust;
+	     index_cstrs++;
+	  }
 	}
 	
 	//semi major axis equality constraint
-	if(m_a_final == -1.0){
-	  c[1+2*m_seq.size()-1] = 0.0;
-	}
-	else{
-	  c[1+2*m_seq.size()-1] = E[0] - m_a_final;
+	if(m_a_final != -1.0){
+	  c[index_cstrs] = E[0] - m_a_final;
+	  index_cstrs++;
 	}
 	//eccentricity equality constraint
-	if(m_e_final == -1.0){
-	  c[1+2*m_seq.size()] = 0.0;
-	}
-	else{
-	  c[1+2*m_seq.size()] = E[1] - m_e_final;
+	if(m_e_final != -1.0){
+	  c[index_cstrs] = E[1] - m_e_final;
+	  index_cstrs++;
 	} 
 	//inclination equality constraint
-	if(m_i_final == -1.0){
-	  c[1+2*m_seq.size()+1] = 0.0;
+	if(m_i_final != -1.0){
+	  c[index_cstrs] = E[2] - m_i_final;
+	  index_cstrs++;
 	}
-	else{
-	  c[1+2*m_seq.size()+1] = E[2] - m_i_final;
-	}
+	
+	//std::cout<<E[0]<<", "<<E[1]<<", "E[2]<<std::endl;
 	
 //Here the lambert solver or the lagrangian propagator went wrong
 } catch (...) {
@@ -483,12 +545,12 @@ std::string mga_incipit_cstrs::human_readable_extra() const
 	for (size_t i=0; i<m_seq.size(); ++i) {
 	  oss << m_tof[i]<<' ';
 	}
-	oss << "\n\tMaximum time of flight: " << m_tmax;
+	oss << "\n\tMaximum time of flight [days]: " << m_tmax;
 	oss << "\n\tMinimum distance from Jupiter: " << m_dmin;
 	oss << "\n\tTechnological limitation on the impulsive maneuver: " << m_thrust;
-	oss << "\n\tOrbit insertion in the Jupiter system [a]: " << m_a_final;
-	oss << "\n\tOrbit insertion in the Jupiter system [e]: " << m_e_final;
-	oss << "\n\tOrbit insertion in the Jupiter system [i]: " << m_i_final;
+	oss << "\n\tOrbit insertion in the Jupiter system, a [m]: " << m_a_final;
+	oss << "\n\tOrbit insertion in the Jupiter system, e [-]: " << m_e_final;
+	oss << "\n\tOrbit insertion in the Jupiter system, i [rad]: " << m_i_final;
 	
 	return oss.str();
 }

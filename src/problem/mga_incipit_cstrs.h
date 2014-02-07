@@ -56,8 +56,8 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 			 const kep_toolbox::epoch t0_l = kep_toolbox::epoch(7305.0),
 			 const kep_toolbox::epoch t0_u = kep_toolbox::epoch(11323.0),
 			 const std::vector<std::vector<double> > tof = construct_default_tofs(),
-			 const double tmax = 365.25,
-			 const std::vector<double> dmin = std::vector<double>(2,2.0),
+			 const double tmax = 0.0,
+			 const std::vector<double> dmin = std::vector<double>(2,0.0),
 			 const double thrust = 0.0,
 			 const double a_final = -1.0,
 			 const double e_final = -1.0,
@@ -70,6 +70,9 @@ class __PAGMO_VISIBLE mga_incipit_cstrs: public base
 		void set_tof(const std::vector<std::vector<double> >&);
 		const std::vector<std::vector<double> >& get_tof() const;
 		std::vector<kep_toolbox::planet_ptr> get_sequence() const;
+		
+		pagmo::problem::base::c_size_type compute_number_of_c(const double tmax, const std::vector<double> dmin, const double thrust, const double a_final, const double e_final, const double i_final) const;
+		pagmo::problem::base::c_size_type compute_number_of_ic(const double tmax, const std::vector<double> dmin, const double thrust) const;
 		
 	protected:
 		void objfun_impl(fitness_vector &, const decision_vector &) const;

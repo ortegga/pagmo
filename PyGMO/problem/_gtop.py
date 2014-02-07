@@ -271,7 +271,7 @@ def _mga_incipit_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('eu
 mga_incipit._orig_init = mga_incipit.__init__
 mga_incipit.__init__ = _mga_incipit_ctor
 
-def _mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], tmax = 300.00, dmin = [2.0,2.0], thrust = 0.3, a_final = -1.0, e_final = -1.0, i_final = -1.0):
+def _mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], tmax = 0.0, dmin = [0.0,0.0], thrust = 0.0, a_final = -1.0, e_final = -1.0, i_final = -1.0):
 	"""
 	USAGE: mga_incipit_cstrs_ctor(self, seq = [planet_js('io'),planet_js('io'),planet_js('europa')], t0 = [epoch(7305.0),epoch(11323.0)],tof = [[100,200],[3,200],[4,100]], tmax = 300.00, dmin = [2.0,2.0], thrust = 0.3, a_final = -1.0, e_final = -1.0, i_final = -1.0)
 
