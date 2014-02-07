@@ -58,6 +58,9 @@ namespace pagmo { namespace algorithm {
  * @param[in] solver the algorithm to solve the single objective problems.
  * @param[in] var_weights the weights for the decision variables.
  * @param[in] obj_weights the decomposition weights for the objective functions.
+ * @param[in] weight_generation type of weight generation.
+ * @param[in] relative_tolerance for determining convergence.
+ * @param[in] absolute_tolerance for determining convergence..
  * @throws value_error if gen is negative, weight_generation is not sane
  * @see pagmo::problem::decompose::method_type
  */
@@ -66,6 +69,7 @@ game_theory::game_theory(int gen,
 	const pagmo::algorithm::base & solver,
 	const weights_vector_type &var_weights,
 	const weights_vector_type &obj_weights,
+	weight_generation_type weight_generation,
 	const std::vector< double > &relative_tolerance,
 	const std::vector< double > &absolute_tolerance)
 	:base(),
@@ -74,11 +78,15 @@ game_theory::game_theory(int gen,
 	 m_solver(solver.clone()),
 	 m_var_weights(var_weights),
 	 m_obj_weights(obj_weights),
+	 m_weight_generation(weight_generation),
 	 m_relative_tolerance(relative_tolerance),
 	 m_absolute_tolerance(absolute_tolerance)
 {
 	if (gen < 0) {
 		pagmo_throw(value_error,"number of generations must be nonnegative");
+	}
+	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM  ) {
+		pagmo_throw(value_error,"non existing weight generation method.");
 	}
 }
 
@@ -90,6 +98,7 @@ game_theory::game_theory(const game_theory &algo):
 	m_solver(algo.m_solver->clone()),
 	m_var_weights(algo.m_var_weights),
 	m_obj_weights(algo.m_obj_weights),
+	m_weight_generation(algo.m_weight_generation),
 	m_relative_tolerance(algo.m_relative_tolerance),
 	m_absolute_tolerance(algo.m_absolute_tolerance)
 {}
@@ -171,152 +180,127 @@ bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::
 	return withintol;
 }
 
-/// Generates the decision variables weights
-/**
- * Generates the decision variables weights for linking decision
- * variables to objective sub populations.
- *
- * @param[in] n_x number of decision variables.
- * @param[in] n_p number of populations.
- */
-weights_vector_type game_theory::generate_var_weights(
-	const unsigned int n_x, const unsigned int n_p ) const {
+// Generate random vector of size n with probability of p
+std::vector< int > game_theory::rand_weight_vec(const int n, const double p ) const
+{
+	// Probability should be between one and zero, also if you
+	// want a vector of zeros and ones, go make you own.
 
-	// Preform sanity checks
-	if ( n_p > n_x ) {
-		pagmo_throw(value_error, "The number of populations cannot be larger than the number of decision variables.");
-	}
-
-	// Definition of combined: two or more decision variables
-	// controlled by a single population.
-
-	// Vector of decision variable weights.
-	weights_vector_type var_weights;
-
-	// Number of decision variables to be combined. 
-	int n_c;
-
-	// Number of decision variables to be combined for a single
-	// occasion. No need to initialise, will differ per occasion.
-	int n_c_o;
-
-	// Index for vars, as eventually k will outrun i if n_x > n_p.
-	int k = 0;
-
-	// Run through the number of populations to fill obj_weights.
-	for( unsigned int i = 0; i < n_p; i++ ){
-		// Initialise with zero weights
-		weights_type weights(n_x, 0.0);
-
-		n_c = n_x - (n_p - i) + 1 - k;
-
-		// Number of decision variables to combine for this i.
-		// Where n_p - i represents the number of remaining
-		// occasions.
-		if( n_c == 1){
-			n_c_o = 1;
-		} else {
-			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
-					static_cast<double>( n_p - i ))); 
-		}
-
-		for( int j = 0; j < n_c_o; j++ ){
-
-			// Set the weights
-			weights[k] = 1.0;
-
-			// Increment k
-			k++;
-		}
-
-		var_weights.push_back( weights );
-	}
-
-	return var_weights;
+	std::vector< int > a;
+	for( int i = 0; i < n; ++i )
+		a.push_back( static_cast< int >( m_drng() + p ));
+	return a;
 }
 
-/// Generates the objective weights
+/// Generates the weights
 /**
  * Generates the weights used in the problem decomposition.
  *
- * @param[in] n_o number of objective functions.
- * @param[in] n_p number of populations.
+ * @param[in] n_x length of weight vector.
+ * @param[in] n_v length of vector of weight vectors.
+ * @param[in] fracs if true the sum of a weight vector is always one.
  */
-weights_vector_type game_theory::generate_obj_weights(
-	const unsigned int n_o, const unsigned int n_p ) const {
+weights_vector_type game_theory::generate_weights(
+	const unsigned int n_x, const unsigned int n_v, const bool fracs, bool random ) const {
 
 	// Preform sanity checks
-	if ( n_p > n_o ) {
-		pagmo_throw(value_error, "The number of populations cannot be larger than the number of objectives.");
+	if ( n_v > n_x ) {
+		pagmo_throw(value_error, "The number of weight vector cannot be longer than the number of entries in a weight vector.");
 	}
 
-	// Definition of combined: two or more objective functions
-	// (through weighed decomposition) for a single population.
+	// Definition of combined: two or more of x for one single
+	// population.
 
 	// Vector of objective weights.
-	weights_vector_type obj_weights;
+	weights_vector_type vec_weights;
 
-	// Number of objectives to be combined
-	int n_c;
+	// Number to be combined
+	unsigned int n_c;
 
-	// Number of objectives to be combined for a single occasion.
-	// No need to initialise, will differ per occasion.
-	int n_c_o;
+	// Number to be combined for a single occasion. No need to
+	// initialise, will differ per occasion.
+	unsigned int n_c_o;
 
-	// Index for objs, as eventually k will outrun i if n_o > n_p.
-	int k = 0;
+	// Index for objs, as eventually k will outrun i if n_x > n_v.
+	unsigned int k = 0;
 
-	// Do not combine the first objective function. For usage with
-	// con2mo.
-	bool do_not_combine_first_obj = true;
+	// Assigned weights, useful for random generation.
+	std::vector< int > ass_weights(n_x, 0);
 
-	// Run through the number of populations to fill obj_weights.
-	for( unsigned int i = 0; i < n_p; i++ ){
+	// Run through the number of populations to fill vec_weights.
+	for( unsigned int i = 0; i < n_v; i++ ){
 		// Initialise with zero weights
-		weights_type weights(n_o, 0.0);
+		weights_type weights(n_x, 0.0);
 
-		n_c = n_o - (n_p - i) + 1 - k;
+		n_c = n_x - (n_v - i) + 1 - k;
 
 		// Number of objective to combine for this i. Where
-		// n_p - i represents the number of remaining
+		// n_v - i represents the number of remaining
 		// occasions.
-		if((i == 0 && do_not_combine_first_obj) || n_c == 1){
+		if( n_c == 1 ){
 			n_c_o = 1;
 		} else {
 			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
-					static_cast<double>( n_p - i )));
-		}
-		
-		// Give out a warning.
-		if( n_c_o > 1 ){
-			std::cout << "Combining constraints: ";
+					static_cast<double>( n_v - i )));
 		}
 
-		// Calculate the fraction as total must eq 1.
-		double frac = 1.0 / static_cast<double>( n_c_o );
+		// Calculate the fraction, if fracs then the sum must be 1.
+		double frac = 1.0;
 
-		for( int j = 0; j < n_c_o; j++ ){
-
-			// Append warning with the constraint numbers
-			// that are combined in this iteration.
-			if( n_c_o > 1 ){
-				std::cout << (k+1) << " ";
+		if( !random ){
+			if( fracs ){
+				frac = 1.0 / static_cast<double>( n_c_o );
 			}
+			for( unsigned int j = 0; j < n_c_o; j++ ){
 
-			// Set the weights
-			weights[k] = frac;
+				// Set the weights
+				weights[k] = frac;
 
-			// Increment k
-			k++;
+				// Increment k
+				k++;
+			}
+		}else{
+			double prob = 1./static_cast<double>( n_v - i );
+
+			
+			// Count number of assigned in vector
+			unsigned int n_a = 0;
+			std::vector< int > r_weights;
+			// Keep generating until at least one hit.
+			while( n_a == 0 ){
+				r_weights = rand_weight_vec( n_x - k, prob );
+				// Count number of ones
+				for( unsigned int j = 0; j < n_x - k; j++ ){
+					if( r_weights[j] == 1 ){
+						n_a++;
+					}
+				}
+				// Leave enough to be assigned by coming generations.
+				if( n_a > n_x - k - (n_v - i - 1)){
+					n_a = 0;
+				}
+			}
+			if( fracs ){
+				frac = 1.0 / static_cast<double>( n_a );
+			}
+			for( unsigned int j = 0; j < n_x; j++ ){
+
+				// Set the unassigned weights
+				if( ass_weights[j] == 0 ){
+					double w = r_weights.back();
+					r_weights.pop_back();
+
+					// Assign random weight
+					weights[j] = frac * static_cast<double>( w );
+					ass_weights[j] = w;
+					k += w;
+				}
+			}
 		}
-		if( n_c_o > 1 ){
-			std::cout << std::endl;
-		}
-
-		obj_weights.push_back( weights );
+		vec_weights.push_back( weights );
 	}
 
-	return obj_weights;
+	return vec_weights;
 }
 
 /// Evolve implementation.
@@ -353,19 +337,30 @@ void game_theory::evolve(population &pop) const
 	// Generate the default if vector of decision variable weights
 	// for linking to populations is empty.
 	weights_vector_type var_weights;
-        if(m_var_weights.empty()){
-		var_weights = generate_var_weights( prob_dimension, subpops );
-	}else{
-		var_weights = m_var_weights;
-	}
-	
-	// Generate the default if vector of objectives weights for
-	// the decomposition is empty.
 	weights_vector_type obj_weights;
-        if(m_obj_weights.empty()){
-		obj_weights = generate_obj_weights( prob_objectives, subpops );
-	}else{
-		obj_weights = m_obj_weights;
+
+	switch (m_weight_generation)
+	{
+		case UNIFORM : 
+		        if(m_var_weights.empty()){
+				var_weights = generate_weights( 
+					prob_dimension, subpops, false, false );
+			}else{
+				var_weights = m_var_weights;
+			}
+			if(m_obj_weights.empty()){
+				obj_weights = generate_weights( 
+					prob_objectives, subpops, true, false );
+			}else{
+				obj_weights = m_obj_weights;
+			}
+			break;
+		case RANDOM : 
+			var_weights = generate_weights( 
+				prob_dimension, subpops, false, true );
+			obj_weights = generate_weights( 
+				prob_objectives, subpops, true, true );
+			break;
 	}
 
 	// More sanity checks
@@ -436,7 +431,6 @@ void game_theory::evolve(population &pop) const
 		// Check if Nash equilibrium is reached
 		
 		if( solution_within_tolerance( best_vector, last_best_vector )){
-			std::cout << "Nash equilibrium attained within tolerances, after " << g << " iterations." << std::endl;
 			break;
 		}
 
@@ -507,8 +501,16 @@ void game_theory::evolve(population &pop) const
 
 	// Get sorted list from best to worst
 	std::vector<population::size_type> best_idx = pop.get_best_idx( pop.size() );
-	for (population::size_type i = best_idx.size() - 1; i > pop_size; --i) {
-		pop.erase( i );
+
+	// Get worst pop.size() - NP
+	std::vector<population::size_type> worst_idx( best_idx.begin() + pop_size, best_idx.end() );
+
+	// Sort list in descending order
+	std::sort( worst_idx.begin(), worst_idx.end(), std::greater<int>());
+
+	// Remove worst from population
+	for (population::size_type i = 0; i < worst_idx.size(); ++i) {
+		pop.erase( worst_idx[i] );
 	}
 	
 }
@@ -530,6 +532,16 @@ std::string game_theory::human_readable_extra() const
 	s << "threads:" << m_threads << ' ';
 	s << "solver:" << m_solver->get_name() << ' ';
 	s << "decomposition: WEIGHTED" << ' ';
+	s << "weights:";
+	switch (m_weight_generation)
+	{
+		case UNIFORM : 
+			s << "UNIFORM" << ' ';
+			break;
+		case RANDOM : 
+			s << "RANDOM" << ' ';
+			break;
+	}
 	return s.str();
 }
 

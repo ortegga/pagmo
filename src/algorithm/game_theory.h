@@ -57,12 +57,18 @@ typedef std::vector< weights_type > weights_vector_type;
 class __PAGMO_VISIBLE game_theory: public base
 {
   public:
+	/// Mechanism used to generate the weight vectors
+	enum weight_generation_type {
+		UNIFORM,
+		RANDOM
+	};
 	game_theory(
 	        int gen = 10,
 		unsigned int max_parallelism = 1,
 		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
 		const weights_vector_type & = weights_vector_type(),
 		const weights_vector_type & = weights_vector_type(),
+		weight_generation_type = UNIFORM,
 		const std::vector< double > & = std::vector< double >(1,1e-6),
 		const std::vector< double > & = std::vector< double >(1,1e-6)
 	);
@@ -71,9 +77,7 @@ class __PAGMO_VISIBLE game_theory: public base
 	base_ptr clone() const;
 	void evolve(population &) const;
 	std::string get_name() const;
-	weights_vector_type generate_var_weights(const unsigned int, const unsigned int) const;
-	weights_vector_type generate_obj_weights(const unsigned int, const unsigned int) const;
-
+	weights_vector_type generate_weights(const unsigned int, const unsigned int, const bool, const bool ) const;
   protected:
 	std::string human_readable_extra() const;
 
@@ -88,6 +92,7 @@ class __PAGMO_VISIBLE game_theory: public base
 		ar & const_cast<base_ptr &>(m_solver);
 		ar & m_var_weights;
 		ar & m_obj_weights;
+		ar & const_cast<weight_generation_type &>(m_weight_generation);
 		ar & m_relative_tolerance;
 		ar & m_absolute_tolerance;
 	}
@@ -97,9 +102,12 @@ class __PAGMO_VISIBLE game_theory: public base
 	const base_ptr m_solver;
 	weights_vector_type m_var_weights;
 	weights_vector_type m_obj_weights;
+	const weight_generation_type m_weight_generation;
 	std::vector< double > m_relative_tolerance;
 	std::vector< double > m_absolute_tolerance;
 	
+	// Private functions
+	std::vector< int > rand_weight_vec(const int, const double ) const;
 	template <typename T>
 		std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
 	template <typename T>
