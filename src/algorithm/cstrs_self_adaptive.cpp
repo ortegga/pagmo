@@ -182,10 +182,10 @@ void cstrs_self_adaptive::evolve(population &pop) const
 		}
 
 	}
-	//update number of fitness evaluations. It is equal to the number computed by the wrapped algorithm since 
-	//(excluding PaGMO structures dependent problems) the objfun is called just by the evolve of the original algorithm
-	// on the prob_new problem (penalized fitness)
-	m_fevals = m_original_algo->get_fevals();
+	//update number of fitness and constraints evaluations.
+	prob.add_fevals(prob_new.get_fevals());
+	prob.add_cevals(prob_new.get_cevals());
+	//m_fevals = m_original_algo->get_fevals();
 }
 
 /// Algorithm name

@@ -108,6 +108,7 @@ void cstrs_co_evolution::evolve(population &pop) const
 	const problem::base &prob = pop.problem();
 	const population::size_type pop_size = pop.size();
 	const problem::base::size_type prob_dimension = prob.get_dimension();
+	unsigned int fevals = 0, cevals = 0;
 
 	// get the constraints dimension
 	problem::base::c_size_type prob_c_dimension = prob.get_c_dimension();
@@ -210,6 +211,10 @@ void cstrs_co_evolution::evolve(population &pop) const
 			// set up penalization variables needs for the population 2
 			// the constraints has not been evaluated yet.
 			prob_2.update_penalty_coeff(j,pop_2_x.at(j),pop_1_vector.at(j));
+			
+			//update number of fitness and constraints evaluations.
+			fevals += prob_1.get_fevals();
+			cevals += prob_1.get_cevals();
 
 		}
 		// creating the POPULATION 2 instance based on the
@@ -291,11 +296,10 @@ void cstrs_co_evolution::evolve(population &pop) const
 		pop = pop_1_vector.at(best_idx);
 	}
 
-	//update number of fitness evaluations. It is equal to the number computed by the wrapped algorithm since 
-	//(excluding PaGMO structures dependent problems) the objfun is called just by the evolve of the original algorithm
-	// on the prob_1 problem (penalized fitness). Since m_original_algo->evolve() is called inside a cycle the number 
-	// of functions evaluations is a multiple of pop_2 size
-	m_fevals = m_original_algo->get_fevals();
+	//update number of fitness and constraints evaluations.
+	prob.add_fevals(prob_2.get_fevals()+fevals);
+	prob.add_cevals(prob_2.get_cevals()+cevals);	
+	//m_fevals = m_original_algo->get_fevals();
 }
 
 /// Algorithm name

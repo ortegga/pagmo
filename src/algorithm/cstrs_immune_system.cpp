@@ -478,9 +478,9 @@ void cstrs_immune_system::evolve(population &pop) const
 		pop.push_back(pop_mixed.get_individual(i).cur_x);
 	}
 
-	//update number of fitness evaluations. It is equal to the number computed by the wrapped algorithm since 
-	//(excluding PaGMO structures dependent problems) the objfun is called just by the evolve of the original algorithm
-	// on the con2uncon problem (mode = optimality)
+	//update number of fitness and constraints evaluations.
+	prob.add_fevals(prob_unconstrained.get_fevals());
+	prob.add_cevals(prob_unconstrained.get_cevals());
 	//m_fevals = m_original_algo->get_fevals();
 }
 
