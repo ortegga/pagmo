@@ -107,7 +107,8 @@ class __PAGMO_VISIBLE game_theory: public base
 	std::vector< double > m_absolute_tolerance;
 	
 	// Private functions
-	std::vector< int > rand_weight_vec(const int, const double ) const;
+        weights_vector_type generate_random_weights(const unsigned int, const unsigned int, const bool ) const;
+	weights_vector_type generate_uniform_weights(const unsigned int, const unsigned int, const bool ) const;
 	template <typename T>
 		std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
 	template <typename T>
