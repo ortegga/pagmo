@@ -35,6 +35,7 @@ SET(PAGMO_LIB_SRC_LIST
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/pade.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/cstrs_immune_system.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/cstrs_core.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/game_theory.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/nspso.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/algorithm/spea2.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/migration/base.cpp

@@ -353,6 +353,21 @@ BOOST_PYTHON_MODULE(_algorithm) {
 		"   - nw: number of weights"
 		);
 		
+	// Game Theory
+	enum_<algorithm::game_theory::weight_generation_type>("_weight_generation")
+		.value("UNIFORM", algorithm::game_theory::UNIFORM)
+		.value("RANDOM",  algorithm::game_theory::RANDOM);
+	algorithm_wrapper<algorithm::game_theory>("game_theory", "Game Theory")
+		.def(init<optional<int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type, algorithm::game_theory::weight_generation_type, std::vector< double >, std::vector< double >>>())
+		.def("generate_weights", &algorithm::game_theory::generate_weights,
+			"Generates the weights for linking x to populations.\n\n"
+			"  USAGE:: w = game_theory.generate_weights(n_x,n_v,f,r)\n"
+			"   - n_x: weight vector dimension\n"
+			"   - n_v: vector of weight vectors dimension.\n"
+			"   - f  : use fractions.\n"
+			"   - n_x: generate random."
+		);
+	
 	// MOEA/D
 	enum_<algorithm::moead::weight_generation_type>("_weight_generation_moead")
 		.value("RANDOM", algorithm::moead::RANDOM)
