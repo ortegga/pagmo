@@ -44,7 +44,10 @@ namespace pagmo { namespace algorithm {
  * of the population at fixed intervals.
  *
  * The original algorithm is using a random evolutionary search algorithm. This implementation
- * is extended to be used with any algorithm.
+ * is extended to be used with any algorithm. Furthermore, instead of simply removing the
+ * constraints for the unconstrained problem, this implementation is using the death-penalty
+ * KURI method. This has been modified to avoid getting rid of feasible solution during the
+ * selection method of the first algorithm.
  *
  * This meta-algorithm is based on the population population::repair() method.
  *

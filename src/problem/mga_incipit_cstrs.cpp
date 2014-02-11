@@ -342,6 +342,25 @@ try {
 	pagmo::problem::base::c_size_type index_cstrs = 0.0;
 	
 	// Now we return the constraints
+
+	// first the equality constraints
+	//semi major axis equality constraint
+	if(m_a_final != -1.0){
+	  c[index_cstrs] = E[0] - m_a_final;
+	  index_cstrs++;
+	}
+	//eccentricity equality constraint
+	if(m_e_final != -1.0){
+	  c[index_cstrs] = E[1] - m_e_final;
+	  index_cstrs++;
+	} 
+	//inclination equality constraint
+	if(m_i_final != -1.0){
+	  c[index_cstrs] = E[2] - m_i_final;
+	  index_cstrs++;
+	}
+
+	// than the inequality
 	if(m_tmax > 0.0){
 		c[index_cstrs] = std::accumulate(T.begin(),T.end(),0.0) - m_tmax;
 		index_cstrs++;
@@ -360,24 +379,6 @@ try {
 	     index_cstrs++;
 	  }
 	}
-	
-	//semi major axis equality constraint
-	if(m_a_final != -1.0){
-	  c[index_cstrs] = E[0] - m_a_final;
-	  index_cstrs++;
-	}
-	//eccentricity equality constraint
-	if(m_e_final != -1.0){
-	  c[index_cstrs] = E[1] - m_e_final;
-	  index_cstrs++;
-	} 
-	//inclination equality constraint
-	if(m_i_final != -1.0){
-	  c[index_cstrs] = E[2] - m_i_final;
-	  index_cstrs++;
-	}
-	
-	//std::cout<<E[0]<<", "<<E[1]<<", "E[2]<<std::endl;
 	
 //Here the lambert solver or the lagrangian propagator went wrong
 } catch (...) {
