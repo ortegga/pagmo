@@ -362,6 +362,30 @@ def _cec2009_ctor(self, prob_id=1, dim=30, is_constrained=False):
 cec2009._orig_init = cec2009.__init__
 cec2009.__init__ = _cec2009_ctor
 
+def _cec2010_ctor(self, prob_id=1, dim=30, is_constrained=False):
+	"""
+	Constructs one of the 18 problems of the competition on constrained real-parameter optimization problems that was organized in the framework of the 2010 IEEE Congress on Evolutionary Computation.
+
+        NOTE: all problems are constrained, continuous, single objective problems.
+
+        SEE: http://www3.ntu.edu.sg/home/epnsugan/index_files/CEC10-Const/CEC10-Const.htm
+
+	USAGE: problem.cec2010(prob_id=1, dim=30)
+
+	* prob_id: Problem number, one of [1,2,...18]
+	* dim: Problem's dimension (default is 30, corresponding to the competition set-up)
+	"""
+    
+	# We construct the arg list for the original constructor exposed by boost_python
+	arg_list=[]
+	arg_list.append(prob_id)
+	arg_list.append(dim)
+	arg_list.append(is_constrained)
+	self._orig_init(*arg_list)
+
+cec2010._orig_init = cec2010.__init__
+cec2010.__init__ = _cec2010_ctor
+
 def _cec2013_ctor(self, prob_id=1, dim=10, path="input_data/"):
 	"""
 	Constructs one of the 28 CEC2013 Competition Problems (Box-Constrained Continuous Single-Objective)
