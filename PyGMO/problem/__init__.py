@@ -362,7 +362,7 @@ def _cec2009_ctor(self, prob_id=1, dim=30, is_constrained=False):
 cec2009._orig_init = cec2009.__init__
 cec2009.__init__ = _cec2009_ctor
 
-def _cec2010_ctor(self, prob_id=1, dim=30, is_constrained=False):
+def _cec2010_ctor(self, prob_id=1, dim=30 ):
 	"""
 	Constructs one of the 18 problems of the competition on constrained real-parameter optimization problems that was organized in the framework of the 2010 IEEE Congress on Evolutionary Computation.
 
@@ -380,7 +380,6 @@ def _cec2010_ctor(self, prob_id=1, dim=30, is_constrained=False):
 	arg_list=[]
 	arg_list.append(prob_id)
 	arg_list.append(dim)
-	arg_list.append(is_constrained)
 	self._orig_init(*arg_list)
 
 cec2010._orig_init = cec2010.__init__
