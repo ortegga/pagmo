@@ -468,7 +468,12 @@ void game_theory::evolve(population &pop) const
 			// later on.
 			base_island_ptr isl_i = arch.get_island(i);
 			population pop_i = isl_i->get_population();
-			problem::base &prob_i = pop_i.problem();
+
+			// This doesn't work as set_bounds is not a
+			// constant function as the bounds itself are
+			// not mutable.
+			// problem::base &prob_i = pop_i.problem();
+			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
 
 			// Inverse of the decision variable weight. 
 			weights_type inverse_weight = inv_of_vec( var_weights[i] );
@@ -476,13 +481,13 @@ void game_theory::evolve(population &pop) const
 			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i.get_lb() ));
+				had_of_vec( var_weights[i], prob_i->get_lb() ));
 			std::vector< double > mod_ub = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i.get_ub() ));
+				had_of_vec( var_weights[i], prob_i->get_ub() ));
 
 			// Change the bounds of the problem.
-			prob_i.set_bounds( mod_lb, mod_ub );
+			prob_i->set_bounds( mod_lb, mod_ub );
 
 			bool reinit_pop_after_bounds_change = true;
 
