@@ -180,11 +180,13 @@ void cstrs_self_adaptive::evolve(population &pop) const
 				std::cout << "    xtol: " << dx << ", ftol: " << mah << std::endl;
 			}
 		}
+		
+		//update number of fitness and constraints evaluations.
+		prob.add_fevals(pop_new.problem().get_fevals());
+		prob.add_cevals(pop_new.problem().get_cevals());
 
 	}
-	//update number of fitness and constraints evaluations.
-	prob.add_fevals(prob_new.get_fevals());
-	prob.add_cevals(prob_new.get_cevals());
+
 	//m_fevals = m_original_algo->get_fevals();
 }
 

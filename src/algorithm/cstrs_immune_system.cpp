@@ -479,8 +479,8 @@ void cstrs_immune_system::evolve(population &pop) const
 	}
 
 	//update number of fitness and constraints evaluations.
-	prob.add_fevals(prob_unconstrained.get_fevals());
-	prob.add_cevals(prob_unconstrained.get_cevals());
+	prob.add_fevals(pop_mixed.problem().get_fevals());
+	prob.add_cevals(pop_mixed.problem().get_cevals());
 	//m_fevals = m_original_algo->get_fevals();
 }
 

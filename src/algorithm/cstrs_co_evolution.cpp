@@ -213,8 +213,8 @@ void cstrs_co_evolution::evolve(population &pop) const
 			prob_2.update_penalty_coeff(j,pop_2_x.at(j),pop_1_vector.at(j));
 			
 			//update number of fitness and constraints evaluations.
-			fevals += prob_1.get_fevals();
-			cevals += prob_1.get_cevals();
+			fevals += pop_1.problem().get_fevals();
+			cevals += pop_1.problem().get_cevals();
 
 		}
 		// creating the POPULATION 2 instance based on the
@@ -280,6 +280,9 @@ void cstrs_co_evolution::evolve(population &pop) const
 				std::cout << "    xtol: " << dx << ", ftol: " << mah << std::endl;
 			}
 		}
+		
+		fevals += pop_2.problem().get_fevals();
+		cevals += pop_2.problem().get_cevals();
 	}
 
 	// store the best fitness population in the final pop
@@ -297,8 +300,10 @@ void cstrs_co_evolution::evolve(population &pop) const
 	}
 
 	//update number of fitness and constraints evaluations.
-	prob.add_fevals(prob_2.get_fevals()+fevals);
-	prob.add_cevals(prob_2.get_cevals()+cevals);	
+	prob.add_fevals(fevals);
+	prob.add_cevals(cevals);
+	std::cout<<prob.get_cevals()<<std::endl;
+	std::cout<<pop.problem().get_cevals()<<std::endl;
 	//m_fevals = m_original_algo->get_fevals();
 }
 
