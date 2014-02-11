@@ -32,7 +32,7 @@
 #include "../exceptions.h"
 #include "../population.h"
 #include "../problem/base.h"
-#include "../problem/con2uncon.h"
+#include "../problem/death_penalty.h"
 #include "../types.h"
 #include "base.h"
 #include "cstrs_core.h"
@@ -131,7 +131,7 @@ void cstrs_core::evolve(population &pop) const
 	}
 
 	// generates the unconstrained problem
-	problem::con2uncon prob_unconstrained(prob);
+	problem::death_penalty prob_unconstrained(prob,problem::death_penalty::KURI);
 
 	// associates the population to this problem
 	population pop_uncon(prob_unconstrained);
