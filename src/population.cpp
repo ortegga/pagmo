@@ -818,6 +818,11 @@ void population::repair(const population::size_type &idx, const algorithm::base_
 			repair_algo->evolve(pop_repair);
 
 			this->set_x(idx,pop_repair.champion().x);
+			
+			//update count of objective and constraints evaluations
+			m_prob->add_fevals(feasibility_problem.get_fevals());
+			m_prob->add_cevals(feasibility_problem.get_cevals());
+			
 			break;
 		}
 	case CONSTRAINED:
@@ -830,6 +835,11 @@ void population::repair(const population::size_type &idx, const algorithm::base_
 			repair_algo->evolve(pop_repair);
 
 			this->set_x(idx,pop_repair.champion().x);
+						
+			//update count of objective and constraints evaluations
+			m_prob->add_fevals(feasibility_problem.get_fevals());
+			m_prob->add_cevals(feasibility_problem.get_cevals());
+			
 			break;
 		}
 	default:
@@ -838,7 +848,6 @@ void population::repair(const population::size_type &idx, const algorithm::base_
 			break;
 		}
 	}
-
 
 
 }

@@ -58,6 +58,12 @@ class __PAGMO_VISIBLE base_meta : public base
 			 }
 		/// Copy constructor
 		base_meta(const base_meta &p):base(p), m_original_problem(p.m_original_problem->clone()) {}
+		
+		unsigned int get_fevals() const 
+			{return m_original_problem->get_fevals();}
+		unsigned int get_cevals() const 
+			{return m_original_problem->get_cevals();}	
+			
 	protected:
 		bool compare_fitness_impl(const fitness_vector &f1, const fitness_vector &f2) const 
 			{return m_original_problem->compare_fitness_impl(f1,f2);}
@@ -67,6 +73,7 @@ class __PAGMO_VISIBLE base_meta : public base
 			{return m_original_problem->compare_constraints_impl(c1,c2);}
 		bool compare_fc_impl(const fitness_vector &f1, const constraint_vector &c1, const fitness_vector &f2, const constraint_vector &c2) const
 			{return m_original_problem->compare_fc_impl(f1,c1,f2,c2);}
+			
 	private:
 		friend class boost::serialization::access;
 		template <class Archive>

@@ -229,8 +229,10 @@ void cstrs_core::evolve(population &pop) const
 		}
 	}
 
-	//update number of fitness evaluations
-	m_fevals = m_original_algo->get_fevals() + m_repair_algo->get_fevals();
+	//update number of fitness and constraints evaluations.
+	prob.add_fevals(prob_unconstrained.get_fevals());
+	prob.add_cevals(prob_unconstrained.get_cevals());
+	//m_fevals = m_original_algo->get_fevals() + m_repair_algo->get_fevals();
 }
 
 /// Algorithm name

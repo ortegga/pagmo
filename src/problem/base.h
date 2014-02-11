@@ -397,8 +397,8 @@ class __PAGMO_VISIBLE base
 		//@}
 		/** @name Properties getters.*/
 		//@{
-		unsigned int get_fevals() const;
-		unsigned int get_cevals() const;
+		virtual unsigned int get_fevals() const;
+		virtual unsigned int get_cevals() const;
 		size_type get_dimension() const;
 		size_type get_i_dimension() const;
 		f_size_type get_f_dimension() const;
@@ -414,6 +414,13 @@ class __PAGMO_VISIBLE base
 		bool test_constraint(const constraint_vector &, const c_size_type &) const;
 		bool feasibility_x(const decision_vector &) const;
 		bool feasibility_c(const constraint_vector &) const;
+		
+		// function that add number of function and constraints evaluations. To be used in the algorithm when the problem is cloned and need to update the overall number of function evaluations
+		void add_fevals(unsigned int fevals) const 
+		      {m_fevals += fevals;}
+		void add_cevals(unsigned int cevals) const
+		      {m_cevals += cevals;}
+		
 		/// Clone method.
 		/**
 		 * Provided that the derived problem implements properly the copy constructor, virtually all implementations of this method will
