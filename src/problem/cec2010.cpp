@@ -179,14 +179,14 @@ base_ptr cec2010::clone() const
 }
 
 void cec2010::compute_error(decision_vector&e, const decision_vector&x) const{
-	const int nx = x.size();
+	const unsigned int nx = x.size();
 	decision_vector best_o = get_best_o();
 
 	if (e.size() != nx) {
 		pagmo_throw(value_error, "error on optimal decision vector: mismatch dimensions.");
 	}
 
-	for (int j = 0; j < nx; j++)
+	for (unsigned int j = 0; j < nx; j++)
 	{
 		e[j] = x[j] - best_o[j];
 	}
