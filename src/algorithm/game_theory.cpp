@@ -312,8 +312,8 @@ weights_vector_type game_theory::generate_uniform_weights(
  * @param[in] fracs if true the sum of a weight vector is always one.
  * @param[in] random if true the weights are generated at random.
  */
-weights_vector_type game_theory::generate_weights(
-	const unsigned int n_x, const unsigned int n_v, const bool fracs, bool random ) const {
+weights_vector_type game_theory::generate_weights( const unsigned int n_x,
+	const unsigned int n_v, const bool fracs, bool random ) const {
 
 	// Preform sanity checks
 	if ( n_v > n_x ) {
@@ -468,7 +468,7 @@ void game_theory::evolve(population &pop) const
 			// later on.
 			base_island_ptr isl_i = arch.get_island(i);
 			population pop_i = isl_i->get_population();
-			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
+			problem::base &prob_i = pop_i.problem();
 
 			// Inverse of the decision variable weight. 
 			weights_type inverse_weight = inv_of_vec( var_weights[i] );
@@ -476,13 +476,13 @@ void game_theory::evolve(population &pop) const
 			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_lb() ));
+				had_of_vec( var_weights[i], prob_i.get_lb() ));
 			std::vector< double > mod_ub = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_ub() ));
+				had_of_vec( var_weights[i], prob_i.get_ub() ));
 
 			// Change the bounds of the problem.
-			prob_i->set_bounds( mod_lb, mod_ub );
+			prob_i.set_bounds( mod_lb, mod_ub );
 
 			bool reinit_pop_after_bounds_change = true;
 
@@ -519,7 +519,8 @@ void game_theory::evolve(population &pop) const
 			pop.push_back(arch.get_island(i)->get_population().get_individual(j).cur_x);
 		}
 		// Add the number of fevals
-		m_fevals += arch.get_island(i)->get_algorithm()->get_fevals();
+		prob.add_fevals( arch.get_island(i)->get_population().problem().get_fevals() );
+		prob.add_cevals( arch.get_island(i)->get_population().problem().get_cevals() );
 	}
 
 	// Get sorted list from best to worst
