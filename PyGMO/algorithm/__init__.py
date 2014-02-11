@@ -882,9 +882,9 @@ def _cstrs_co_evolution_ctor(self,original_algo = None,original_algo_penalties =
 	"""
 	arg_list=[]
 	if original_algo==None:
-		original_algo = algorithm.jde()
+		original_algo = _algorithm.jde()
 	if original_algo_penalties==None:
-		original_algo_penalties = algorithm.jde()
+		original_algo_penalties = _algorithm.jde()
 	arg_list.append(original_algo)
 	arg_list.append(original_algo_penalties)
 	arg_list.append(pop_penalties_size)
@@ -925,9 +925,9 @@ def _cstrs_immune_system_ctor(self,algorithm = None, algorithm_immune = None, ge
 	arg_list=[]
 
 	if algorithm==None:
-		algorithm = algorithm.jde()
+		algorithm = _algorithm.jde()
 	if algorithm_immune==None:
-		algorithm_immune = algorithm.jde()
+		algorithm_immune = _algorithm.jde()
 	arg_list.append(algorithm)
 	arg_list.append(algorithm_immune)
 	arg_list.append(gen)
@@ -962,9 +962,9 @@ def _cstrs_core_ctor(self,algorithm = None, repair_algorithm = None, gen = 1, re
 	"""
 	arg_list=[]
 	if algorithm==None:
-		algorithm = algorithm.jde()
+		algorithm = _algorithm.jde()
 	if repair_algorithm==None:
-		repair_algorithm = algorithm.jde()
+		repair_algorithm = _algorithm.jde()
 	arg_list.append(algorithm)
 	arg_list.append(repair_algorithm)    
 	arg_list.append(gen)
