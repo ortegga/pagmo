@@ -194,12 +194,10 @@ void cstrs_co_evolution::evolve(population &pop) const
 			// updated prob 1
 			population pop_1(prob_1,0);
 
-			std::cout << "Increase of fevals from " << pop_1.problem().get_fevals() << " to ";
 			// initialize P1 chromosomes. The fitnesses related to problem 1 are computed
 			for(population::size_type i=0; i<pop_1_size; i++) {
 				pop_1.push_back(pop_1_vector.at(j).get_individual(i).cur_x);
 			}
-			std::cout << pop_1.problem().get_fevals() << std::endl;
 
 			// evolve the P1 instance
 			m_original_algo->evolve(pop_1);
@@ -297,14 +295,12 @@ void cstrs_co_evolution::evolve(population &pop) const
 	
 	// store the final population in the main population
 	pop.clear();
-	// Loop over what???
-	for(population::size_type i=0; i<pop_1_size; i++) {
-		pop = pop_1_vector.at(best_idx);
-	}
+	pop = pop_1_vector.at(best_idx);
 	
 	// Update number of fitness and constraints evaluations.
 	prob.add_fevals(fevals);
 	prob.add_cevals(cevals);
+
 	// This causes segfault but why???
 	// std::cout << prob.get_cevals() << std::endl;
 	// std::cout << pop.problem().get_cevals() << std::endl;
