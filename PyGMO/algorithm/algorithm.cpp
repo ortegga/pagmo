@@ -368,6 +368,14 @@ BOOST_PYTHON_MODULE(_algorithm) {
 			"   - n_v: vector of weight vectors dimension.\n"
 			"   - f  : use fractions.\n"
 			"   - n_x: generate random."
+		)		
+		.def("get_var_weights", &algorithm::game_theory::get_var_weights,
+			"Will return the decision variable weights.\n\n"
+			"  USAGE:: w = game_theory.get_var_weights()\n"
+		)
+		.def("get_obj_weights", &algorithm::game_theory::get_obj_weights,
+			"Will return the objective variable weights.\n\n"
+			"  USAGE:: w = game_theory.get_obj_weights()\n"
 		);
 	
 	// MOEA/D

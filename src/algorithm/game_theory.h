@@ -81,6 +81,8 @@ class __PAGMO_VISIBLE game_theory: public base
 	void evolve(population &) const;
 	std::string get_name() const;
 	weights_vector_type generate_weights(const unsigned int, const unsigned int, const bool, const bool ) const;
+	weights_vector_type get_var_weights() const;
+	weights_vector_type get_obj_weights() const;
   protected:
 	std::string human_readable_extra() const;
 
@@ -105,8 +107,8 @@ class __PAGMO_VISIBLE game_theory: public base
 	mutable unsigned int m_dim;
 	const unsigned int m_threads;
 	const base_ptr m_solver;
-	weights_vector_type m_var_weights;
-	weights_vector_type m_obj_weights;
+	mutable weights_vector_type m_var_weights;
+	mutable weights_vector_type m_obj_weights;
 	const weight_generation_type m_weight_generation;
 	std::vector< double > m_relative_tolerance;
 	std::vector< double > m_absolute_tolerance;

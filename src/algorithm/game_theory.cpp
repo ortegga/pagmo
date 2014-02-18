@@ -313,6 +313,7 @@ weights_vector_type game_theory::generate_uniform_weights(
  * @param[in] n_v length of vector of weight vectors.
  * @param[in] fracs if true the sum of a weight vector is always one.
  * @param[in] random if true the weights are generated at random.
+ * @param[out] weights the vector of weight vectors.
  */
 weights_vector_type game_theory::generate_weights( const unsigned int n_x,
 	const unsigned int n_v, const bool fracs, bool random ) const {
@@ -368,11 +369,6 @@ void game_theory::evolve(population &pop) const
 		return;
 	}
 
-	// Generate the default if vector of decision variable weights
-	// for linking to populations is empty.
-	weights_vector_type var_weights;
-	weights_vector_type obj_weights;
-
 	bool random_weights = false;
 	bool adaptive_weights = false;
 
@@ -406,21 +402,19 @@ void game_theory::evolve(population &pop) const
 	}
 
 	if(m_var_weights.empty()){
-		var_weights = generate_weights( prob_dimension, m_dim, false, random_weights );
-	}else{
-		var_weights = m_var_weights;
+		m_var_weights = generate_weights( prob_dimension, m_dim, false, random_weights );
 	}
 
 	if( adaptive_weights ){
 		// If adaptive every objective should be coupled to
 		// every decomposed problem initially.
-		obj_weights = generate_weights( prob_objectives, 1, true, random_weights );
-		obj_weights = weights_vector_type( m_dim, obj_weights[0] );
+		m_obj_weights = generate_weights( prob_objectives, 1, true, random_weights );
+		m_obj_weights = weights_vector_type( m_dim, m_obj_weights[0] );
 	}else if(m_obj_weights.empty()){
 		// Generate the objective weights
 		weights_vector_type tmp_weights = generate_weights( 
 			prob_objectives, min_dim, true, random_weights );
-		obj_weights = tmp_weights;
+		m_obj_weights = tmp_weights;
 
 		// If m_dim > min_dim weights have to be repeated
 		// (i.e. one objective linked to more than one
@@ -434,23 +428,21 @@ void game_theory::evolve(population &pop) const
 			if( k == 0 && random_weights ){
 				std::random_shuffle(tmp_weights.begin(), tmp_weights.end());
 			}
-			obj_weights.push_back( tmp_weights[ k ] );
+			m_obj_weights.push_back( tmp_weights[ k ] );
 		}
-	}else{
-		obj_weights = m_obj_weights;
 	}
 
 	// More sanity checks
-	if ( var_weights.size() != m_dim ) {
+	if ( m_var_weights.size() != m_dim ) {
 		pagmo_throw(value_error, "The vector of variable weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( obj_weights.size() != m_dim ) {
+	if ( m_obj_weights.size() != m_dim ) {
 		pagmo_throw(value_error, "The vector of objective weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( var_weights[0].size() != prob_dimension ) {
+	if ( m_var_weights[0].size() != prob_dimension ) {
 		pagmo_throw(value_error, "The dimension of the variable weights do not match the problem. The dimension must be equal to the number of decision variables.");
 	}
-	if ( obj_weights[0].size() != prob_objectives ) {
+	if ( m_obj_weights[0].size() != prob_objectives ) {
 		pagmo_throw(value_error, "The dimension of the objective weights do not match the problem. The dimension must be equal to the number of objectives.");
 	}
 
@@ -462,7 +454,7 @@ void game_theory::evolve(population &pop) const
 	for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 		prob_vector.push_back(
 			new pagmo::problem::decompose( prob, decompose_method, 
-				obj_weights[i], ideal_point, true ));
+				m_obj_weights[i], ideal_point, true ));
 	}
 
 	// Set unconnected topology, only using arch for parallel processing
@@ -503,7 +495,7 @@ void game_theory::evolve(population &pop) const
 		for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 			int best_idx = arch.get_island(i)->get_population().get_best_idx();
 			best_vector = sum_of_vec( best_vector,  
-				had_of_vec( var_weights[i], 
+				had_of_vec( m_var_weights[i], 
 					arch.get_island(i)->get_population().get_individual( best_idx ).cur_x ));
 		}
 
@@ -537,15 +529,15 @@ void game_theory::evolve(population &pop) const
 					population_access::get_problem_ptr(pop_i));
 
 			// Inverse of the decision variable weight. 
-			weights_type inverse_weight = inv_of_vec( var_weights[i] );
+			weights_type inverse_weight = inv_of_vec( m_var_weights[i] );
 
 			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_lb() ));
+				had_of_vec( m_var_weights[i], prob_i->get_lb() ));
 			std::vector< double > mod_ub = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_ub() ));
+				had_of_vec( m_var_weights[i], prob_i->get_ub() ));
 
 			// Change the bounds of the problem.
 			prob_i->set_bounds( mod_lb, mod_ub );
@@ -553,14 +545,12 @@ void game_theory::evolve(population &pop) const
 			// In case of adaptive weights use the f
 			// minmax history to update the weights.
 			if( adaptive_weights ){
-				weights_type new_weights = obj_weights[i];
 				std::vector< fitness_vector > f_history = prob_i->get_minmax_history();
 				prob_i->reset_minmax_history();
 				for( unsigned int j = 0; j < prob_objectives; ++j ){
-					new_weights[j] *= f_history[1][j] - f_history[0][j];
+					m_obj_weights[i][j] = f_history[1][j] - f_history[0][j];
 				}
-				prob_i->set_weights( new_weights );
-				std::cout << g << "," << i << "::" << prob_i->get_weights() << std::endl;
+				prob_i->set_weights( m_obj_weights[i] );
 			}
 			bool reinit_pop_after_bounds_change = true;
 
@@ -569,7 +559,7 @@ void game_theory::evolve(population &pop) const
 				      reinit_pop_after_bounds_change; j++ ) {
 				pop_i.set_x(j, sum_of_vec(
 						had_of_vec( inverse_weight, best_vector ),
-						had_of_vec( var_weights[i], pop_i.get_individual(j).cur_x )));
+						had_of_vec( m_var_weights[i], pop_i.get_individual(j).cur_x )));
 			}
 			
 			// Set population back into island, island
@@ -586,7 +576,7 @@ void game_theory::evolve(population &pop) const
 	std::vector< double > best_vector( prob_dimension, 0.0 );
 	for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 		best_vector = sum_of_vec( best_vector,  
-			had_of_vec( var_weights[i], 
+			had_of_vec( m_var_weights[i], 
 				arch.get_island(i)->get_population().champion().x ));
 	}
 	pop.push_back( best_vector );
@@ -621,6 +611,26 @@ void game_theory::evolve(population &pop) const
 std::string game_theory::get_name() const
 {
 	return m_solver->get_name() + "[Game Theory]";
+}
+
+/// Get var_weights.
+/**
+ * Will return the decision variable weights.
+ *
+ * @param[out] the vector of weight vectors.
+ */
+weights_vector_type game_theory::get_var_weights() const {
+	return m_var_weights;
+}
+
+/// Get obj_weights.
+/**
+ * Will return the objective variable weights.
+ *
+ * @param[out] the vector of weight vectors.
+ */
+weights_vector_type game_theory::get_obj_weights() const {
+	return m_obj_weights;
 }
 
 /// Extra human readable algorithm info.
