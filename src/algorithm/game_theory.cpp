@@ -385,6 +385,7 @@ void game_theory::evolve(population &pop) const
 				prob_objectives, subpops, true, true );
 			break;
 		case TCHEBYCHEFF : 
+			subpops = prob_dimension;
 			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
 			if(m_var_weights.empty()){
 				var_weights = generate_weights( 
@@ -513,6 +514,18 @@ void game_theory::evolve(population &pop) const
 			// Change the bounds of the problem.
 			prob_i->set_bounds( mod_lb, mod_ub );
 
+			// In case of Tchebycheff, adjust the weighs
+			// to the spread.
+			if( m_weight_generation == TCHEBYCHEFF ){
+				weights_type new_weights = obj_weights[i];
+				std::vector< fitness_vector > old_history = prob_i->get_minmax_history();
+				prob_i->reset_minmax_history();
+				for( unsigned int j = 0; j < prob_objectives; ++j ){
+					new_weights[j] *= old_history[1][j] - old_history[0][j];
+				}
+				prob_i->set_weights( new_weights );
+				std::cout << g << "," << i << "::" << prob_i->get_weights() << std::endl;
+			}
 			bool reinit_pop_after_bounds_change = true;
 
 			// Change the chromosomes according to bounds.

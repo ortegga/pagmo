@@ -140,6 +140,16 @@ void decompose::set_ideal_point(const fitness_vector &f) {
 	m_z = f;
 }
 
+/// Gets the min/max history
+std::vector< fitness_vector > decompose::get_minmax_history() const {
+	return m_m;
+}
+
+/// Sets the min/max history
+void decompose::reset_minmax_history() {
+	m_m.clear();
+}
+
 /// Compute the original fitness
 /**
  * Computes the original fitness of the multi-objective problem. It also updates the ideal point in case
@@ -153,6 +163,15 @@ void decompose::compute_original_fitness(fitness_vector &f, const decision_vecto
 	if (m_adapt_ideal) {
 		for (fitness_vector::size_type i=0; i<f.size(); ++i) {
 			if (f[i] < m_z[i]) m_z[i] = f[i];
+		}
+	}
+	if (m_m.empty()){
+		m_m.push_back(f);
+		m_m.push_back(f);
+	} else {
+		for (fitness_vector::size_type i=0; i<f.size(); ++i) {
+			if (f[i] < m_m[0][i]) m_m[0][i] = f[i];
+			if (f[i] > m_m[1][i]) m_m[1][i] = f[i];
 		}
 	}
 }

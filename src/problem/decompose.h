@@ -83,6 +83,8 @@ class __PAGMO_VISIBLE decompose : public base_meta
 		void compute_original_fitness(fitness_vector &, const decision_vector &) const;
 		fitness_vector get_ideal_point() const;
 		void set_ideal_point(const fitness_vector &f);
+		std::vector< fitness_vector > get_minmax_history() const;
+		void reset_minmax_history();
 
 
 	protected:
@@ -97,11 +99,13 @@ class __PAGMO_VISIBLE decompose : public base_meta
 			ar & m_method;
 			ar & m_weights;
 			ar & m_z;
+			ar & m_m;
 			ar & const_cast<bool&>(m_adapt_ideal);
 		}
 		mutable method_type m_method;
 		fitness_vector m_weights;
 		mutable fitness_vector m_z;
+		mutable std::vector< fitness_vector > m_m;
 		const bool m_adapt_ideal;
 };
 
