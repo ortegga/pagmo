@@ -547,20 +547,39 @@ void game_theory::evolve(population &pop) const
 			if( adaptive_weights ){
 				std::vector< fitness_vector > f_history = prob_i->get_minmax_history();
 				prob_i->reset_minmax_history();
+				double obj_sum = 0.0;
 				for( unsigned int j = 0; j < prob_objectives; ++j ){
 					m_obj_weights[i][j] = f_history[1][j] - f_history[0][j];
+					obj_sum += m_obj_weights[i][j];
+				}
+				for( unsigned int j = 0; j < prob_objectives; ++j ){
+					m_obj_weights[i][j] /= obj_sum;
 				}
 				prob_i->set_weights( m_obj_weights[i] );
 			}
 			bool reinit_pop_after_bounds_change = true;
 
 			// Change the chromosomes according to bounds.
-			for( population::size_type j = 0; j<pop.size() && 
+			for( population::size_type j = 0; j < pop_i.size() && 
 				      reinit_pop_after_bounds_change; j++ ) {
 				pop_i.set_x(j, sum_of_vec(
 						had_of_vec( inverse_weight, best_vector ),
 						had_of_vec( m_var_weights[i], pop_i.get_individual(j).cur_x )));
 			}
+
+			// Update global ideal point.
+			fitness_vector z_i = prob_i->get_ideal_point();
+			for( unsigned int j = 0; j < z_i.size(); ++j ){
+				if( z_i[j] < ideal_point[j] ){
+					ideal_point[j] = z_i[j];
+				}
+			}
+			
+			// Update local ideal points. This causes a
+			// lag between synchronising of one
+			// generation, but it saves pulling everything
+			// inside-out again.
+			prob_i->set_ideal_point( ideal_point );
 			
 			// Set population back into island, island
 			// back into arch.
