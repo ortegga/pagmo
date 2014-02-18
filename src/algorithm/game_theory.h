@@ -61,11 +61,13 @@ class __PAGMO_VISIBLE game_theory: public base
 	enum weight_generation_type {
 		UNIFORM,
 		RANDOM,
-		TCHEBYCHEFF
+		TCHEBYCHEFF,
+		ADAPTIVE
 	};
 	game_theory(
-	        int gen = 10,
-		unsigned int max_parallelism = 1,
+	        int = 10,
+		unsigned int = 0,
+		unsigned int = 1,
 		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
 		const weights_vector_type & = weights_vector_type(),
 		const weights_vector_type & = weights_vector_type(),
@@ -89,6 +91,7 @@ class __PAGMO_VISIBLE game_theory: public base
 	{
 		ar & boost::serialization::base_object<base>(*this);
 		ar & const_cast<int &>(m_gen);
+		ar & const_cast<unsigned int &>(m_dim);
 		ar & const_cast<unsigned int &>(m_threads);
 		ar & const_cast<base_ptr &>(m_solver);
 		ar & m_var_weights;
@@ -99,6 +102,7 @@ class __PAGMO_VISIBLE game_theory: public base
 	}
 	//Number of generations
 	const int m_gen;
+	mutable unsigned int m_dim;
 	const unsigned int m_threads;
 	const base_ptr m_solver;
 	weights_vector_type m_var_weights;
