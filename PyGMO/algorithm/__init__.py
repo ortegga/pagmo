@@ -543,7 +543,8 @@ def _game_theory_ctor(self, gen=10, threads = 8, solver = None, var_weights= [],
 	def weight_generation_type(x):
 		return {
 			'uniform': _algorithm._weight_generation.UNIFORM,
-			'random': _algorithm._weight_generation.RANDOM
+			'random': _algorithm._weight_generation.RANDOM,
+			'tchebycheff': _algorithm._weight_generation.TCHEBYCHEFF
 		}[x]	
 	arg_list=[]
 	arg_list.append(gen)

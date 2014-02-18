@@ -60,7 +60,8 @@ class __PAGMO_VISIBLE game_theory: public base
 	/// Mechanism used to generate the weight vectors
 	enum weight_generation_type {
 		UNIFORM,
-		RANDOM
+		RANDOM,
+		TCHEBYCHEFF
 	};
 	game_theory(
 	        int gen = 10,

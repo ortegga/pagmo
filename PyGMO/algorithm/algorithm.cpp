@@ -356,7 +356,8 @@ BOOST_PYTHON_MODULE(_algorithm) {
 	// Game Theory
 	enum_<algorithm::game_theory::weight_generation_type>("_weight_generation")
 		.value("UNIFORM", algorithm::game_theory::UNIFORM)
-		.value("RANDOM",  algorithm::game_theory::RANDOM);
+		.value("RANDOM", algorithm::game_theory::RANDOM)
+		.value("TCHEBYCHEFF", algorithm::game_theory::TCHEBYCHEFF);
 	algorithm_wrapper<algorithm::game_theory>("game_theory", "Game Theory")
 		.def(init<optional<int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type, algorithm::game_theory::weight_generation_type, std::vector< double >, std::vector< double >>>())
 		.def("generate_weights", &algorithm::game_theory::generate_weights,

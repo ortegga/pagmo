@@ -52,7 +52,6 @@ namespace pagmo { namespace algorithm {
  /**
  * Constructs a Game Theory algorithm
  *
- * TODO
  * @param[in] gen Number of generations to evolve.
  * @param[in] threads the amounts of threads that will be used
  * @param[in] solver the algorithm to solve the single objective problems.
@@ -60,9 +59,8 @@ namespace pagmo { namespace algorithm {
  * @param[in] obj_weights the decomposition weights for the objective functions.
  * @param[in] weight_generation type of weight generation.
  * @param[in] relative_tolerance for determining convergence.
- * @param[in] absolute_tolerance for determining convergence..
- * @throws value_error if gen is negative, weight_generation is not sane
- * @see pagmo::problem::decompose::method_type
+ * @param[in] absolute_tolerance for determining convergence.
+ * @throws value_error if gen is negative, weight_generation is not sane.
  */
 game_theory::game_theory(int gen,
 	unsigned int threads,
@@ -71,7 +69,7 @@ game_theory::game_theory(int gen,
 	const weights_vector_type &obj_weights,
 	weight_generation_type weight_generation,
 	const std::vector< double > &relative_tolerance,
-	const std::vector< double > &absolute_tolerance)
+	const std::vector< double > &absolute_tolerance )
 	:base(),
 	 m_gen(gen),
 	 m_threads(threads),
@@ -85,7 +83,7 @@ game_theory::game_theory(int gen,
 	if (gen < 0) {
 		pagmo_throw(value_error,"number of generations must be nonnegative");
 	}
-	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM  ) {
+	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM && m_weight_generation != TCHEBYCHEFF ) {
 		pagmo_throw(value_error,"non existing weight generation method.");
 	}
 }
@@ -350,7 +348,7 @@ void game_theory::evolve(population &pop) const
 	}
 
 	// Number of populations.
-	const unsigned int subpops = std::min( prob_objectives, prob_dimension );
+	unsigned int subpops = std::min( prob_objectives, prob_dimension );
 	
 	// Get out if there is nothing to do.
 	if (m_gen == 0) {
@@ -361,6 +359,8 @@ void game_theory::evolve(population &pop) const
 	// for linking to populations is empty.
 	weights_vector_type var_weights;
 	weights_vector_type obj_weights;
+
+	problem::decompose::method_type decompose_method = pagmo::problem::decompose::WEIGHTED;
 
 	switch (m_weight_generation)
 	{
@@ -384,6 +384,23 @@ void game_theory::evolve(population &pop) const
 			obj_weights = generate_weights( 
 				prob_objectives, subpops, true, true );
 			break;
+		case TCHEBYCHEFF : 
+			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
+			if(m_var_weights.empty()){
+				var_weights = generate_weights( 
+					prob_dimension, subpops, false, false );
+			}else{
+				var_weights = m_var_weights;
+			}
+			if(m_obj_weights.empty()){
+				obj_weights = generate_weights( 
+					prob_objectives, 1, true, false );
+				obj_weights = weights_vector_type( subpops, 
+				        obj_weights[0] );
+			}else{
+				obj_weights = m_obj_weights;
+			}
+			break;
 	}
 
 	// More sanity checks
@@ -400,13 +417,15 @@ void game_theory::evolve(population &pop) const
 		pagmo_throw(value_error, "The dimension of the objective weights do not match the problem. The dimension must be equal to the number of objectives.");
 	}
 
+	// Compute the starting ideal point
+	fitness_vector ideal_point = pop.compute_ideal();
+
 	// Create all the decomposed problems 
 	std::vector<pagmo::problem::decompose*> prob_vector;
 	for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
 		prob_vector.push_back(
-			new pagmo::problem::decompose( prob,
-				pagmo::problem::decompose::WEIGHTED, 
-				obj_weights[i]));       
+			new pagmo::problem::decompose( prob, decompose_method, 
+				obj_weights[i], ideal_point, true ));
 	}
 
 	// Set unconnected topology, only using arch for parallel processing
@@ -473,7 +492,12 @@ void game_theory::evolve(population &pop) const
 			// constant function as the bounds itself are
 			// not mutable.
 			// problem::base &prob_i = pop_i.problem();
-			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
+
+			// Need to recast on problem::base_ptr doesn't
+			// have all functions of problem::decompose
+			boost::shared_ptr< problem::decompose > prob_i = 
+				boost::static_pointer_cast< problem::decompose >(
+					population_access::get_problem_ptr(pop_i));
 
 			// Inverse of the decision variable weight. 
 			weights_type inverse_weight = inv_of_vec( var_weights[i] );
@@ -492,7 +516,7 @@ void game_theory::evolve(population &pop) const
 			bool reinit_pop_after_bounds_change = true;
 
 			// Change the chromosomes according to bounds.
-			for ( population::size_type j = 0; j<pop.size() && 
+			for( population::size_type j = 0; j<pop.size() && 
 				      reinit_pop_after_bounds_change; j++ ) {
 				pop_i.set_x(j, sum_of_vec(
 						had_of_vec( inverse_weight, best_vector ),
@@ -569,6 +593,9 @@ std::string game_theory::human_readable_extra() const
 			break;
 		case RANDOM : 
 			s << "RANDOM" << ' ';
+			break;
+		case TCHEBYCHEFF : 
+			s << "TCHEBYCHEFF" << ' ';
 			break;
 	}
 	return s.str();

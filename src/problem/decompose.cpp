@@ -257,6 +257,17 @@ const std::vector<double>& decompose::get_weights() const
 {
 	return m_weights;
 }
+
+/**
+ * Get the weights vector
+ *
+ * \return the weight vector
+ */
+void decompose::set_weights( const std::vector<double>& weights ) 
+{
+	m_weights = weights;
+}
+
 }}
 
 BOOST_CLASS_EXPORT_IMPLEMENT(pagmo::problem::decompose)

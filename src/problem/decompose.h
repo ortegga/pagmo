@@ -77,6 +77,7 @@ class __PAGMO_VISIBLE decompose : public base_meta
 		base_ptr clone() const;
 		std::string get_name() const;
 		const std::vector<double>& get_weights() const;
+		void set_weights(const std::vector<double>&);
 		void compute_decomposed_fitness(fitness_vector &, const fitness_vector &) const;
 		void compute_decomposed_fitness(fitness_vector &, const fitness_vector &, const fitness_vector &) const;
 		void compute_original_fitness(fitness_vector &, const decision_vector &) const;
@@ -98,7 +99,7 @@ class __PAGMO_VISIBLE decompose : public base_meta
 			ar & m_z;
 			ar & const_cast<bool&>(m_adapt_ideal);
 		}
-		method_type m_method;
+		mutable method_type m_method;
 		fitness_vector m_weights;
 		mutable fitness_vector m_z;
 		const bool m_adapt_ideal;
