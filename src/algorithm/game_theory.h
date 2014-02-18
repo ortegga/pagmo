@@ -62,6 +62,7 @@ class __PAGMO_VISIBLE game_theory: public base
 		UNIFORM,
 		RANDOM,
 		TCHEBYCHEFF,
+		TCHEBYCHEFF_ADAPTIVE,
 		ADAPTIVE
 	};
 	game_theory(

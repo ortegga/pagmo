@@ -358,6 +358,7 @@ BOOST_PYTHON_MODULE(_algorithm) {
 		.value("UNIFORM", algorithm::game_theory::UNIFORM)
 		.value("RANDOM", algorithm::game_theory::RANDOM)
 		.value("TCHEBYCHEFF", algorithm::game_theory::TCHEBYCHEFF)
+		.value("TCHEBYCHEFF_ADAPTIVE", algorithm::game_theory::TCHEBYCHEFF_ADAPTIVE)
 		.value("ADAPTIVE", algorithm::game_theory::ADAPTIVE);
 	algorithm_wrapper<algorithm::game_theory>("game_theory", "Game Theory")
 		.def(init<optional<int, int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type, algorithm::game_theory::weight_generation_type, std::vector< double >, std::vector< double >>>())

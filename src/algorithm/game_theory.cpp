@@ -86,7 +86,8 @@ game_theory::game_theory(int gen,
 		pagmo_throw(value_error,"number of generations must be nonnegative");
 	}
 	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM && 
-		m_weight_generation != TCHEBYCHEFF && m_weight_generation != ADAPTIVE ) {
+		m_weight_generation != TCHEBYCHEFF && m_weight_generation != ADAPTIVE && 
+	m_weight_generation != TCHEBYCHEFF_ADAPTIVE ) {
 		pagmo_throw(value_error,"non existing weight generation method.");
 	}
 }
@@ -378,7 +379,7 @@ void game_theory::evolve(population &pop) const
 	{
 		case UNIFORM : 
 			decompose_method = pagmo::problem::decompose::WEIGHTED;
-		        random_weights = false;
+		        random_weights   = false;
 			adaptive_weights = false;
 			break;
 		case RANDOM : 
@@ -386,17 +387,24 @@ void game_theory::evolve(population &pop) const
 				pagmo_throw(value_error, "Non-empty weight matrices in constructor are not compatible with random mode.");
 			}
 			decompose_method = pagmo::problem::decompose::WEIGHTED;
-			random_weights = true;
+			random_weights   = true;
 			adaptive_weights = false;
 			break;
 		case TCHEBYCHEFF : 
 			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
-			random_weights = false;
+			random_weights   = true;
+			adaptive_weights = false;
+			m_obj_weights = generate_weights( prob_objectives, 1, true, random_weights );
+			m_obj_weights = weights_vector_type( m_dim, m_obj_weights[0] );
+			break;
+		case TCHEBYCHEFF_ADAPTIVE : 
+			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
+			random_weights   = false;
 			adaptive_weights = true;
 			break;
 		case ADAPTIVE : 
 			decompose_method = pagmo::problem::decompose::WEIGHTED;
-			random_weights = false;
+			random_weights   = false;
 			adaptive_weights = true;
 			break;
 	}
@@ -674,6 +682,9 @@ std::string game_theory::human_readable_extra() const
 			break;
 		case TCHEBYCHEFF : 
 			s << "TCHEBYCHEFF" << ' ';
+			break;
+		case TCHEBYCHEFF_ADAPTIVE : 
+			s << "TCHEBYCHEFF_ADAPTIVE" << ' ';
 			break;
 		case ADAPTIVE : 
 			s << "ADAPTIVE" << ' ';

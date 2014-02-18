@@ -546,6 +546,7 @@ def _game_theory_ctor(self, gen=10, dim = 0, threads = 8, solver = None, var_wei
 			'uniform': _algorithm._weight_generation.UNIFORM,
 			'random': _algorithm._weight_generation.RANDOM,
 			'tchebycheff': _algorithm._weight_generation.TCHEBYCHEFF,
+			'tchebycheff_adaptive': _algorithm._weight_generation.TCHEBYCHEFF_ADAPTIVE,
 			'adaptive': _algorithm._weight_generation.ADAPTIVE
 		}[x]	
 	arg_list=[]
