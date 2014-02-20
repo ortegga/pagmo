@@ -149,7 +149,7 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 
 /// Copy Constructor. Performs a deep copy
 mga_incipit_cstrs::mga_incipit_cstrs(const mga_incipit_cstrs &p) :
-	 base(p.get_dimension(),p.get_i_dimension(),p.get_f_dimension(),p.get_c_dimension(),p.get_ic_dimension(),p.get_c_tol()),
+	 base(p),
 	 m_tof(p.m_tof),
 	 m_tmax(p.m_tmax),
 	 m_dmin(p.m_dmin),
