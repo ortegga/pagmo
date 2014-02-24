@@ -563,8 +563,8 @@ return base_ptr(new derived_problem(*this));
 		std::vector<constraint_vector> m_best_c;
 
 		// Number of function and constraints evaluations
-		mutable unsigned int                    m_fevals;
-		mutable unsigned int                    m_cevals;
+		mutable unsigned long long int m_fevals;
+		mutable unsigned long long int m_cevals;
 };
 
 std::ostream __PAGMO_VISIBLE_FUNC &operator<<(std::ostream &, const base &);
