@@ -183,151 +183,55 @@ bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::
 	return withintol;
 }
 
-/// Generates the weights randomly
+/// Generates the weights 
 /**
  * Generates the weights used in the problem decomposition.
  *
  * @param[in] n_x length of weight vector.
  * @param[in] n_v length of vector of weight vectors.
  * @param[in] fracs if true the sum of a weight vector is always one.
+ * @param[in] fracs if true the sum of a weight vector is always one.
+ * @param[out] vector of weight vectors
  */
-weights_vector_type game_theory::generate_random_weights(const unsigned int n_x, 
-	const unsigned int n_v, const bool fracs ) const
+weights_vector_type game_theory::generate_weights(const unsigned int n_x, 
+	const unsigned int n_v, const bool fracs, const bool random ) const
 {
-	// Generate vectors with entries 0,1,...,(d-1).
-	std::vector< double > b( n_x, 0 );
-	weights_vector_type a;
-	std::vector< int > m;
-	
-	while( true ){
-		// Fill a with dummy b and reset counter
-		a.clear();
-		m.clear();
-		for( unsigned int i = 0; i < n_v; ++i ){
-		        a.push_back( b );
-			m.push_back( 0 );
-		}
-
-		// Change some zeros to ones
-		for( unsigned int i = 0; i < n_x; ++i ){
-			// Generate random no in 0,...,(d-1)
-			int r = static_cast< int >( m_drng() * n_v);
-
-			// Assign value
-			a[r][i] = 1.0;
-
-			// Increase the counter
-			m[r]++;
-		}
-
-		// See if all are represented
-		bool all_unique = true;
-		for( unsigned int i = 0; i < n_v; ++i ){
-			all_unique *= ( m[i] > 0 );
-		}
-		if( all_unique )
-			break;
-	}
-
-	if( fracs ){
-		for( unsigned int i = 0; i < n_v; ++i ){
-			for( unsigned int j = 0; j < n_x; ++j ){
-				a[i][j] /= static_cast< double >( m[i] );
-			}
-		}
-	}
-	return a;
-}
-
-/// Generates the weights uniformly
-/**
- * Generates the weights used in the problem decomposition.
- *
- * @param[in] n_x length of weight vector.
- * @param[in] n_v length of vector of weight vectors.
- * @param[in] fracs if true the sum of a weight vector is always one.
- */
-weights_vector_type game_theory::generate_uniform_weights(
-	const unsigned int n_x, const unsigned int n_v, const bool fracs ) const {
-
-	// Definition of combined: two or more of x for one single
-	// population.
-
-	// Vector of objective weights.
-	weights_vector_type vec_weights;
-
-	// Number to be combined
-	unsigned int n_c;
-
-	// Number to be combined for a single occasion. No need to
-	// initialise, will differ per occasion.
-	unsigned int n_c_o;
-
-	// Index for objs, as eventually k will outrun i if n_x > n_v.
-	unsigned int k = 0;
-
-	// Assigned weights, useful for random generation.
-	std::vector< int > ass_weights(n_x, 0);
-
-	// Run through the number of populations to fill vec_weights.
-	for( unsigned int i = 0; i < n_v; i++ ){
-		// Initialise with zero weights
-		weights_type weights(n_x, 0.0);
-
-		n_c = n_x - (n_v - i) + 1 - k;
-
-		// Number of objective to combine for this i. Where
-		// n_v - i represents the number of remaining
-		// occasions.
-		if( n_c == 1 ){
-			n_c_o = 1;
-		} else {
-			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
-					static_cast<double>( n_v - i )));
-		}
-
-		// Calculate the fraction, if fracs then the sum must be 1.
-		double frac = 1.0;
-
-		if( fracs ){
-			frac = 1.0 / static_cast<double>( n_c_o );
-		}
-		for( unsigned int j = 0; j < n_c_o; j++ ){
-
-			// Set the weights
-			weights[k] = frac;
-
-			// Increment k
-			k++;
-		}
-		vec_weights.push_back( weights );
-	}
-
-	return vec_weights;
-}
-
-/// Generates the weights
-/**
- * Generates the weights used in the problem decomposition.
- *
- * @param[in] n_x length of weight vector.
- * @param[in] n_v length of vector of weight vectors.
- * @param[in] fracs if true the sum of a weight vector is always one.
- * @param[in] random if true the weights are generated at random.
- * @param[out] weights the vector of weight vectors.
- */
-weights_vector_type game_theory::generate_weights( const unsigned int n_x,
-	const unsigned int n_v, const bool fracs, bool random ) const {
-
 	// Preform sanity checks
 	if ( n_v > n_x ) {
 		pagmo_throw(value_error, "The number of weight vector cannot be longer than the number of entries in a weight vector.");
 	}
-	if( random ){
-		return generate_random_weights( n_x, n_v, fracs );
-	} else {
-		return generate_uniform_weights( n_x, n_v, fracs );
+
+	std::vector< int >  c( n_v, 0);
+	std::vector< int >  a( n_x, 0);
+	weights_vector_type r( n_v, weights_type( n_x, 0.0 ));
+	int shift = 0;
+
+	// Add a shift to prevent bias towards one number if n_x / n_v
+	// is not natural
+	if( random )
+		shift = static_cast< int >( m_drng() * n_v);
+
+	for( unsigned int i = 0; i < n_x; ++i ){
+		// Get idx and assign
+		int idx = (i + shift) % n_v;
+		a[i] = idx;
+
+		// Count the number of occurrences for fraction
+		c[idx]++;
 	}
+
+	// Shuffle around
+	if( random )
+		std::random_shuffle(a.begin(), a.end());
+
+	// If no fracs then reset all counters to 1
+	if(!fracs)
+		c = std::vector< int >( n_v, 1 );
+
+	for( unsigned int i = 0; i < n_x; ++i ){
+		r[a[i]][i] = 1.0 / c[a[i]];
+	}
+	return r;
 }
 
 /// Evolve implementation.
@@ -382,10 +286,10 @@ void game_theory::evolve(population &pop) const
 		        random_weights   = false;
 			adaptive_weights = false;
 			break;
-		case RANDOM : 
-		        if(!m_var_weights.empty() || !m_obj_weights.empty()){
-				pagmo_throw(value_error, "Non-empty weight matrices in constructor are not compatible with random mode.");
-			}
+		case RANDOM :
+			// Ignoring previously calculated weight matrices
+			m_var_weights.clear();
+			m_obj_weights.clear();
 			decompose_method = pagmo::problem::decompose::WEIGHTED;
 			random_weights   = true;
 			adaptive_weights = false;
