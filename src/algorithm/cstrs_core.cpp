@@ -158,8 +158,17 @@ void cstrs_core::evolve(population &pop) const
 				}
 			}
 
-			// random shuffle of infeasibles?
-			population::size_type number_of_repair = (population::size_type)(m_repair_ratio * pop_infeasibles.size());
+			const population::size_type pop_infeasibles_size = pop_infeasibles.size();
+
+			// random shuffle of infeasibles
+			if(pop_infeasibles_size > 1) {
+				for(population::size_type i=0; i<pop_infeasibles_size; i++) {
+					int j = boost::uniform_int<int>(0, pop_infeasibles_size - 1)(m_urng);
+					std::swap(pop_infeasibles[i], pop_infeasibles[j]);
+				}
+			}
+
+			population::size_type number_of_repair = (population::size_type)(m_repair_ratio * pop_infeasibles_size);
 
 			// repair the infeasible individuals
 			for(population::size_type i=0; i<number_of_repair; i++) {
