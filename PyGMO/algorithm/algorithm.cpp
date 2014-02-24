@@ -356,9 +356,12 @@ BOOST_PYTHON_MODULE(_algorithm) {
 	// Game Theory
 	enum_<algorithm::game_theory::weight_generation_type>("_weight_generation")
 		.value("UNIFORM", algorithm::game_theory::UNIFORM)
-		.value("RANDOM",  algorithm::game_theory::RANDOM);
+		.value("RANDOM", algorithm::game_theory::RANDOM)
+		.value("TCHEBYCHEFF", algorithm::game_theory::TCHEBYCHEFF)
+		.value("TCHEBYCHEFF_ADAPTIVE", algorithm::game_theory::TCHEBYCHEFF_ADAPTIVE)
+		.value("ADAPTIVE", algorithm::game_theory::ADAPTIVE);
 	algorithm_wrapper<algorithm::game_theory>("game_theory", "Game Theory")
-		.def(init<optional<int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type, algorithm::game_theory::weight_generation_type, std::vector< double >, std::vector< double >>>())
+		.def(init<optional<int, int, int, const algorithm::base &, pagmo::algorithm::weights_vector_type, pagmo::algorithm::weights_vector_type, algorithm::game_theory::weight_generation_type, std::vector< double >, std::vector< double >>>())
 		.def("generate_weights", &algorithm::game_theory::generate_weights,
 			"Generates the weights for linking x to populations.\n\n"
 			"  USAGE:: w = game_theory.generate_weights(n_x,n_v,f,r)\n"
@@ -366,6 +369,14 @@ BOOST_PYTHON_MODULE(_algorithm) {
 			"   - n_v: vector of weight vectors dimension.\n"
 			"   - f  : use fractions.\n"
 			"   - n_x: generate random."
+		)		
+		.def("get_var_weights", &algorithm::game_theory::get_var_weights,
+			"Will return the decision variable weights.\n\n"
+			"  USAGE:: w = game_theory.get_var_weights()\n"
+		)
+		.def("get_obj_weights", &algorithm::game_theory::get_obj_weights,
+			"Will return the objective variable weights.\n\n"
+			"  USAGE:: w = game_theory.get_obj_weights()\n"
 		);
 	
 	// MOEA/D

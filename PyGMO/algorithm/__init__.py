@@ -522,7 +522,7 @@ def _pade_ctor(self, gen=10, decomposition = 'tchebycheff', weights = 'grid', so
 pade._orig_init = pade.__init__
 pade.__init__ = _pade_ctor
 
-def _game_theory_ctor(self, gen=10, threads = 8, solver = None, var_weights= [], obj_weights = [], weight_generation = 'uniform', relative_tolerance = [1e-6], absolute_tolerance = [1e-6] ):
+def _game_theory_ctor(self, gen=10, dim = 0, threads = 8, solver = None, var_weights= [], obj_weights = [], weight_generation = 'uniform', relative_tolerance = [1e-6], absolute_tolerance = [1e-6] ):
 	"""
 	Constructs a Game Theory algorithm (GT)
 	
@@ -531,6 +531,7 @@ def _game_theory_ctor(self, gen=10, threads = 8, solver = None, var_weights= [],
 	USAGE: algorithm.game_theory(self, gen=10, threads = 8, solver = None, var_weights= [], obj_weights = [], relative_tolerance = [1e-6], absolute_tolerance = [1e-6] )
 
 	* gen: number of generations
+        * dim: dimension of the decomposition (0 for automatic)
 	* threads: the maximum number of single-objective problems to solve at the same time
 	* solver: the algorithm to use to solve the single-objective problems
 	* var_weights: a vector of decision variable weights, which specifies which variables are linked (free) to which population. Unlinked variables are fixed.
@@ -543,10 +544,14 @@ def _game_theory_ctor(self, gen=10, threads = 8, solver = None, var_weights= [],
 	def weight_generation_type(x):
 		return {
 			'uniform': _algorithm._weight_generation.UNIFORM,
-			'random': _algorithm._weight_generation.RANDOM
+			'random': _algorithm._weight_generation.RANDOM,
+			'tchebycheff': _algorithm._weight_generation.TCHEBYCHEFF,
+			'tchebycheff_adaptive': _algorithm._weight_generation.TCHEBYCHEFF_ADAPTIVE,
+			'adaptive': _algorithm._weight_generation.ADAPTIVE
 		}[x]	
 	arg_list=[]
 	arg_list.append(gen)
+	arg_list.append(dim)
 	arg_list.append(threads)
 	if solver==None:
 		solver=jde(100)

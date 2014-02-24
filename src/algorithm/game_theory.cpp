@@ -52,7 +52,6 @@ namespace pagmo { namespace algorithm {
  /**
  * Constructs a Game Theory algorithm
  *
- * TODO
  * @param[in] gen Number of generations to evolve.
  * @param[in] threads the amounts of threads that will be used
  * @param[in] solver the algorithm to solve the single objective problems.
@@ -60,20 +59,21 @@ namespace pagmo { namespace algorithm {
  * @param[in] obj_weights the decomposition weights for the objective functions.
  * @param[in] weight_generation type of weight generation.
  * @param[in] relative_tolerance for determining convergence.
- * @param[in] absolute_tolerance for determining convergence..
- * @throws value_error if gen is negative, weight_generation is not sane
- * @see pagmo::problem::decompose::method_type
+ * @param[in] absolute_tolerance for determining convergence.
+ * @throws value_error if gen is negative, weight_generation is not sane.
  */
 game_theory::game_theory(int gen,
+	unsigned int dim,
 	unsigned int threads,
 	const pagmo::algorithm::base & solver,
 	const weights_vector_type &var_weights,
 	const weights_vector_type &obj_weights,
 	weight_generation_type weight_generation,
 	const std::vector< double > &relative_tolerance,
-	const std::vector< double > &absolute_tolerance)
+	const std::vector< double > &absolute_tolerance )
 	:base(),
 	 m_gen(gen),
+	 m_dim(dim),
 	 m_threads(threads),
 	 m_solver(solver.clone()),
 	 m_var_weights(var_weights),
@@ -85,7 +85,9 @@ game_theory::game_theory(int gen,
 	if (gen < 0) {
 		pagmo_throw(value_error,"number of generations must be nonnegative");
 	}
-	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM  ) {
+	if(m_weight_generation != UNIFORM && m_weight_generation != RANDOM && 
+		m_weight_generation != TCHEBYCHEFF && m_weight_generation != ADAPTIVE && 
+	m_weight_generation != TCHEBYCHEFF_ADAPTIVE ) {
 		pagmo_throw(value_error,"non existing weight generation method.");
 	}
 }
@@ -94,6 +96,7 @@ game_theory::game_theory(int gen,
 game_theory::game_theory(const game_theory &algo):
 	base(algo),
 	m_gen(algo.m_gen),
+	m_dim(algo.m_dim),
 	m_threads(algo.m_threads),
 	m_solver(algo.m_solver->clone()),
 	m_var_weights(algo.m_var_weights),
@@ -180,150 +183,55 @@ bool game_theory::solution_within_tolerance(const std::vector<T>& a, const std::
 	return withintol;
 }
 
-/// Generates the weights randomly
+/// Generates the weights 
 /**
  * Generates the weights used in the problem decomposition.
  *
  * @param[in] n_x length of weight vector.
  * @param[in] n_v length of vector of weight vectors.
  * @param[in] fracs if true the sum of a weight vector is always one.
+ * @param[in] fracs if true the sum of a weight vector is always one.
+ * @param[out] vector of weight vectors
  */
-weights_vector_type game_theory::generate_random_weights(const unsigned int n_x, 
-	const unsigned int n_v, const bool fracs ) const
+weights_vector_type game_theory::generate_weights(const unsigned int n_x, 
+	const unsigned int n_v, const bool fracs, const bool random ) const
 {
-	// Generate vectors with entries 0,1,...,(d-1).
-	std::vector< double > b( n_x, 0 );
-	weights_vector_type a;
-	std::vector< int > m;
-	
-	while( true ){
-		// Fill a with dummy b and reset counter
-		a.clear();
-		m.clear();
-		for( unsigned int i = 0; i < n_v; ++i ){
-		        a.push_back( b );
-			m.push_back( 0 );
-		}
-
-		// Change some zeros to ones
-		for( unsigned int i = 0; i < n_x; ++i ){
-			// Generate random no in 0,...,(d-1)
-			int r = static_cast< int >( m_drng() * n_v);
-
-			// Assign value
-			a[r][i] = 1.0;
-
-			// Increase the counter
-			m[r]++;
-		}
-
-		// See if all are represented
-		bool all_unique = true;
-		for( unsigned int i = 0; i < n_v; ++i ){
-			all_unique *= ( m[i] > 0 );
-		}
-		if( all_unique )
-			break;
-	}
-
-	if( fracs ){
-		for( unsigned int i = 0; i < n_v; ++i ){
-			for( unsigned int j = 0; j < n_x; ++j ){
-				a[i][j] /= static_cast< double >( m[i] );
-			}
-		}
-	}
-	return a;
-}
-
-/// Generates the weights uniformly
-/**
- * Generates the weights used in the problem decomposition.
- *
- * @param[in] n_x length of weight vector.
- * @param[in] n_v length of vector of weight vectors.
- * @param[in] fracs if true the sum of a weight vector is always one.
- */
-weights_vector_type game_theory::generate_uniform_weights(
-	const unsigned int n_x, const unsigned int n_v, const bool fracs ) const {
-
-	// Definition of combined: two or more of x for one single
-	// population.
-
-	// Vector of objective weights.
-	weights_vector_type vec_weights;
-
-	// Number to be combined
-	unsigned int n_c;
-
-	// Number to be combined for a single occasion. No need to
-	// initialise, will differ per occasion.
-	unsigned int n_c_o;
-
-	// Index for objs, as eventually k will outrun i if n_x > n_v.
-	unsigned int k = 0;
-
-	// Assigned weights, useful for random generation.
-	std::vector< int > ass_weights(n_x, 0);
-
-	// Run through the number of populations to fill vec_weights.
-	for( unsigned int i = 0; i < n_v; i++ ){
-		// Initialise with zero weights
-		weights_type weights(n_x, 0.0);
-
-		n_c = n_x - (n_v - i) + 1 - k;
-
-		// Number of objective to combine for this i. Where
-		// n_v - i represents the number of remaining
-		// occasions.
-		if( n_c == 1 ){
-			n_c_o = 1;
-		} else {
-			n_c_o = static_cast<int>( ceil( static_cast<double>( n_c ) / 
-					static_cast<double>( n_v - i )));
-		}
-
-		// Calculate the fraction, if fracs then the sum must be 1.
-		double frac = 1.0;
-
-		if( fracs ){
-			frac = 1.0 / static_cast<double>( n_c_o );
-		}
-		for( unsigned int j = 0; j < n_c_o; j++ ){
-
-			// Set the weights
-			weights[k] = frac;
-
-			// Increment k
-			k++;
-		}
-		vec_weights.push_back( weights );
-	}
-
-	return vec_weights;
-}
-
-/// Generates the weights
-/**
- * Generates the weights used in the problem decomposition.
- *
- * @param[in] n_x length of weight vector.
- * @param[in] n_v length of vector of weight vectors.
- * @param[in] fracs if true the sum of a weight vector is always one.
- * @param[in] random if true the weights are generated at random.
- */
-weights_vector_type game_theory::generate_weights( const unsigned int n_x,
-	const unsigned int n_v, const bool fracs, bool random ) const {
-
 	// Preform sanity checks
 	if ( n_v > n_x ) {
 		pagmo_throw(value_error, "The number of weight vector cannot be longer than the number of entries in a weight vector.");
 	}
-	if( random ){
-		return generate_random_weights( n_x, n_v, fracs );
-	} else {
-		return generate_uniform_weights( n_x, n_v, fracs );
+
+	std::vector< int >  c( n_v, 0);
+	std::vector< int >  a( n_x, 0);
+	weights_vector_type r( n_v, weights_type( n_x, 0.0 ));
+	int shift = 0;
+
+	// Add a shift to prevent bias towards one number if n_x / n_v
+	// is not natural
+	if( random )
+		shift = static_cast< int >( m_drng() * n_v);
+
+	for( unsigned int i = 0; i < n_x; ++i ){
+		// Get idx and assign
+		int idx = (i + shift) % n_v;
+		a[i] = idx;
+
+		// Count the number of occurrences for fraction
+		c[idx]++;
 	}
+
+	// Shuffle around
+	if( random )
+		std::random_shuffle(a.begin(), a.end());
+
+	// If no fracs then reset all counters to 1
+	if(!fracs)
+		c = std::vector< int >( n_v, 1 );
+
+	for( unsigned int i = 0; i < n_x; ++i ){
+		r[a[i]][i] = 1.0 / c[a[i]];
+	}
+	return r;
 }
 
 /// Evolve implementation.
@@ -350,69 +258,121 @@ void game_theory::evolve(population &pop) const
 	}
 
 	// Number of populations.
-	const unsigned int subpops = std::min( prob_objectives, prob_dimension );
+	unsigned int min_dim = std::min( prob_objectives, prob_dimension );
+	if ( m_dim == 0 ){
+		m_dim = prob_dimension;
+	}
+	if ( m_dim > prob_dimension ) {
+		pagmo_throw(value_error, "The dimension of the decomposition can not be greater than the problem dimension.");
+	}
+	if ( min_dim > m_dim ) {
+		pagmo_throw(value_error, "The dimension of the decomposition should be at least the minimum between the problem dimension and the number of objectives.");
+	}
 	
 	// Get out if there is nothing to do.
 	if (m_gen == 0) {
 		return;
 	}
 
-	// Generate the default if vector of decision variable weights
-	// for linking to populations is empty.
-	weights_vector_type var_weights;
-	weights_vector_type obj_weights;
+	bool random_weights = false;
+	bool adaptive_weights = false;
+
+	problem::decompose::method_type decompose_method = pagmo::problem::decompose::WEIGHTED;
 
 	switch (m_weight_generation)
 	{
 		case UNIFORM : 
-		        if(m_var_weights.empty()){
-				var_weights = generate_weights( 
-					prob_dimension, subpops, false, false );
-			}else{
-				var_weights = m_var_weights;
-			}
-			if(m_obj_weights.empty()){
-				obj_weights = generate_weights( 
-					prob_objectives, subpops, true, false );
-			}else{
-				obj_weights = m_obj_weights;
-			}
+			decompose_method = pagmo::problem::decompose::WEIGHTED;
+		        random_weights   = false;
+			adaptive_weights = false;
 			break;
-		case RANDOM : 
-			var_weights = generate_weights( 
-				prob_dimension, subpops, false, true );
-			obj_weights = generate_weights( 
-				prob_objectives, subpops, true, true );
+		case RANDOM :
+			// Ignoring previously calculated weight matrices
+			m_var_weights.clear();
+			m_obj_weights.clear();
+			decompose_method = pagmo::problem::decompose::WEIGHTED;
+			random_weights   = true;
+			adaptive_weights = false;
 			break;
+		case TCHEBYCHEFF : 
+			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
+			random_weights   = true;
+			adaptive_weights = false;
+			m_obj_weights = generate_weights( prob_objectives, 1, true, random_weights );
+			m_obj_weights = weights_vector_type( m_dim, m_obj_weights[0] );
+			break;
+		case TCHEBYCHEFF_ADAPTIVE : 
+			decompose_method = pagmo::problem::decompose::TCHEBYCHEFF;
+			random_weights   = false;
+			adaptive_weights = true;
+			break;
+		case ADAPTIVE : 
+			decompose_method = pagmo::problem::decompose::WEIGHTED;
+			random_weights   = false;
+			adaptive_weights = true;
+			break;
+	}
+
+	if(m_var_weights.empty()){
+		m_var_weights = generate_weights( prob_dimension, m_dim, false, random_weights );
+	}
+
+	if( adaptive_weights ){
+		// If adaptive every objective should be coupled to
+		// every decomposed problem initially.
+		m_obj_weights = generate_weights( prob_objectives, 1, true, random_weights );
+		m_obj_weights = weights_vector_type( m_dim, m_obj_weights[0] );
+	}else if(m_obj_weights.empty()){
+		// Generate the objective weights
+		weights_vector_type tmp_weights = generate_weights( 
+			prob_objectives, min_dim, true, random_weights );
+		m_obj_weights = tmp_weights;
+
+		// If m_dim > min_dim weights have to be repeated
+		// (i.e. one objective linked to more than one
+		// decomposed population).
+		int k;
+		for( unsigned int i = 0; i < (m_dim - min_dim); ++i ){
+			// If m_dim > 2 * min_dim, reset index
+			k = i % min_dim;
+			// If m_dim > min_dim all potential vector are
+			// already in tmp_weights, just reshuffle.
+			if( k == 0 && random_weights ){
+				std::random_shuffle(tmp_weights.begin(), tmp_weights.end());
+			}
+			m_obj_weights.push_back( tmp_weights[ k ] );
+		}
 	}
 
 	// More sanity checks
-	if ( var_weights.size() != subpops ) {
+	if ( m_var_weights.size() != m_dim ) {
 		pagmo_throw(value_error, "The vector of variable weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( obj_weights.size() != subpops ) {
+	if ( m_obj_weights.size() != m_dim ) {
 		pagmo_throw(value_error, "The vector of objective weights has an incorrect number of entries. Create an entry for each population.");
 	}
-	if ( var_weights[0].size() != prob_dimension ) {
+	if ( m_var_weights[0].size() != prob_dimension ) {
 		pagmo_throw(value_error, "The dimension of the variable weights do not match the problem. The dimension must be equal to the number of decision variables.");
 	}
-	if ( obj_weights[0].size() != prob_objectives ) {
+	if ( m_obj_weights[0].size() != prob_objectives ) {
 		pagmo_throw(value_error, "The dimension of the objective weights do not match the problem. The dimension must be equal to the number of objectives.");
 	}
 
+	// Compute the starting ideal point
+	fitness_vector ideal_point = pop.compute_ideal();
+
 	// Create all the decomposed problems 
 	std::vector<pagmo::problem::decompose*> prob_vector;
-	for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+	for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 		prob_vector.push_back(
-			new pagmo::problem::decompose( prob,
-				pagmo::problem::decompose::WEIGHTED, 
-				obj_weights[i]));       
+			new pagmo::problem::decompose( prob, decompose_method, 
+				m_obj_weights[i], ideal_point, true ));
 	}
 
 	// Set unconnected topology, only using arch for parallel processing
 	topology::unconnected topo;
 	
-	// Create unconnected archipelago of subpops islands. Each island solve a different decomposed part of the problem.
+	// Create unconnected archipelago of m_dim islands. Each island solve a different decomposed part of the problem.
 	pagmo::archipelago arch(topo);
 
 	// Sets random number generators of the archipelago using the
@@ -421,7 +381,7 @@ void game_theory::evolve(population &pop) const
 	arch.set_seeds(m_urng());
 
 	// Assign population to each problem
-	for( problem::base::f_size_type i = 0; i<subpops; i++ ) { 
+	for( problem::base::f_size_type i = 0; i < m_dim; i++ ) { 
 		
 		// Create an empty population for each decomposed
 		// problem
@@ -444,10 +404,10 @@ void game_theory::evolve(population &pop) const
 
 		// Define best decision vector for fixed variables
 		std::vector< double > best_vector( prob_dimension, 0.0 );
-		for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+		for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 			int best_idx = arch.get_island(i)->get_population().get_best_idx();
 			best_vector = sum_of_vec( best_vector,  
-				had_of_vec( var_weights[i], 
+				had_of_vec( m_var_weights[i], 
 					arch.get_island(i)->get_population().get_individual( best_idx ).cur_x ));
 		}
 
@@ -461,7 +421,7 @@ void game_theory::evolve(population &pop) const
 
 		// Change the boundaries of each problem, this is
 		// equal to fixing!
-		for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+		for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 			// Get problem pointer from population from
 			// island. Each get creates a clone (except
 			// problem_ptr), so that they must be set back
@@ -473,31 +433,65 @@ void game_theory::evolve(population &pop) const
 			// constant function as the bounds itself are
 			// not mutable.
 			// problem::base &prob_i = pop_i.problem();
-			problem::base_ptr prob_i = population_access::get_problem_ptr(pop_i);
+
+			// Need to recast on problem::base_ptr doesn't
+			// have all functions of problem::decompose
+			boost::shared_ptr< problem::decompose > prob_i = 
+				boost::static_pointer_cast< problem::decompose >(
+					population_access::get_problem_ptr(pop_i));
 
 			// Inverse of the decision variable weight. 
-			weights_type inverse_weight = inv_of_vec( var_weights[i] );
+			weights_type inverse_weight = inv_of_vec( m_var_weights[i] );
 
 			// Calculate modified lower and upper bounds.
 			std::vector< double > mod_lb = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_lb() ));
+				had_of_vec( m_var_weights[i], prob_i->get_lb() ));
 			std::vector< double > mod_ub = sum_of_vec(
 				had_of_vec( inverse_weight, best_vector ),
-				had_of_vec( var_weights[i], prob_i->get_ub() ));
+				had_of_vec( m_var_weights[i], prob_i->get_ub() ));
 
 			// Change the bounds of the problem.
 			prob_i->set_bounds( mod_lb, mod_ub );
 
+			// In case of adaptive weights use the f
+			// minmax history to update the weights.
+			if( adaptive_weights ){
+				std::vector< fitness_vector > f_history = prob_i->get_minmax_history();
+				prob_i->reset_minmax_history();
+				double obj_sum = 0.0;
+				for( unsigned int j = 0; j < prob_objectives; ++j ){
+					m_obj_weights[i][j] = f_history[1][j] - f_history[0][j];
+					obj_sum += m_obj_weights[i][j];
+				}
+				for( unsigned int j = 0; j < prob_objectives; ++j ){
+					m_obj_weights[i][j] /= obj_sum;
+				}
+				prob_i->set_weights( m_obj_weights[i] );
+			}
 			bool reinit_pop_after_bounds_change = true;
 
 			// Change the chromosomes according to bounds.
-			for ( population::size_type j = 0; j<pop.size() && 
+			for( population::size_type j = 0; j < pop_i.size() && 
 				      reinit_pop_after_bounds_change; j++ ) {
 				pop_i.set_x(j, sum_of_vec(
 						had_of_vec( inverse_weight, best_vector ),
-						had_of_vec( var_weights[i], pop_i.get_individual(j).cur_x )));
+						had_of_vec( m_var_weights[i], pop_i.get_individual(j).cur_x )));
 			}
+
+			// Update global ideal point.
+			fitness_vector z_i = prob_i->get_ideal_point();
+			for( unsigned int j = 0; j < z_i.size(); ++j ){
+				if( z_i[j] < ideal_point[j] ){
+					ideal_point[j] = z_i[j];
+				}
+			}
+			
+			// Update local ideal points. This causes a
+			// lag between synchronising of one
+			// generation, but it saves pulling everything
+			// inside-out again.
+			prob_i->set_ideal_point( ideal_point );
 			
 			// Set population back into island, island
 			// back into arch.
@@ -511,15 +505,15 @@ void game_theory::evolve(population &pop) const
 
 	// Calculate best vector for last time and push to population.
 	std::vector< double > best_vector( prob_dimension, 0.0 );
-	for( problem::base::f_size_type i = 0; i<subpops; i++ ) {
+	for( problem::base::f_size_type i = 0; i < m_dim; i++ ) {
 		best_vector = sum_of_vec( best_vector,  
-			had_of_vec( var_weights[i], 
+			had_of_vec( m_var_weights[i], 
 				arch.get_island(i)->get_population().champion().x ));
 	}
 	pop.push_back( best_vector );
 
         // Fill population will all individuals.
-	for (problem::base::f_size_type i=0; i <subpops; ++i) {
+	for (problem::base::f_size_type i=0; i < m_dim; ++i) {
 		for (population::size_type j=0; j < pop_size; ++j) {
 			pop.push_back(arch.get_island(i)->get_population().get_individual(j).cur_x);
 		}
@@ -550,6 +544,26 @@ std::string game_theory::get_name() const
 	return m_solver->get_name() + "[Game Theory]";
 }
 
+/// Get var_weights.
+/**
+ * Will return the decision variable weights.
+ *
+ * @param[out] the vector of weight vectors.
+ */
+weights_vector_type game_theory::get_var_weights() const {
+	return m_var_weights;
+}
+
+/// Get obj_weights.
+/**
+ * Will return the objective variable weights.
+ *
+ * @param[out] the vector of weight vectors.
+ */
+weights_vector_type game_theory::get_obj_weights() const {
+	return m_obj_weights;
+}
+
 /// Extra human readable algorithm info.
 /**
  * Will return a formatted string displaying the parameters of the algorithm.
@@ -569,6 +583,15 @@ std::string game_theory::human_readable_extra() const
 			break;
 		case RANDOM : 
 			s << "RANDOM" << ' ';
+			break;
+		case TCHEBYCHEFF : 
+			s << "TCHEBYCHEFF" << ' ';
+			break;
+		case TCHEBYCHEFF_ADAPTIVE : 
+			s << "TCHEBYCHEFF_ADAPTIVE" << ' ';
+			break;
+		case ADAPTIVE : 
+			s << "ADAPTIVE" << ' ';
 			break;
 	}
 	return s.str();

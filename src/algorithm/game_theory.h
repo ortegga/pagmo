@@ -60,11 +60,15 @@ class __PAGMO_VISIBLE game_theory: public base
 	/// Mechanism used to generate the weight vectors
 	enum weight_generation_type {
 		UNIFORM,
-		RANDOM
+		RANDOM,
+		TCHEBYCHEFF,
+		TCHEBYCHEFF_ADAPTIVE,
+		ADAPTIVE
 	};
 	game_theory(
-	        int gen = 10,
-		unsigned int max_parallelism = 1,
+	        int = 10,
+		unsigned int = 0,
+		unsigned int = 1,
 		const pagmo::algorithm::base & = pagmo::algorithm::jde(100),
 		const weights_vector_type & = weights_vector_type(),
 		const weights_vector_type & = weights_vector_type(),
@@ -78,6 +82,8 @@ class __PAGMO_VISIBLE game_theory: public base
 	void evolve(population &) const;
 	std::string get_name() const;
 	weights_vector_type generate_weights(const unsigned int, const unsigned int, const bool, const bool ) const;
+	weights_vector_type get_var_weights() const;
+	weights_vector_type get_obj_weights() const;
   protected:
 	std::string human_readable_extra() const;
 
@@ -88,6 +94,7 @@ class __PAGMO_VISIBLE game_theory: public base
 	{
 		ar & boost::serialization::base_object<base>(*this);
 		ar & const_cast<int &>(m_gen);
+		ar & const_cast<unsigned int &>(m_dim);
 		ar & const_cast<unsigned int &>(m_threads);
 		ar & const_cast<base_ptr &>(m_solver);
 		ar & m_var_weights;
@@ -98,18 +105,17 @@ class __PAGMO_VISIBLE game_theory: public base
 	}
 	//Number of generations
 	const int m_gen;
+	mutable unsigned int m_dim;
 	const unsigned int m_threads;
 	const base_ptr m_solver;
-	weights_vector_type m_var_weights;
-	weights_vector_type m_obj_weights;
+	mutable weights_vector_type m_var_weights;
+	mutable weights_vector_type m_obj_weights;
 	const weight_generation_type m_weight_generation;
 	std::vector< double > m_relative_tolerance;
 	std::vector< double > m_absolute_tolerance;
 	
 	// Private functions
-        weights_vector_type generate_random_weights(const unsigned int, const unsigned int, const bool ) const;
-	weights_vector_type generate_uniform_weights(const unsigned int, const unsigned int, const bool ) const;
-	template <typename T>
+  	template <typename T>
 		std::vector<T> sum_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
 	template <typename T>
 		std::vector<T> had_of_vec(const std::vector<T>& a, const std::vector<T>& b) const;
