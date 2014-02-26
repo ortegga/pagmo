@@ -60,7 +60,7 @@ namespace pagmo { namespace algorithm {
  * @param[in] cr Crossover parameter in the Differential Evolution operator
  * @param[in] f f parameter in the Differential Evolution operator
  * @param[in] eta_m Distribution index for the polynomial mutation
- * @param[in] m_preserve_diversity when true activates the two diversity preservation mechanism described in Li, Hui, and Qingfu Zhang paper
+ * @param[in] preserve_diversity when true activates the two diversity preservation mechanism described in Li, Hui, and Qingfu Zhang paper
  * @throws value_error if gen is negative, weight_generation is not one of the allowed types, realb,cr or f are not in [1.0] or m_eta is < 0
  */
 moead::moead(int gen,
@@ -377,7 +377,6 @@ void moead::evolve(population &pop) const
 			// Note that we do not use prob, hence the cache of prob does not get these values.
 			// Note that the ideal point is here updated too
 			prob_decomposed.compute_original_fitness(new_f, candidate);
-			m_fevals++;
 			
 			// 3 - We update the ideal point (Not needed as its done in decomposed when the flag adapt_weight is true)
 			//for (fitness_vector::size_type j=0; j<prob.get_f_dimension(); ++j){

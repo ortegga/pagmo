@@ -29,7 +29,6 @@
 using namespace pagmo;
 
 // Example in C++ of the use of PaGMO 1.1.5
-
 int main()
 {
 	/*
