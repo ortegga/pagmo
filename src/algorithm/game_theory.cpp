@@ -234,6 +234,43 @@ weights_vector_type game_theory::generate_weights(const unsigned int n_x,
 	return r;
 }
 
+/// Downscale the decomposition
+/**
+ * 
+ */
+void game_theory::downscale( ) const
+{
+	unsigned int prob_dimension = m_var_weights.size();
+	unsigned int prob_objectives = m_obj_weights.size();
+
+	weights_vector_type new_var_weights;
+
+	for( unsigned int i =  0; i < prob_objectives; i++ ){
+		weights_type new_weights( prob_dimension, 0.0 );
+		for( unsigned int j = 1; j < m_dim; j++ ){
+			// Find the idx linked to the max obj weight
+			unsigned int idxmax = 0;
+			double obwmax = m_obj_weights[i][0];
+			for( unsigned int j = 1; j < prob_objectives; j++ ){
+				if( m_obj_weights[i][j] > obwmax ){
+					idxmax = j;
+					obwmax = m_obj_weights[i][j];
+				}
+			}
+
+			// If that is of current row
+			if( idxmax == i ){
+				new_weights = sum_of_vec( new_weights, m_var_weights[i] );
+			}
+		}
+		new_var_weights.push_back( new_weights ); 
+	}
+	m_dim = prob_objectives;
+	m_obj_weights = generate_weights( m_dim, m_dim, true, false );
+	m_var_weights = new_var_weights;
+	m_weight_generation = UNIFORM;
+}
+
 /// Evolve implementation.
 /**
  * Run the Game Theory algorithm for the number of generations specified in the constructors.
