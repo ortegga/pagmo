@@ -376,7 +376,7 @@ BOOST_PYTHON_MODULE(_algorithm) {
 		.def("get_obj_weights", &algorithm::game_theory::get_obj_weights,
 			"Will return the objective variable weights.\n\n"
 			"  USAGE:: w = game_theory.get_obj_weights()\n"
-        ).def("downscale", &algorithm::game_theory::down_scale,
+        ).def("downscale", &algorithm::game_theory::downscale,
         	"Downscale the decomposition.\n\n"
         	"  USAGE:: game_theory.downscale()\n"
 		);
