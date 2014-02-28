@@ -240,27 +240,31 @@ weights_vector_type game_theory::generate_weights(const unsigned int n_x,
  */
 void game_theory::downscale( ) const
 {
-	unsigned int prob_dimension = m_var_weights.size();
-	unsigned int prob_objectives = m_obj_weights.size();
+	unsigned int prob_dimension = m_var_weights[0].size();
+	unsigned int prob_objectives = m_obj_weights[0].size();
 
 	weights_vector_type new_var_weights;
 
-	for( unsigned int i =  0; i < prob_objectives; i++ ){
+	for( unsigned int i =  0; i < prob_objectives; ++i ){
+
 		weights_type new_weights( prob_dimension, 0.0 );
-		for( unsigned int j = 1; j < m_dim; j++ ){
+
+		// Check all obj weight vectors
+		for( unsigned int j = 0; j < m_dim; ++j ){
+
 			// Find the idx linked to the max obj weight
 			unsigned int idxmax = 0;
-			double obwmax = m_obj_weights[i][0];
-			for( unsigned int j = 1; j < prob_objectives; j++ ){
-				if( m_obj_weights[i][j] > obwmax ){
-					idxmax = j;
-					obwmax = m_obj_weights[i][j];
+			double obwmax = m_obj_weights[j][0];
+			for( unsigned int k = 1; k < prob_objectives; ++k ){
+				if( m_obj_weights[j][k] > obwmax ){
+					idxmax = k;
+					obwmax = m_obj_weights[j][k];
 				}
 			}
 
 			// If that is of current row
 			if( idxmax == i ){
-				new_weights = sum_of_vec( new_weights, m_var_weights[i] );
+				new_weights = sum_of_vec( new_weights, m_var_weights[j] );
 			}
 		}
 		new_var_weights.push_back( new_weights ); 
