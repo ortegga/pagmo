@@ -31,6 +31,20 @@
 #include "mga_incipit_cstrs.h"
 #include "../keplerian_toolbox/keplerian_toolbox.h"
 
+static const std::vector<double> __constraint_tolerances__(int c_dimension, int ic_dimension)
+{
+	std::vector<double> constraint_tolerances(c_dimension);
+	// equality constraints
+	for(int i=0; i<c_dimension-ic_dimension; i++) {
+		constraint_tolerances[i] = 0.02;
+	}
+	// inequality constraints
+	for(int i=c_dimension-ic_dimension; i<c_dimension; i++) {
+		constraint_tolerances[i] = 0.;
+	}
+	return constraint_tolerances;
+}
+
 namespace pagmo { namespace problem {
 
  
@@ -65,7 +79,7 @@ mga_incipit_cstrs::mga_incipit_cstrs(
 			 const double a_final,
 			 const double e_final,
 			 const double i_final
-				    ) : base(4*seq.size()+2,0,1,compute_number_of_c(seq,tmax,dmin,thrust,a_final,e_final,i_final),compute_number_of_ic(seq,tmax,dmin,thrust),1E-3), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
+					) : base(4*seq.size()+2,0,1,compute_number_of_c(seq,tmax,dmin,thrust,a_final,e_final,i_final),compute_number_of_ic(seq,tmax,dmin,thrust),__constraint_tolerances__(compute_number_of_c(seq,tmax,dmin,thrust,a_final,e_final,i_final), compute_number_of_ic(seq,tmax,dmin,thrust))), m_tof(tof), m_tmax(tmax), m_dmin(dmin), m_thrust(thrust), m_a_final(a_final), m_e_final(e_final), m_i_final(i_final)
 {
 	// We check that all planets have equal central body
 	std::vector<double> mus(seq.size());
